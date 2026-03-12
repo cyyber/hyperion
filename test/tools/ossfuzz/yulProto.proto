@@ -382,7 +382,7 @@ message Data {
 
 message Program {
   enum Version {
-    SHANGHAI = 11;
+    ZOND = 11;
   }
   oneof program_oneof {
     Block block = 1;

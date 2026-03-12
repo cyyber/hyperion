@@ -41,7 +41,7 @@ using namespace hyperion::langutil;
 using namespace hyperion::util;
 
 static vector<QRVMVersion> s_qrvmVersions = {
-	QRVMVersion::shanghai()
+	QRVMVersion::zond()
 };
 
 void FuzzerUtil::testCompilerJsonInterface(string const& _input, bool _optimize, bool _quiet)
@@ -58,7 +58,7 @@ void FuzzerUtil::testCompilerJsonInterface(string const& _input, bool _optimize,
 	config["settings"]["optimizer"] = Json::objectValue;
 	config["settings"]["optimizer"]["enabled"] = _optimize;
 	config["settings"]["optimizer"]["runs"] = static_cast<int>(OptimiserSettings{}.expectedExecutionsPerDeployment);
-	config["settings"]["qrvmVersion"] = "shanghai";
+	config["settings"]["qrvmVersion"] = "zond";
 
 	// Enable all SourceUnit-level outputs.
 	config["settings"]["outputSelection"]["*"][""][0] = "*";

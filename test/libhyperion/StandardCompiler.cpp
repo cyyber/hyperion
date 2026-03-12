@@ -1028,11 +1028,11 @@ BOOST_AUTO_TEST_CASE(qrvm_version)
 		)";
 	};
 	Json::Value result;
-	result = compile(inputForVersion("\"qrvmVersion\": \"shanghai\","));
-	BOOST_CHECK(result["contracts"]["fileA"]["A"]["metadata"].asString().find("\"qrvmVersion\":\"shanghai\"") != std::string::npos);
+	result = compile(inputForVersion("\"qrvmVersion\": \"zond\","));
+	BOOST_CHECK(result["contracts"]["fileA"]["A"]["metadata"].asString().find("\"qrvmVersion\":\"zond\"") != std::string::npos);
 	// test default
 	result = compile(inputForVersion(""));
-	BOOST_CHECK(result["contracts"]["fileA"]["A"]["metadata"].asString().find("\"qrvmVersion\":\"shanghai\"") != std::string::npos);
+	BOOST_CHECK(result["contracts"]["fileA"]["A"]["metadata"].asString().find("\"qrvmVersion\":\"zond\"") != std::string::npos);
 	// test invalid
 	result = compile(inputForVersion("\"qrvmVersion\": \"invalid\","));
 	BOOST_CHECK(result["errors"][0]["message"].asString() == "Invalid QRVM version requested.");

@@ -9,7 +9,7 @@
   }
  },
  "settings": {
-  "qrvmVersion": "shanghai",
+  "qrvmVersion": "zond",
   "outputSelection": {
    "*": {
     "A2": [

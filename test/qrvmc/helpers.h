@@ -273,8 +273,8 @@ static inline const char* qrvmc_revision_to_string(enum qrvmc_revision rev)
 {
     switch (rev)
     {
-    case QRVMC_SHANGHAI:
-        return "Shanghai";
+    case QRVMC_ZOND:
+        return "Zond";
     }
     return "<unknown>";
 }
