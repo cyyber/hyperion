@@ -22,7 +22,7 @@ set -e
 
 # Requires $REPO_ROOT to be defined and "${REPO_ROOT}/scripts/common.sh" to be included before.
 
-CURRENT_QRVM_VERSION=shanghai
+CURRENT_QRVM_VERSION=zond
 
 AVAILABLE_PRESETS=(
     legacy-no-optimize

@@ -96,8 +96,8 @@ QRVMVersion ProtoConverter::qrvmVersionMapping(Program_Version const& _ver)
 {
 	switch (_ver)
 	{
-	case Program::SHANGHAI:
-		return QRVMVersion::shanghai();
+	case Program::ZOND:
+		return QRVMVersion::zond();
 	}
 }
 

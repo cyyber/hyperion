@@ -855,21 +855,21 @@ typedef enum qrvmc_set_option_result (*qrvmc_set_option_fn)(struct qrvmc_vm* vm,
 enum qrvmc_revision
 {
     /**
-     * The Shanghai revision.
+     * The Zond revision.
      *
      * https://github.com/ethereum/execution-specs/blob/master/network-upgrades/mainnet-upgrades/shanghai.md
      */
-    QRVMC_SHANGHAI = 1,
+    QRVMC_ZOND = 1,
 
     /** The maximum QRVM revision supported. */
-    QRVMC_MAX_REVISION = QRVMC_SHANGHAI,
+    QRVMC_MAX_REVISION = QRVMC_ZOND,
 
     /**
      * The latest known QRVM revision with finalized specification.
      *
      * This is handy for QRVM tools to always use the latest revision available.
      */
-    QRVMC_LATEST_STABLE_REVISION = QRVMC_SHANGHAI
+    QRVMC_LATEST_STABLE_REVISION = QRVMC_ZOND
 };
 
 

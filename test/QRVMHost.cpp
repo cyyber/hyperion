@@ -96,8 +96,8 @@ QRVMHost::QRVMHost(langutil::QRVMVersion _qrvmVersion, qrvmc::VM& _vm):
 		assertThrow(false, Exception, "");
 	}
 
-	if (_qrvmVersion == langutil::QRVMVersion::shanghai())
-		m_qrvmRevision = QRVMC_SHANGHAI;
+	if (_qrvmVersion == langutil::QRVMVersion::zond())
+		m_qrvmRevision = QRVMC_ZOND;
 	else
 		assertThrow(false, Exception, "Unsupported QRVM version");
 

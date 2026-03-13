@@ -101,10 +101,10 @@ else
 fi
 
 
-QRVM_VERSIONS="shanghai"
+QRVM_VERSIONS="zond"
 
 # And then run the Hyperion unit-tests in the matrix combination of optimizer / no optimizer
-# and shanghai VM
+# and zond VM
 for optimize in "" "--optimize"
 do
     for vm in $QRVM_VERSIONS

@@ -6,7 +6,7 @@
   }
  },
  "settings": {
-  "qrvmVersion": "shanghai",
+  "qrvmVersion": "zond",
   "optimizer": { "enabled": true },
   "outputSelection": {
    "*": {

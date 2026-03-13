@@ -48,11 +48,11 @@ class QRVMVersion:
 public:
 	QRVMVersion() = default;
 
-	static QRVMVersion shanghai() { return {Version::Shanghai}; }
+	static QRVMVersion zond() { return {Version::Zond}; }
 
 	static std::optional<QRVMVersion> fromString(std::string const& _version)
 	{
-		for (auto const& v: {shanghai()})
+		for (auto const& v: {zond()})
 			if (_version == v.name())
 				return v;
 		return std::nullopt;
@@ -65,17 +65,17 @@ public:
 	{
 		switch (m_version)
 		{
-		case Version::Shanghai: return "shanghai";
+		case Version::Zond: return "zond";
 		}
 		return "INVALID";
 	}
 
 private:
-	enum class Version { Shanghai };
+	enum class Version { Zond };
 
 	QRVMVersion(Version _version): m_version(_version) {}
 
-	Version m_version = Version::Shanghai;
+	Version m_version = Version::Zond;
 };
 
 }

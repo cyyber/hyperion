@@ -147,7 +147,7 @@ Target Options
 Below is a list of target QRVM versions and the compiler-relevant changes introduced
 at each version. Backward compatibility is not guaranteed between each version.
 
-- ``shanghai`` (**default**)
+- ``zond`` (**default**)
 
 .. index:: ! standard JSON, ! --standard-json
 .. _compiler-api:
@@ -290,8 +290,8 @@ Input Description
           }
         },
         // Version of the QRVM to compile for.
-        // Affects type checking and code generation. Can be shanghai (default)
-        "qrvmVersion": "shanghai",
+        // Affects type checking and code generation. Can be zond (default)
+        "qrvmVersion": "zond",
         // Optional: Change compilation pipeline to go through the Yul intermediate representation.
         // This is false by default.
         "viaIR": true,

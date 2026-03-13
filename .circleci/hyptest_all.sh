@@ -31,8 +31,8 @@ REPODIR="$(realpath "$(dirname "$0")"/..)"
 # shellcheck source=scripts/common.sh
 source "${REPODIR}/scripts/common.sh"
 
-QRVM_VALUES=(homestead byzantium constantinople petersburg istanbul berlin london paris shanghai)
-DEFAULT_QRVM=shanghai
+QRVM_VALUES=(zond)
+DEFAULT_QRVM=zond
 [[ " ${QRVM_VALUES[*]} " =~ $DEFAULT_QRVM ]]
 OPTIMIZE_VALUES=(0 1)
 

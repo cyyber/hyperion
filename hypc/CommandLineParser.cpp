@@ -600,7 +600,7 @@ General Information)").c_str(),
 		(
 			g_strQRVMVersion.c_str(),
 			po::value<std::string>()->value_name("version")->default_value(QRVMVersion{}.name()),
-			"Select desired QRVM version: shanghai."
+			"Select desired QRVM version: zond."
 		)
 	;
 	outputOptions.add_options()
