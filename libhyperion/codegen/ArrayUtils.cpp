@@ -975,7 +975,7 @@ void ArrayUtils::convertLengthToSize(ArrayType const& _arrayType, bool _pad) con
 				m_context << Instruction::POP << u256(1);
 			else if (baseBytes <= 16)
 			{
-				unsigned itemsPerSlot = 32 / baseBytes;
+				unsigned itemsPerSlot = VMWordBytes / baseBytes;
 				m_context
 					<< u256(itemsPerSlot - 1) << Instruction::ADD
 					<< u256(itemsPerSlot) << Instruction::SWAP1 << Instruction::DIV;
@@ -1097,7 +1097,7 @@ void ArrayUtils::accessIndex(ArrayType const& _arrayType, bool _doBoundsCheck, b
 			// <ref> <byte_number> = <base_ref + index / itemsPerSlot> <(index % itemsPerSlot) * byteSize>
 			unsigned byteSize = _arrayType.baseType()->storageBytes();
 			hypAssert(byteSize != 0, "");
-			unsigned itemsPerSlot = 32 / byteSize;
+			unsigned itemsPerSlot = VMWordBytes / byteSize;
 			m_context << u256(itemsPerSlot) << Instruction::SWAP2;
 			// stack: itemsPerSlot index data_ref
 			m_context

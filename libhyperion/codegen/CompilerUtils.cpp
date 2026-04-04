@@ -43,13 +43,13 @@ using hyperion::util::h256;
 using hyperion::toCompactHexWithPrefix;
 
 unsigned const CompilerUtils::dataStartOffset = 4;
-size_t const CompilerUtils::freeMemoryPointer = 64;
-size_t const CompilerUtils::zeroPointer = CompilerUtils::freeMemoryPointer + 32;
-size_t const CompilerUtils::generalPurposeMemoryStart = CompilerUtils::zeroPointer + 32;
+size_t const CompilerUtils::freeMemoryPointer = 2 * VMWordBytes;
+size_t const CompilerUtils::zeroPointer = CompilerUtils::freeMemoryPointer + VMWordBytes;
+size_t const CompilerUtils::generalPurposeMemoryStart = CompilerUtils::zeroPointer + VMWordBytes;
 
-static_assert(CompilerUtils::freeMemoryPointer >= 64, "Free memory pointer must not overlap with scratch area.");
-static_assert(CompilerUtils::zeroPointer >= CompilerUtils::freeMemoryPointer + 32, "Zero pointer must not overlap with free memory pointer.");
-static_assert(CompilerUtils::generalPurposeMemoryStart >= CompilerUtils::zeroPointer + 32, "General purpose memory must not overlap with zero area.");
+static_assert(CompilerUtils::freeMemoryPointer >= 2 * VMWordBytes, "Free memory pointer must not overlap with scratch area.");
+static_assert(CompilerUtils::zeroPointer >= CompilerUtils::freeMemoryPointer + VMWordBytes, "Zero pointer must not overlap with free memory pointer.");
+static_assert(CompilerUtils::generalPurposeMemoryStart >= CompilerUtils::zeroPointer + VMWordBytes, "General purpose memory must not overlap with zero area.");
 
 void CompilerUtils::initialiseFreeMemoryPointer()
 {

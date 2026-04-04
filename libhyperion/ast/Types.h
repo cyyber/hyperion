@@ -30,6 +30,7 @@
 
 #include <libhyputil/Common.h>
 #include <libhyputil/Numeric.h>
+#include <libhyputil/VMConstants.h>
 #include <libhyputil/CommonIO.h>
 #include <libhyputil/LazyInit.h>
 #include <libhyputil/Result.h>
@@ -250,7 +251,7 @@ public:
 	/// For statically encoded types this is the same as calldataEncodedSize(true).
 	/// For dynamically encoded types this is the distance between two tail pointers, i.e. 32.
 	/// Always returns a value greater than zero and throws if the type cannot be encoded in calldata.
-	unsigned calldataHeadSize() const { return isDynamicallyEncoded() ? 32 : calldataEncodedSize(true); }
+	unsigned calldataHeadSize() const { return isDynamicallyEncoded() ? VMWordBytes : calldataEncodedSize(true); }
 	/// @returns the (minimal) size of the calldata tail for this type. Can only be used for
 	/// dynamically encoded types. For dynamically-sized arrays this is 32 (the size of the length),
 	/// for statically-sized, but dynamically encoded arrays this is 32*length(), for structs
@@ -276,11 +277,11 @@ public:
 	/// slot allocation algorithm does not overflow, it is not a protection against collisions.
 	virtual bigint storageSizeUpperBound() const { return 1; }
 	/// Multiple small types can be packed into a single storage slot. If such a packing is possible
-	/// this function @returns the size in bytes smaller than 32. Data is moved to the next slot if
+	/// this function @returns the size in bytes smaller than VMWordBytes. Data is moved to the next slot if
 	/// it does not fit.
 	/// In order to avoid computation at runtime of whether such moving is necessary, structs and
 	/// array data (not each element) always start a new slot.
-	virtual unsigned storageBytes() const { return 32; }
+	virtual unsigned storageBytes() const { return VMWordBytes; }
 	/// Returns true if the type is a value type that is left-aligned on the stack with a size of
 	/// storageBytes() bytes. Returns false if the type is a value type that is right-aligned on
 	/// the stack with a size of storageBytes() bytes. Asserts if it is not a value type or the
@@ -452,7 +453,7 @@ public:
 
 	bool operator==(Type const& _other) const override;
 
-	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? 32 : 160 / 8; }
+	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? VMWordBytes : 160 / 8; }
 	unsigned storageBytes() const override { return 160 / 8; }
 	bool leftAligned() const override { return false; }
 	bool isValueType() const override { return true; }
@@ -497,7 +498,7 @@ public:
 
 	bool operator==(Type const& _other) const override;
 
-	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? 32 : m_bits / 8; }
+	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? VMWordBytes : m_bits / 8; }
 	unsigned storageBytes() const override { return m_bits / 8; }
 	bool leftAligned() const override { return false; }
 	bool isValueType() const override { return true; }
@@ -544,7 +545,7 @@ public:
 
 	bool operator==(Type const& _other) const override;
 
-	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? 32 : m_totalBits / 8; }
+	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? VMWordBytes : m_totalBits / 8; }
 	unsigned storageBytes() const override { return m_totalBits / 8; }
 	bool leftAligned() const override { return false; }
 	bool isValueType() const override { return true; }
@@ -693,7 +694,7 @@ public:
 	TypeResult unaryOperatorResult(Token _operator) const override;
 	TypeResult binaryOperatorResult(Token _operator, Type const* _other) const override;
 
-	unsigned calldataEncodedSize(bool _padded) const override { return _padded && m_bytes > 0 ? 32 : m_bytes; }
+	unsigned calldataEncodedSize(bool _padded) const override { return _padded && m_bytes > 0 ? VMWordBytes : m_bytes; }
 	unsigned storageBytes() const override { return m_bytes; }
 	bool leftAligned() const override { return true; }
 	bool isValueType() const override { return true; }
@@ -721,7 +722,7 @@ public:
 	TypeResult unaryOperatorResult(Token _operator) const override;
 	TypeResult binaryOperatorResult(Token _operator, Type const* _other) const override;
 
-	unsigned calldataEncodedSize(bool _padded) const override{ return _padded ? 32 : 1; }
+	unsigned calldataEncodedSize(bool _padded) const override{ return _padded ? VMWordBytes : 1; }
 	unsigned storageBytes() const override { return 1; }
 	bool leftAligned() const override { return false; }
 	bool isValueType() const override { return true; }
@@ -1713,7 +1714,7 @@ public:
 	BoolResult isImplicitlyConvertibleTo(Type const&) const override { return false; }
 	BoolResult isExplicitlyConvertibleTo(Type const&) const override { return false; }
 	TypeResult binaryOperatorResult(Token, Type const*) const override { return nullptr; }
-	unsigned calldataEncodedSize(bool) const override { return 32; }
+	unsigned calldataEncodedSize(bool) const override { return VMWordBytes; }
 	bool canBeStored() const override { return false; }
 	bool isValueType() const override { return true; }
 	bool hasSimpleZeroValueInMemory() const override { hypAssert(false, ""); }

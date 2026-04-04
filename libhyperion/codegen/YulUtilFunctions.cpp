@@ -1297,7 +1297,7 @@ std::string YulUtilFunctions::cleanUpStorageArrayEndFunction(ArrayType const& _t
 		("dataPosition", arrayDataAreaFunction(_type))
 		("clearStorageRange", clearStorageRangeFunction(*_type.baseType()))
 		("packed", _type.baseType()->storageBytes() <= 16)
-		("itemsPerSlot", std::to_string(32 / _type.baseType()->storageBytes()))
+		("itemsPerSlot", std::to_string(VMWordBytes / _type.baseType()->storageBytes()))
 		("storageBytes", std::to_string(_type.baseType()->storageBytes()))
 		("partialClearStorageSlot", partialClearStorageSlotFunction())
 		.render();
@@ -2083,7 +2083,7 @@ std::string YulUtilFunctions::copyValueArrayToStorageFunction(ArrayType const& _
 			0,
 			_fromType.baseType()->stackItems().size()
 		));
-		unsigned itemsPerSlot = 32 / _toType.storageStride();
+		unsigned itemsPerSlot = VMWordBytes / _toType.storageStride();
 		templ("itemsPerSlot", std::to_string(itemsPerSlot));
 		templ("multipleItemsPerSlotDst", itemsPerSlot > 1);
 		bool sameTypeFromStorage = fromStorage && (*_fromType.baseType() == *_toType.baseType());
@@ -2124,7 +2124,7 @@ std::string YulUtilFunctions::copyValueArrayToStorageFunction(ArrayType const& _
 				</srcReadMultiPerSlot>
 				)")
 				("srcReadMultiPerSlot", !sameTypeFromStorage && _fromType.storageStride() <= 16)
-				("srcItemsPerSlot", std::to_string(32 / _fromType.storageStride()))
+				("srcItemsPerSlot", std::to_string(VMWordBytes / _fromType.storageStride()))
 				.render()
 			);
 		else
@@ -2166,7 +2166,7 @@ std::string YulUtilFunctions::arrayConvertLengthToSize(ArrayType const& _type)
 					})")
 					("functionName", functionName)
 					("multiSlot", baseType.storageSize() > 1)
-					("itemsPerSlot", std::to_string(32 / baseStorageBytes))
+					("itemsPerSlot", std::to_string(VMWordBytes / baseStorageBytes))
 					("storageSize", baseType.storageSize().str())
 					("mul", overflowCheckedIntMulFunction(*TypeProvider::uint256()))
 					.render();
@@ -2293,7 +2293,7 @@ std::string YulUtilFunctions::storageArrayIndexAccessFunction(ArrayType const& _
 		("isBytesArray", _type.isByteArrayOrString())
 		("storageSize", _type.baseType()->storageSize().str())
 		("storageBytes", toString(_type.baseType()->storageBytes()))
-		("itemsPerSlot", std::to_string(32 / _type.baseType()->storageBytes()))
+		("itemsPerSlot", std::to_string(VMWordBytes / _type.baseType()->storageBytes()))
 		.render();
 	});
 }

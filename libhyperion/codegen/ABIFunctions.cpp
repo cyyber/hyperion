@@ -347,7 +347,7 @@ std::string ABIFunctions::abiEncodingFunction(
 
 	hypAssert(_from.sizeOnStack() == 1, "");
 	hypAssert(to.isValueType(), "");
-	hypAssert(to.calldataEncodedSize() == 32, "");
+	hypAssert(to.calldataEncodedSize() == VMWordBytes, "");
 	std::string functionName =
 		"abi_encode_" +
 		_from.identifier() +
@@ -732,7 +732,7 @@ std::string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 			hypAssert(_from.baseType()->isValueType(), "");
 			bool dynamic = _to.isDynamicallyEncoded();
 			size_t storageBytes = _from.baseType()->storageBytes();
-			size_t itemsPerSlot = 32 / storageBytes;
+			size_t itemsPerSlot = VMWordBytes / storageBytes;
 			hypAssert(itemsPerSlot > 0, "");
 			// The number of elements we need to handle manually after the loop.
 			size_t spill = static_cast<size_t>(_from.length() % itemsPerSlot);
@@ -1110,7 +1110,7 @@ std::string ABIFunctions::abiDecodingFunctionValueType(Type const& _type, bool _
 	hypAssert(decodingType->sizeOnStack() == 1, "");
 	hypAssert(decodingType->isValueType(), "");
 	hypAssert(!decodingType->isDynamicallyEncoded(), "");
-	hypAssert(decodingType->calldataEncodedSize() == 32, "");
+	hypAssert(decodingType->calldataEncodedSize() == VMWordBytes, "");
 
 	std::string functionName =
 		"abi_decode_" +

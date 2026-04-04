@@ -1804,9 +1804,9 @@ u256 ArrayType::storageSize() const
 	unsigned baseBytes = baseType()->storageBytes();
 	if (baseBytes == 0)
 		size = 1;
-	else if (baseBytes < 32)
+	else if (baseBytes < VMWordBytes)
 	{
-		unsigned itemsPerSlot = 32 / baseBytes;
+		unsigned itemsPerSlot = VMWordBytes / baseBytes;
 		size = (bigint(length()) + (itemsPerSlot - 1)) / itemsPerSlot;
 	}
 	else
