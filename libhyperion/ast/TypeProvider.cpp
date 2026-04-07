@@ -110,7 +110,7 @@ std::array<std::unique_ptr<IntegerType>, 32> const TypeProvider::m_uintM{{
 	{std::make_unique<IntegerType>(8 * 32, IntegerType::Modifier::Unsigned)}
 }};
 
-std::array<std::unique_ptr<FixedBytesType>, 32> const TypeProvider::m_bytesM{{
+std::array<std::unique_ptr<FixedBytesType>, 48> const TypeProvider::m_bytesM{{
 	{std::make_unique<FixedBytesType>(1)},
 	{std::make_unique<FixedBytesType>(2)},
 	{std::make_unique<FixedBytesType>(3)},
@@ -142,7 +142,23 @@ std::array<std::unique_ptr<FixedBytesType>, 32> const TypeProvider::m_bytesM{{
 	{std::make_unique<FixedBytesType>(29)},
 	{std::make_unique<FixedBytesType>(30)},
 	{std::make_unique<FixedBytesType>(31)},
-	{std::make_unique<FixedBytesType>(32)}
+	{std::make_unique<FixedBytesType>(32)},
+	{std::make_unique<FixedBytesType>(33)},
+	{std::make_unique<FixedBytesType>(34)},
+	{std::make_unique<FixedBytesType>(35)},
+	{std::make_unique<FixedBytesType>(36)},
+	{std::make_unique<FixedBytesType>(37)},
+	{std::make_unique<FixedBytesType>(38)},
+	{std::make_unique<FixedBytesType>(39)},
+	{std::make_unique<FixedBytesType>(40)},
+	{std::make_unique<FixedBytesType>(41)},
+	{std::make_unique<FixedBytesType>(42)},
+	{std::make_unique<FixedBytesType>(43)},
+	{std::make_unique<FixedBytesType>(44)},
+	{std::make_unique<FixedBytesType>(45)},
+	{std::make_unique<FixedBytesType>(46)},
+	{std::make_unique<FixedBytesType>(47)},
+	{std::make_unique<FixedBytesType>(48)}
 }};
 
 std::array<std::unique_ptr<MagicType>, 4> const TypeProvider::m_magics{{
@@ -370,7 +386,7 @@ RationalNumberType const* TypeProvider::rationalNumber(Literal const& _literal)
 			if (digitCount % 2 == 0 && (digitCount / 2) <= 32)
 				compatibleBytesType = fixedBytes(static_cast<unsigned>(digitCount / 2));
 		} else if (_literal.looksLikeAddress()) {
-			compatibleBytesType = fixedBytes(static_cast<unsigned>(20));
+			compatibleBytesType = fixedBytes(static_cast<unsigned>(48));
 		}
 
 		return rationalNumber(std::get<1>(validLiteral), compatibleBytesType);

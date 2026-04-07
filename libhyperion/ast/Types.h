@@ -453,8 +453,8 @@ public:
 
 	bool operator==(Type const& _other) const override;
 
-	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? VMWordBytes : 160 / 8; }
-	unsigned storageBytes() const override { return 160 / 8; }
+	unsigned calldataEncodedSize(bool _padded = true) const override { return _padded ? VMWordBytes : 384 / 8; }
+	unsigned storageBytes() const override { return 384 / 8; }
 	bool leftAligned() const override { return false; }
 	bool isValueType() const override { return true; }
 	bool nameable() const override { return true; }
@@ -971,7 +971,7 @@ public:
 		hypAssert(!isSuper(), "");
 		return encodingType()->calldataEncodedSize(_padded);
 	}
-	unsigned storageBytes() const override { hypAssert(!isSuper(), ""); return 20; }
+	unsigned storageBytes() const override { hypAssert(!isSuper(), ""); return 48; }
 	bool leftAligned() const override { hypAssert(!isSuper(), ""); return false; }
 	bool isValueType() const override { return !isSuper(); }
 	bool nameable() const override { return !isSuper(); }
