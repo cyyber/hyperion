@@ -106,7 +106,7 @@ std::string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata, bool _cle
 			return Whiskers(R"(
 				function <functionName>(src, dst, length) {
 					let i := 0
-					for { } lt(i, length) { i := add(i, 32) }
+					for { } lt(i, length) { i := add(i, <wordSize>) }
 					{
 						mstore(add(dst, i), mload(add(src, i)))
 					}
@@ -115,6 +115,7 @@ std::string YulUtilFunctions::copyToMemoryFunction(bool _fromCalldata, bool _cle
 			)")
 			("functionName", functionName)
 			("cleanup", _cleanup)
+			("wordSize", std::to_string(VMWordBytes))
 			.render();
 		}
 	});
@@ -128,13 +129,14 @@ std::string YulUtilFunctions::copyLiteralToMemoryFunction(std::string const& _li
 		return Whiskers(R"(
 			function <functionName>() -> memPtr {
 				memPtr := <arrayAllocationFunction>(<size>)
-				<storeLiteralInMem>(add(memPtr, 32))
+				<storeLiteralInMem>(add(memPtr, <wordSize>))
 			}
 			)")
 			("functionName", functionName)
 			("arrayAllocationFunction", allocateMemoryArrayFunction(*TypeProvider::array(DataLocation::Memory, true)))
 			("size", std::to_string(_literal.size()))
 			("storeLiteralInMem", storeLiteralInMemoryFunction(_literal))
+			("wordSize", std::to_string(VMWordBytes))
 			.render();
 	});
 }
@@ -144,12 +146,12 @@ std::string YulUtilFunctions::storeLiteralInMemoryFunction(std::string const& _l
 	std::string functionName = "store_literal_in_memory_" + util::toHex(util::keccak256(_literal).asBytes());
 
 	return m_functionCollector.createFunction(functionName, [&]() {
-		size_t words = (_literal.length() + 31) / 32;
+		size_t words = (_literal.length() + VMWordAlignmentMask) / VMWordBytes;
 		std::vector<std::map<std::string, std::string>> wordParams(words);
 		for (size_t i = 0; i < words; ++i)
 		{
-			wordParams[i]["offset"] = std::to_string(i * 32);
-			wordParams[i]["wordValue"] = formatAsStringOrNumber(_literal.substr(32 * i, 32));
+			wordParams[i]["offset"] = std::to_string(i * VMWordBytes);
+			wordParams[i]["wordValue"] = formatAsStringOrNumber(_literal.substr(VMWordBytes * i, VMWordBytes));
 		}
 
 		return Whiskers(R"(
@@ -172,14 +174,14 @@ std::string YulUtilFunctions::copyLiteralToStorageFunction(std::string const& _l
 	return m_functionCollector.createFunction(functionName, [&](std::vector<std::string>& _args, std::vector<std::string>&) {
 		_args = {"slot"};
 
-		if (_literal.size() >= 32)
+		if (_literal.size() >= VMWordBytes)
 		{
-			size_t words = (_literal.length() + 31) / 32;
+			size_t words = (_literal.length() + VMWordAlignmentMask) / VMWordBytes;
 			std::vector<std::map<std::string, std::string>> wordParams(words);
 			for (size_t i = 0; i < words; ++i)
 			{
 				wordParams[i]["offset"] = std::to_string(i);
-				wordParams[i]["wordValue"] = formatAsStringOrNumber(_literal.substr(32 * i, 32));
+				wordParams[i]["wordValue"] = formatAsStringOrNumber(_literal.substr(VMWordBytes * i, VMWordBytes));
 			}
 			return Whiskers(R"(
 				let oldLen := <byteArrayLength>(sload(slot))
@@ -326,7 +328,7 @@ std::string YulUtilFunctions::leftAlignFunction(Type const& _type)
 
 std::string YulUtilFunctions::shiftLeftFunction(size_t _numBits)
 {
-	hypAssert(_numBits < 256, "");
+	hypAssert(_numBits < VMWordBits, "");
 
 	std::string functionName = "shift_left_" + std::to_string(_numBits);
 	return m_functionCollector.createFunction(functionName, [&]() {
@@ -361,7 +363,7 @@ std::string YulUtilFunctions::shiftLeftFunctionDynamic()
 
 std::string YulUtilFunctions::shiftRightFunction(size_t _numBits)
 {
-	hypAssert(_numBits < 256, "");
+	hypAssert(_numBits < VMWordBits, "");
 
 	// Note that if this is extended with signed shifts,
 	// the opcodes SAR and SDIV behave differently with regards to rounding!
@@ -464,8 +466,8 @@ std::string YulUtilFunctions::typedShiftRightFunction(Type const& _type, Type co
 
 std::string YulUtilFunctions::updateByteSliceFunction(size_t _numBytes, size_t _shiftBytes)
 {
-	hypAssert(_numBytes <= 32, "");
-	hypAssert(_shiftBytes <= 32, "");
+	hypAssert(_numBytes <= VMWordBytes, "");
+	hypAssert(_shiftBytes <= VMWordBytes, "");
 	size_t numBits = _numBytes * 8;
 	size_t shiftBits = _shiftBytes * 8;
 	std::string functionName = "update_byte_slice_" + std::to_string(_numBytes) + "_shift_" + std::to_string(_shiftBytes);
@@ -488,7 +490,7 @@ std::string YulUtilFunctions::updateByteSliceFunction(size_t _numBytes, size_t _
 
 std::string YulUtilFunctions::updateByteSliceFunctionDynamic(size_t _numBytes)
 {
-	hypAssert(_numBytes <= 32, "");
+	hypAssert(_numBytes <= VMWordBytes, "");
 	size_t numBits = _numBytes * 8;
 	std::string functionName = "update_byte_slice_dynamic" + std::to_string(_numBytes);
 	return m_functionCollector.createFunction(functionName, [&]() {
@@ -527,7 +529,7 @@ std::string YulUtilFunctions::maskBytesFunctionDynamic()
 std::string YulUtilFunctions::maskLowerOrderBytesFunction(size_t _bytes)
 {
 	std::string functionName = "mask_lower_order_bytes_" + std::to_string(_bytes);
-	hypAssert(_bytes <= 32, "");
+	hypAssert(_bytes <= VMWordBytes, "");
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return Whiskers(R"(
 			function <functionName>(data) -> result {
@@ -556,14 +558,15 @@ std::string YulUtilFunctions::maskLowerOrderBytesFunctionDynamic()
 
 std::string YulUtilFunctions::roundUpFunction()
 {
-	std::string functionName = "round_up_to_mul_of_32";
+	std::string functionName = "round_up_to_mul_of_" + std::to_string(VMWordBytes);
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return
 			Whiskers(R"(
 			function <functionName>(value) -> result {
-				result := and(add(value, 31), not(31))
+				result := and(add(value, <alignmentMask>), not(<alignmentMask>))
 			}
 			)")
+			("alignmentMask", std::to_string(VMWordAlignmentMask))
 			("functionName", functionName)
 			.render();
 	});
@@ -572,11 +575,11 @@ std::string YulUtilFunctions::roundUpFunction()
 std::string YulUtilFunctions::divide32CeilFunction()
 {
 	return m_functionCollector.createFunction(
-		"divide_by_32_ceil",
+		"divide_by_" + std::to_string(VMWordBytes) + "_ceil",
 		[&](std::vector<std::string>& _args, std::vector<std::string>& _ret) {
 			_args = {"value"};
 			_ret = {"result"};
-			return "result := div(add(value, 31), 32)";
+			return "result := div(add(value, " + std::to_string(VMWordAlignmentMask) + "), " + std::to_string(VMWordBytes) + ")";
 		}
 	);
 }
@@ -1215,13 +1218,14 @@ std::string YulUtilFunctions::extractByteArrayLengthFunction()
 					length := and(length, 0x7f)
 				}
 
-				if eq(outOfPlaceEncoding, lt(length, 32)) {
+				if eq(outOfPlaceEncoding, lt(length, <wordSize>)) {
 					<panic>()
 				}
 			}
 		)");
 		w("functionName", functionName);
 		w("panic", panicFunction(PanicCode::StorageEncodingError));
+		w("wordSize", std::to_string(VMWordBytes));
 		return w.render();
 	});
 }
@@ -1229,7 +1233,7 @@ std::string YulUtilFunctions::extractByteArrayLengthFunction()
 std::string YulUtilFunctions::resizeArrayFunction(ArrayType const& _type)
 {
 	hypAssert(_type.location() == DataLocation::Storage, "");
-	hypUnimplementedAssert(_type.baseType()->storageBytes() <= 32);
+	hypUnimplementedAssert(_type.baseType()->storageBytes() <= VMWordBytes);
 
 	if (_type.isByteArrayOrString())
 		return resizeDynamicByteArrayFunction(_type);
@@ -1271,7 +1275,7 @@ std::string YulUtilFunctions::cleanUpStorageArrayEndFunction(ArrayType const& _t
 	hypAssert(_type.location() == DataLocation::Storage, "");
 	hypAssert(_type.baseType()->category() != Type::Category::Mapping, "");
 	hypAssert(!_type.isByteArrayOrString(), "");
-	hypUnimplementedAssert(_type.baseType()->storageBytes() <= 32);
+	hypUnimplementedAssert(_type.baseType()->storageBytes() <= VMWordBytes);
 
 	std::string functionName = "cleanup_storage_array_end_" + _type.identifier();
 	return m_functionCollector.createFunction(functionName, [&](std::vector<std::string>& _args, std::vector<std::string>&) {
@@ -1296,7 +1300,7 @@ std::string YulUtilFunctions::cleanUpStorageArrayEndFunction(ArrayType const& _t
 		("convertToSize", arrayConvertLengthToSize(_type))
 		("dataPosition", arrayDataAreaFunction(_type))
 		("clearStorageRange", clearStorageRangeFunction(*_type.baseType()))
-		("packed", _type.baseType()->storageBytes() <= 16)
+		("packed", _type.baseType()->storageBytes() <= (VMWordBytes / 2))
 		("itemsPerSlot", std::to_string(VMWordBytes / _type.baseType()->storageBytes()))
 		("storageBytes", std::to_string(_type.baseType()->storageBytes()))
 		("partialClearStorageSlot", partialClearStorageSlotFunction())
@@ -1337,17 +1341,19 @@ std::string YulUtilFunctions::cleanUpDynamicByteArrayEndSlotsFunction(ArrayType 
 	return m_functionCollector.createFunction(functionName, [&](std::vector<std::string>& _args, std::vector<std::string>&) {
 		_args = {"array", "len", "startIndex"};
 		return Whiskers(R"(
-			if gt(len, 31) {
+			if gt(len, <alignmentMask>) {
 				let dataArea := <dataLocation>(array)
-				let deleteStart := add(dataArea, <div32Ceil>(startIndex))
+				let deleteStart := add(dataArea, <divWordCeil>(startIndex))
 				// If we are clearing array to be short byte array, we want to clear only data starting from array data area.
-				if lt(startIndex, 32) { deleteStart := dataArea }
-				<clearStorageRange>(deleteStart, add(dataArea, <div32Ceil>(len)))
+				if lt(startIndex, <wordSize>) { deleteStart := dataArea }
+				<clearStorageRange>(deleteStart, add(dataArea, <divWordCeil>(len)))
 			}
 		)")
 		("dataLocation", arrayDataAreaFunction(_type))
-		("div32Ceil", divide32CeilFunction())
+		("divWordCeil", divide32CeilFunction())
 		("clearStorageRange", clearStorageRangeFunction(*_type.baseType()))
+		("wordSize", std::to_string(VMWordBytes))
+		("alignmentMask", std::to_string(VMWordAlignmentMask))
 		.render();
 	});
 }
@@ -1358,25 +1364,25 @@ std::string YulUtilFunctions::decreaseByteArraySizeFunction(ArrayType const& _ty
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return Whiskers(R"(
 			function <functionName>(array, data, oldLen, newLen) {
-				switch lt(newLen, 32)
+				switch lt(newLen, <wordSize>)
 				case  0 {
 					let arrayDataStart := <dataPosition>(array)
-					let deleteStart := add(arrayDataStart, <div32Ceil>(newLen))
+					let deleteStart := add(arrayDataStart, <divWordCeil>(newLen))
 
 					// we have to partially clear last slot that is still used
-					let offset := and(newLen, 0x1f)
+					let offset := and(newLen, <alignmentMask>)
 					if offset { <partialClearStorageSlot>(sub(deleteStart, 1), offset) }
 
-					<clearStorageRange>(deleteStart, add(arrayDataStart, <div32Ceil>(oldLen)))
+					<clearStorageRange>(deleteStart, add(arrayDataStart, <divWordCeil>(oldLen)))
 
 					sstore(array, or(mul(2, newLen), 1))
 				}
 				default {
-					switch gt(oldLen, 31)
+					switch gt(oldLen, <alignmentMask>)
 					case 1 {
 						let arrayDataStart := <dataPosition>(array)
 						// clear whole old array, as we are transforming to short bytes array
-						<clearStorageRange>(add(arrayDataStart, 1), add(arrayDataStart, <div32Ceil>(oldLen)))
+						<clearStorageRange>(add(arrayDataStart, 1), add(arrayDataStart, <divWordCeil>(oldLen)))
 						<transitLongToShort>(array, newLen)
 					}
 					default {
@@ -1389,8 +1395,10 @@ std::string YulUtilFunctions::decreaseByteArraySizeFunction(ArrayType const& _ty
 			("partialClearStorageSlot", partialClearStorageSlotFunction())
 			("clearStorageRange", clearStorageRangeFunction(*_type.baseType()))
 			("transitLongToShort", byteArrayTransitLongToShortFunction(_type))
-			("div32Ceil", divide32CeilFunction())
+			("divWordCeil", divide32CeilFunction())
 			("encodeUsedSetLen", shortByteArrayEncodeUsedAreaSetLengthFunction())
+			("wordSize", std::to_string(VMWordBytes))
+			("alignmentMask", std::to_string(VMWordAlignmentMask))
 			.render();
 	});
 }
@@ -1403,13 +1411,13 @@ std::string YulUtilFunctions::increaseByteArraySizeFunction(ArrayType const& _ty
 		return Whiskers(R"(
 			if gt(newLen, <maxArrayLength>) { <panic>() }
 
-			switch lt(oldLen, 32)
+			switch lt(oldLen, <wordSize>)
 			case 0 {
 				// in this case array stays unpacked, so we just set new length
 				sstore(array, add(mul(2, newLen), 1))
 			}
 			default {
-				switch lt(newLen, 32)
+				switch lt(newLen, <wordSize>)
 				case 0 {
 					// we need to copy elements to data area as we changed array from packed to unpacked
 					data := and(not(0xff), data)
@@ -1426,6 +1434,7 @@ std::string YulUtilFunctions::increaseByteArraySizeFunction(ArrayType const& _ty
 		("maxArrayLength", (u256(1) << 64).str())
 		("dataPosition", arrayDataAreaFunction(_type))
 		("encodeUsedSetLen", shortByteArrayEncodeUsedAreaSetLengthFunction())
+		("wordSize", std::to_string(VMWordBytes))
 		.render();
 	});
 }
@@ -1475,11 +1484,13 @@ std::string YulUtilFunctions::longByteArrayStorageIndexAccessNoCheckFunction()
 			_args = {"array", "index"};
 			_returnParams = {"slot", "offset"};
 			return Whiskers(R"(
-				offset := sub(31, mod(index, 0x20))
+				offset := sub(<alignmentMask>, mod(index, <wordSizeHex>))
 				let dataArea := <dataAreaFunc>(array)
-				slot := add(dataArea, div(index, 0x20))
+				slot := add(dataArea, div(index, <wordSizeHex>))
 			)")
 			("dataAreaFunc", arrayDataAreaFunction(*TypeProvider::bytesStorage()))
+			("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
+			("alignmentMask", std::to_string(VMWordAlignmentMask))
 			.render();
 		}
 	);
@@ -1489,7 +1500,7 @@ std::string YulUtilFunctions::storageArrayPopFunction(ArrayType const& _type)
 {
 	hypAssert(_type.location() == DataLocation::Storage, "");
 	hypAssert(_type.isDynamicallySized(), "");
-	hypUnimplementedAssert(_type.baseType()->storageBytes() <= 32, "Base type is not yet implemented.");
+	hypUnimplementedAssert(_type.baseType()->storageBytes() <= VMWordBytes, "Base type is not yet implemented.");
 	if (_type.isByteArrayOrString())
 		return storageByteArrayPopFunction(_type);
 
@@ -1531,14 +1542,14 @@ std::string YulUtilFunctions::storageByteArrayPopFunction(ArrayType const& _type
 				if iszero(oldLen) { <panic>() }
 
 				switch oldLen
-				case 32 {
-					// Here we have a special case where array transitions to shorter than 32
+				case <wordSize> {
+					// Here we have a special case where array transitions to shorter than <wordSize>
 					// So we need to copy data
-					<transitLongToShort>(array, 31)
+					<transitLongToShort>(array, <alignmentMask>)
 				}
 				default {
 					let newLen := sub(oldLen, 1)
-					switch lt(oldLen, 32)
+					switch lt(oldLen, <wordSize>)
 					case 1 {
 						sstore(array, <encodeUsedSetLen>(data, newLen))
 					}
@@ -1556,6 +1567,8 @@ std::string YulUtilFunctions::storageByteArrayPopFunction(ArrayType const& _type
 			("encodeUsedSetLen", shortByteArrayEncodeUsedAreaSetLengthFunction())
 			("indexAccessNoChecks", longByteArrayStorageIndexAccessNoCheckFunction())
 			("setToZero", storageSetToZeroFunction(*_type.baseType()))
+			("wordSize", std::to_string(VMWordBytes))
+			("alignmentMask", std::to_string(VMWordAlignmentMask))
 			.render();
 	});
 }
@@ -1582,22 +1595,22 @@ std::string YulUtilFunctions::storageArrayPushFunction(ArrayType const& _type, T
 					let oldLen := <extractByteArrayLength>(data)
 					if iszero(lt(oldLen, <maxArrayLength>)) { <panic>() }
 
-					switch gt(oldLen, 31)
+					switch gt(oldLen, <alignmentMask>)
 					case 0 {
 						let value := byte(0 <values>)
 						switch oldLen
-						case 31 {
+						case <alignmentMask> {
 							// Here we have special case when array switches from short array to long array
 							// We need to copy data
 							let dataArea := <dataAreaFunction>(array)
 							data := and(data, not(0xff))
 							sstore(dataArea, or(and(0xff, value), data))
-							// New length is 32, encoded as (32 * 2 + 1)
-							sstore(array, 65)
+							// New length is VMWordBytes, encoded as (VMWordBytes * 2 + 1)
+							sstore(array, <encodedWordSize>)
 						}
 						default {
 							data := add(data, 2)
-							let shiftBits := mul(8, sub(31, oldLen))
+							let shiftBits := mul(8, sub(<alignmentMask>, oldLen))
 							let valueShifted := <shl>(shiftBits, and(0xff, value))
 							let mask := <shl>(shiftBits, 0xff)
 							data := or(and(data, not(mask)), valueShifted)
@@ -1627,6 +1640,8 @@ std::string YulUtilFunctions::storageArrayPushFunction(ArrayType const& _type, T
 			("storeValue", updateStorageValueFunction(*_fromType, *_type.baseType()))
 			("maxArrayLength", (u256(1) << 64).str())
 			("shl", shiftLeftFunctionDynamic())
+			("alignmentMask", std::to_string(VMWordAlignmentMask))
+			("encodedWordSize", std::to_string(VMWordBytes * 2 + 1))
 			.render();
 	});
 }
@@ -1635,7 +1650,7 @@ std::string YulUtilFunctions::storageArrayPushZeroFunction(ArrayType const& _typ
 {
 	hypAssert(_type.location() == DataLocation::Storage, "");
 	hypAssert(_type.isDynamicallySized(), "");
-	hypUnimplementedAssert(_type.baseType()->storageBytes() <= 32, "Base type is not yet implemented.");
+	hypUnimplementedAssert(_type.baseType()->storageBytes() <= VMWordBytes, "Base type is not yet implemented.");
 
 	std::string functionName = "array_push_zero_" + _type.identifier();
 	return m_functionCollector.createFunction(functionName, [&]() {
@@ -1670,20 +1685,21 @@ std::string YulUtilFunctions::partialClearStorageSlotFunction()
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return Whiskers(R"(
 		function <functionName>(slot, offset) {
-			let mask := <shr>(mul(8, sub(32, offset)), <ones>)
+			let mask := <shr>(mul(8, sub(<wordSize>, offset)), <ones>)
 			sstore(slot, and(mask, sload(slot)))
 		}
 		)")
 		("functionName", functionName)
 		("ones", formatNumber((bigint(1) << 256) - 1))
 		("shr", shiftRightFunctionDynamic())
+		("wordSize", std::to_string(VMWordBytes))
 		.render();
 	});
 }
 
 std::string YulUtilFunctions::clearStorageRangeFunction(Type const& _type)
 {
-	if (_type.storageBytes() < 32)
+	if (_type.storageBytes() < VMWordBytes)
 		hypAssert(_type.isValueType(), "");
 
 	std::string functionName = "clear_storage_range_" + _type.identifier();
@@ -1698,7 +1714,7 @@ std::string YulUtilFunctions::clearStorageRangeFunction(Type const& _type)
 			}
 		)")
 		("functionName", functionName)
-		("setToZero", storageSetToZeroFunction(_type.storageBytes() < 32 ? *TypeProvider::uint256() : _type))
+		("setToZero", storageSetToZeroFunction(_type.storageBytes() < VMWordBytes ? *TypeProvider::uint256() : _type))
 		("increment", _type.storageSize().str())
 		.render();
 	});
@@ -1708,7 +1724,7 @@ std::string YulUtilFunctions::clearStorageArrayFunction(ArrayType const& _type)
 {
 	hypAssert(_type.location() == DataLocation::Storage, "");
 
-	if (_type.baseType()->storageBytes() < 32)
+	if (_type.baseType()->storageBytes() < VMWordBytes)
 	{
 		hypAssert(_type.baseType()->isValueType(), "Invalid storage size for non-value type.");
 		hypAssert(_type.baseType()->storageSize() <= 1, "Invalid storage size for type.");
@@ -1735,7 +1751,7 @@ std::string YulUtilFunctions::clearStorageArrayFunction(ArrayType const& _type)
 		(
 			"clearRange",
 			_type.baseType()->category() != Type::Category::Mapping ?
-			clearStorageRangeFunction((_type.baseType()->storageBytes() < 32) ? *TypeProvider::uint256() : *_type.baseType()) :
+			clearStorageRangeFunction((_type.baseType()->storageBytes() < VMWordBytes) ? *TypeProvider::uint256() : *_type.baseType()) :
 			""
 		)
 		("lenToSize", arrayConvertLengthToSize(_type))
@@ -1759,7 +1775,7 @@ std::string YulUtilFunctions::clearStorageStructFunction(StructType const& _type
 		{
 			if (member.type->category() == Type::Category::Mapping)
 				continue;
-			if (member.type->storageBytes() < 32)
+			if (member.type->storageBytes() < VMWordBytes)
 			{
 				auto const& slotDiff = _type.storageOffsetsOfMember(member.name).first;
 				if (!slotsCleared.count(slotDiff))
@@ -1811,7 +1827,7 @@ std::string YulUtilFunctions::copyArrayToStorageFunction(ArrayType const& _fromT
 	if (_toType.baseType()->isValueType())
 		return copyValueArrayToStorageFunction(_fromType, _toType);
 
-	hypAssert(_toType.storageStride() == 32);
+	hypAssert(_toType.storageStride() == VMWordBytes);
 	hypAssert(!_fromType.baseType()->isValueType());
 
 	std::string functionName = "copy_array_to_storage_from_" + _fromType.identifier() + "_to_" + _toType.identifier();
@@ -1920,23 +1936,23 @@ std::string YulUtilFunctions::copyByteArrayToStorageFunction(ArrayType const& _f
 
 				let srcOffset := 0
 				<?fromMemory>
-					srcOffset := 0x20
+					srcOffset := <wordSizeHex>
 				</fromMemory>
 
-				switch gt(newLen, 31)
+				switch gt(newLen, <alignmentMask>)
 				case 1 {
-					let loopEnd := and(newLen, not(0x1f))
+					let loopEnd := and(newLen, not(<alignmentMask>))
 					<?fromStorage> src := <srcDataLocation>(src) </fromStorage>
 					let dstPtr := <dstDataLocation>(slot)
 					let i := 0
-					for { } lt(i, loopEnd) { i := add(i, 0x20) } {
+					for { } lt(i, loopEnd) { i := add(i, <wordSizeHex>) } {
 						sstore(dstPtr, <read>(add(src, srcOffset)))
 						dstPtr := add(dstPtr, 1)
 						srcOffset := add(srcOffset, <srcIncrement>)
 					}
 					if lt(loopEnd, newLen) {
 						let lastValue := <read>(add(src, srcOffset))
-						sstore(dstPtr, <maskBytes>(lastValue, and(newLen, 0x1f)))
+						sstore(dstPtr, <maskBytes>(lastValue, and(newLen, <alignmentMask>)))
 					}
 					sstore(slot, add(mul(newLen, 2), 1))
 				}
@@ -1962,10 +1978,12 @@ std::string YulUtilFunctions::copyByteArrayToStorageFunction(ArrayType const& _f
 		if (fromStorage)
 			templ("srcDataLocation", arrayDataAreaFunction(_fromType));
 		templ("cleanUpEndArray", cleanUpDynamicByteArrayEndSlotsFunction(_toType));
-		templ("srcIncrement", std::to_string(fromStorage ? 1 : 0x20));
+		templ("srcIncrement", std::to_string(fromStorage ? 1 : VMWordBytes));
 		templ("read", fromStorage ? "sload" : fromCalldata ? "calldataload" : "mload");
 		templ("maskBytes", maskBytesFunctionDynamic());
 		templ("byteArrayCombineShort", shortByteArrayEncodeUsedAreaSetLengthFunction());
+		templ("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)));
+		templ("alignmentMask", std::to_string(VMWordAlignmentMask));
 
 		return templ.render();
 	});
@@ -1982,7 +2000,7 @@ std::string YulUtilFunctions::copyValueArrayToStorageFunction(ArrayType const& _
 	hypAssert(_toType.dataStoredIn(DataLocation::Storage), "");
 
 	hypAssert(_fromType.storageStride() <= _toType.storageStride(), "");
-	hypAssert(_toType.storageStride() <= 32, "");
+	hypAssert(_toType.storageStride() <= VMWordBytes, "");
 
 	std::string functionName = "copy_array_to_storage_from_" + _fromType.identifier() + "_to_" + _toType.identifier();
 	return m_functionCollector.createFunction(functionName, [&](){
@@ -2123,7 +2141,7 @@ std::string YulUtilFunctions::copyValueArrayToStorageFunction(ArrayType const& _
 					srcSlotValue := sload(srcPtr)
 				</srcReadMultiPerSlot>
 				)")
-				("srcReadMultiPerSlot", !sameTypeFromStorage && _fromType.storageStride() <= 16)
+				("srcReadMultiPerSlot", !sameTypeFromStorage && _fromType.storageStride() <= (VMWordBytes / 2))
 				("srcItemsPerSlot", std::to_string(VMWordBytes / _fromType.storageStride()))
 				.render()
 			);
@@ -2152,7 +2170,7 @@ std::string YulUtilFunctions::arrayConvertLengthToSize(ArrayType const& _type)
 			{
 				unsigned const baseStorageBytes = baseType.storageBytes();
 				hypAssert(baseStorageBytes > 0, "");
-				hypAssert(32 / baseStorageBytes > 0, "");
+				hypAssert(VMWordBytes / baseStorageBytes > 0, "");
 
 				return Whiskers(R"(
 					function <functionName>(length) -> size {
@@ -2205,11 +2223,11 @@ std::string YulUtilFunctions::arrayAllocationSizeFunction(ArrayType const& _type
 				<?byteArray>
 					size := <roundUp>(length)
 				<!byteArray>
-					size := mul(length, 0x20)
+					size := mul(length, <wordSizeHex>)
 				</byteArray>
 				<?dynamic>
 					// add length slot
-					size := add(size, 0x20)
+					size := add(size, <wordSizeHex>)
 				</dynamic>
 			}
 		)");
@@ -2218,6 +2236,7 @@ std::string YulUtilFunctions::arrayAllocationSizeFunction(ArrayType const& _type
 		w("byteArray", _type.isByteArrayOrString());
 		w("roundUp", roundUpFunction());
 		w("dynamic", _type.isDynamicallySized());
+		w("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)));
 		return w.render();
 	});
 }
@@ -2236,17 +2255,18 @@ std::string YulUtilFunctions::arrayDataAreaFunction(ArrayType const& _type)
 				data := ptr
 				<?dynamic>
 					<?memory>
-						data := add(ptr, 0x20)
+						data := add(ptr, <wordSizeHex>)
 					</memory>
 					<?storage>
 						mstore(0, ptr)
-						data := keccak256(0, 0x20)
+						data := keccak256(0, <wordSizeHex>)
 					</storage>
 				</dynamic>
 			}
 		)")
 		("functionName", functionName)
 		("dynamic", _type.isDynamicallySized())
+		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 		("memory", _type.location() == DataLocation::Memory)
 		("storage", _type.location() == DataLocation::Storage)
 		.render();
@@ -2264,12 +2284,12 @@ std::string YulUtilFunctions::storageArrayIndexAccessFunction(ArrayType const& _
 
 				<?multipleItemsPerSlot>
 					<?isBytesArray>
-						switch lt(arrayLength, 0x20)
+						switch lt(arrayLength, <wordSizeHex>)
 						case 0 {
 							slot, offset := <indexAccessNoChecks>(array, index)
 						}
 						default {
-							offset := sub(31, mod(index, 0x20))
+							offset := sub(<alignmentMask>, mod(index, <wordSizeHex>))
 							slot := array
 						}
 					<!isBytesArray>
@@ -2289,11 +2309,13 @@ std::string YulUtilFunctions::storageArrayIndexAccessFunction(ArrayType const& _
 		("arrayLen", arrayLengthFunction(_type))
 		("dataAreaFunc", arrayDataAreaFunction(_type))
 		("indexAccessNoChecks", longByteArrayStorageIndexAccessNoCheckFunction())
-		("multipleItemsPerSlot", _type.baseType()->storageBytes() <= 16)
+		("multipleItemsPerSlot", _type.baseType()->storageBytes() <= (VMWordBytes / 2))
 		("isBytesArray", _type.isByteArrayOrString())
 		("storageSize", _type.baseType()->storageSize().str())
 		("storageBytes", toString(_type.baseType()->storageBytes()))
 		("itemsPerSlot", std::to_string(VMWordBytes / _type.baseType()->storageBytes()))
+		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
+		("alignmentMask", std::to_string(VMWordAlignmentMask))
 		.render();
 	});
 }
@@ -2310,7 +2332,7 @@ std::string YulUtilFunctions::memoryArrayIndexAccessFunction(ArrayType const& _t
 
 				let offset := mul(index, <stride>)
 				<?dynamicallySized>
-					offset := add(offset, 32)
+					offset := add(offset, <wordSize>)
 				</dynamicallySized>
 				addr := add(baseRef, offset)
 			}
@@ -2320,6 +2342,7 @@ std::string YulUtilFunctions::memoryArrayIndexAccessFunction(ArrayType const& _t
 		("arrayLen", arrayLengthFunction(_type))
 		("stride", std::to_string(_type.memoryStride()))
 		("dynamicallySized", _type.isDynamicallySized())
+		("wordSize", std::to_string(VMWordBytes))
 		.render();
 	});
 }
@@ -2386,7 +2409,7 @@ std::string YulUtilFunctions::accessCalldataTailFunction(Type const& _type)
 				<?dynamicallySized>
 					length := calldataload(addr)
 					if gt(length, 0xffffffffffffffff) { <invalidCalldataTailLength>() }
-					addr := add(addr, 32)
+					addr := add(addr, <wordSize>)
 					if sgt(addr, sub(calldatasize(), mul(length, <calldataStride>))) { <shortCalldataTail>() }
 				</dynamicallySized>
 			}
@@ -2398,6 +2421,7 @@ std::string YulUtilFunctions::accessCalldataTailFunction(Type const& _type)
 		("invalidCalldataTailOffset", revertReasonIfDebugFunction("Invalid calldata tail offset"))
 		("invalidCalldataTailLength", revertReasonIfDebugFunction("Invalid calldata tail length"))
 		("shortCalldataTail", revertReasonIfDebugFunction("Calldata tail too short"))
+		("wordSize", std::to_string(VMWordBytes))
 		.render();
 	});
 }
@@ -2406,7 +2430,7 @@ std::string YulUtilFunctions::nextArrayElementFunction(ArrayType const& _type)
 {
 	hypAssert(!_type.isByteArrayOrString(), "");
 	if (_type.dataStoredIn(DataLocation::Storage))
-		hypAssert(_type.baseType()->storageBytes() > 16, "");
+		hypAssert(_type.baseType()->storageBytes() > (VMWordBytes / 2), "");
 	std::string functionName = "array_nextElement_" + _type.identifier();
 	return m_functionCollector.createFunction(functionName, [&]() {
 		Whiskers templ(R"(
@@ -2418,7 +2442,7 @@ std::string YulUtilFunctions::nextArrayElementFunction(ArrayType const& _type)
 		switch (_type.location())
 		{
 		case DataLocation::Memory:
-			templ("advance", "0x20");
+			templ("advance", toCompactHexWithPrefix(u256(VMWordBytes)));
 			break;
 		case DataLocation::Storage:
 		{
@@ -2430,7 +2454,7 @@ std::string YulUtilFunctions::nextArrayElementFunction(ArrayType const& _type)
 		case DataLocation::CallData:
 		{
 			u256 size = _type.calldataStride();
-			hypAssert(size >= 32 && size % 32 == 0, "");
+			hypAssert(size >= VMWordBytes && size % VMWordBytes == 0, "");
 			templ("advance", toCompactHexWithPrefix(size));
 			break;
 		}
@@ -2472,7 +2496,7 @@ std::string YulUtilFunctions::copyArrayFromStorageToMemoryFunction(ArrayType con
 		}
 		else
 		{
-			hypAssert(_to.memoryStride() == 32, "");
+			hypAssert(_to.memoryStride() == VMWordBytes, "");
 			hypAssert(_to.baseType()->dataStoredIn(DataLocation::Memory), "");
 			hypAssert(_from.baseType()->dataStoredIn(DataLocation::Storage), "");
 			hypAssert(!_from.isByteArrayOrString(), "");
@@ -2482,11 +2506,11 @@ std::string YulUtilFunctions::copyArrayFromStorageToMemoryFunction(ArrayType con
 					let length := <lengthFunction>(slot)
 					memPtr := <allocateArray>(length)
 					let mpos := memPtr
-					<?dynamic>mpos := add(mpos, 0x20)</dynamic>
+					<?dynamic>mpos := add(mpos, <wordSizeHex>)</dynamic>
 					let spos := <arrayDataArea>(slot)
 					for { let i := 0 } lt(i, length) { i := add(i, 1) } {
 						mstore(mpos, <convert>(spos))
-						mpos := add(mpos, 0x20)
+						mpos := add(mpos, <wordSizeHex>)
 						spos := add(spos, <baseStorageSize>)
 					}
 				}
@@ -2498,6 +2522,7 @@ std::string YulUtilFunctions::copyArrayFromStorageToMemoryFunction(ArrayType con
 			("dynamic", _to.isDynamicallySized())
 			("convert", conversionFunction(*_from.baseType(), *_to.baseType()))
 			("baseStorageSize", _from.baseType()->storageSize().str())
+			("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 			.render();
 		}
 	});
@@ -2546,7 +2571,7 @@ std::string YulUtilFunctions::bytesOrStringConcatFunction(
 		Whiskers templ(R"(
 			function <functionName>(<parameters>) -> outPtr {
 				outPtr := <allocateUnbounded>()
-				let dataStart := add(outPtr, 0x20)
+				let dataStart := add(outPtr, <wordSizeHex>)
 				let dataEnd := <encodePacked>(dataStart<?+parameters>, <parameters></+parameters>)
 				mstore(outPtr, sub(dataEnd, dataStart))
 				<finalizeAllocation>(outPtr, sub(dataEnd, outPtr))
@@ -2555,6 +2580,7 @@ std::string YulUtilFunctions::bytesOrStringConcatFunction(
 		templ("functionName", functionName);
 		templ("parameters", suffixedVariableNameList("param_", 0, totalParams));
 		templ("allocateUnbounded", allocateUnboundedFunction());
+		templ("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)));
 		templ("finalizeAllocation", finalizeAllocationFunction());
 		templ(
 			"encodePacked",
@@ -2586,18 +2612,20 @@ std::string YulUtilFunctions::mappingIndexAccessFunction(MappingType const& _map
 			.render();
 		else
 		{
-			hypAssert(CompilerUtils::freeMemoryPointer >= 0x40, "");
+			hypAssert(CompilerUtils::freeMemoryPointer >= 2 * VMWordBytes, "");
 			hypAssert(!_mappingType.keyType()->isDynamicallyEncoded(), "");
-			hypAssert(_mappingType.keyType()->calldataEncodedSize(false) <= 0x20, "");
+			hypAssert(_mappingType.keyType()->calldataEncodedSize(false) <= VMWordBytes, "");
 			Whiskers templ(R"(
 				function <functionName>(slot <key>) -> dataSlot {
 					mstore(0, <convertedKey>)
-					mstore(0x20, slot)
-					dataSlot := keccak256(0, 0x40)
+					mstore(<wordSizeHex>, slot)
+					dataSlot := keccak256(0, <twoWordsHex>)
 				}
 			)");
 			templ("functionName", functionName);
 			templ("key", _keyType.sizeOnStack() == 1 ? ", key" : "");
+			templ("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)));
+			templ("twoWordsHex", toCompactHexWithPrefix(u256(VMWordBytes * 2)));
 			if (_keyType.sizeOnStack() == 0)
 				templ("convertedKey", conversionFunction(_keyType, *_mappingType.keyType()) + "()");
 			else
@@ -2759,7 +2787,7 @@ std::string YulUtilFunctions::updateStorageValueFunction(
 		if (_toType.isValueType())
 		{
 			hypAssert(_fromType.isImplicitlyConvertibleTo(_toType), "");
-			hypAssert(_toType.storageBytes() <= 32, "Invalid storage bytes size.");
+			hypAssert(_toType.storageBytes() <= VMWordBytes, "Invalid storage bytes size.");
 			hypAssert(_toType.storageBytes() > 0, "Invalid storage bytes size.");
 
 			return Whiskers(R"(
@@ -2962,13 +2990,13 @@ std::string YulUtilFunctions::cleanupFromStorageFunction(Type const& _type)
 			encodingType = _type.encodingType();
 		unsigned storageBytes = encodingType->storageBytes();
 		if (IntegerType const* intType = dynamic_cast<IntegerType const*>(encodingType))
-			if (intType->isSigned() && storageBytes != 32)
+			if (intType->isSigned() && storageBytes != VMWordBytes)
 			{
 				templ("cleaned", "signextend(" + std::to_string(storageBytes - 1) + ", value)");
 				return templ.render();
 			}
 
-		if (storageBytes == 32)
+		if (storageBytes == VMWordBytes)
 			templ("cleaned", "value");
 		else if (encodingType->leftAligned())
 			templ("cleaned", shiftLeftFunction(256 - 8 * storageBytes) + "(value)");
@@ -3096,7 +3124,7 @@ std::string YulUtilFunctions::zeroComplexMemoryArrayFunction(ArrayType const& _t
 
 	std::string functionName = "zero_complex_memory_array_" + _type.identifier();
 	return m_functionCollector.createFunction(functionName, [&]() {
-		hypAssert(_type.memoryStride() == 32, "");
+		hypAssert(_type.memoryStride() == VMWordBytes, "");
 		return Whiskers(R"(
 			function <functionName>(dataStart, dataSizeInBytes) {
 				for {let i := 0} lt(i, dataSizeInBytes) { i := add(i, <stride>) } {
@@ -3142,8 +3170,8 @@ std::string YulUtilFunctions::allocateAndInitializeMemoryArrayFunction(ArrayType
 					let dataStart := memPtr
 					let dataSize := <allocSize>(length)
 					<?dynamic>
-					dataStart := add(dataStart, 32)
-					dataSize := sub(dataSize, 32)
+					dataStart := add(dataStart, <wordSize>)
+					dataSize := sub(dataSize, <wordSize>)
 					</dynamic>
 					<zeroArrayFunction>(dataStart, dataSize)
 				}
@@ -3152,6 +3180,7 @@ std::string YulUtilFunctions::allocateAndInitializeMemoryArrayFunction(ArrayType
 			("allocArray", allocateMemoryArrayFunction(_type))
 			("allocSize", arrayAllocationSizeFunction(_type))
 			("zeroArrayFunction", zeroMemoryArrayFunction(_type))
+			("wordSize", std::to_string(VMWordBytes))
 			("dynamic", _type.isDynamicallySized())
 			.render();
 	});
@@ -3184,19 +3213,20 @@ std::string YulUtilFunctions::allocateAndInitializeMemoryStructFunction(StructTy
 			let offset := memPtr
 			<#member>
 				mstore(offset, <zeroValue>())
-				offset := add(offset, 32)
+				offset := add(offset, <wordSize>)
 			</member>
 		}
 		)");
 		templ("functionName", functionName);
 		templ("allocStruct", allocateMemoryStructFunction(_type));
+		templ("wordSize", std::to_string(VMWordBytes));
 
 		TypePointers const& members = _type.memoryMemberTypes();
 
 		std::vector<std::map<std::string, std::string>> memberParams(members.size());
 		for (size_t i = 0; i < members.size(); ++i)
 		{
-			hypAssert(members[i]->memoryHeadSize() == 32, "");
+			hypAssert(members[i]->memoryHeadSize() == VMWordBytes, "");
 			memberParams[i]["zeroValue"] = zeroValueFunction(
 				*TypeProvider::withLocationIfReference(DataLocation::Memory, members[i]),
 				false
@@ -3513,7 +3543,7 @@ std::string YulUtilFunctions::bytesToFixedBytesConversionFunction(ArrayType cons
 				dataArea := <dataArea>(array)
 			</fromMemory>
 			<?fromStorage>
-				if gt(length, 31) { dataArea := <dataArea>(array) }
+				if gt(length, <alignmentMask>) { dataArea := <dataArea>(array) }
 			</fromStorage>
 
 			<?fromCalldata>
@@ -3544,11 +3574,12 @@ std::string YulUtilFunctions::bytesToFixedBytesConversionFunction(ArrayType cons
 			templ(
 				"extractValue",
 				_from.dataStoredIn(DataLocation::Storage) ?
-				readFromStorage(_to, 32 - _to.numBytes(), false) :
+				readFromStorage(_to, VMWordBytes - _to.numBytes(), false) :
 				readFromMemory(_to)
 			);
 		templ("shl", shiftLeftFunctionDynamic());
 		templ("mask", formatNumber(~((u256(1) << (256 - _to.numBytes() * 8)) - 1)));
+		templ("alignmentMask", std::to_string(VMWordAlignmentMask));
 		return templ.render();
 	});
 }
@@ -3584,7 +3615,7 @@ std::string YulUtilFunctions::copyStructToStorageFunction(StructType const& _fro
 		for (size_t i = 0; i < structMembers.size(); ++i)
 		{
 			Type const& memberType = *structMembers[i].type;
-			hypAssert(memberType.memoryHeadSize() == 32, "");
+			hypAssert(memberType.memoryHeadSize() == VMWordBytes, "");
 			auto const&[slotDiff, offset] = _to.storageOffsetsOfMember(structMembers[i].name);
 
 			Whiskers t(R"(
@@ -3809,7 +3840,7 @@ std::string YulUtilFunctions::cleanupFunction(Type const& _type)
 		case Type::Category::FixedBytes:
 		{
 			FixedBytesType const& type = dynamic_cast<FixedBytesType const&>(_type);
-			if (type.numBytes() == 32)
+			if (type.numBytes() == VMWordBytes)
 				templ("body", "cleaned := value");
 			else if (type.numBytes() == 0)
 				// This is disallowed in the type system.
@@ -4250,7 +4281,7 @@ std::string YulUtilFunctions::conversionFunctionSpecial(Type const& _from, Type 
 		if (_to.category() == Type::Category::FixedBytes)
 		{
 			unsigned const numBytes = dynamic_cast<FixedBytesType const&>(_to).numBytes();
-			hypAssert(data.size() <= 32, "");
+			hypAssert(data.size() <= VMWordBytes, "");
 			Whiskers templ(R"(
 				function <functionName>() -> converted {
 					converted := <data>
@@ -4373,10 +4404,10 @@ std::string YulUtilFunctions::revertReasonIfDebugBody(
 		let pos := start
 		mstore(pos, <sig>)
 		pos := add(pos, 4)
-		mstore(pos, 0x20)
-		pos := add(pos, 0x20)
+		mstore(pos, <wordSizeHex>)
+		pos := add(pos, <wordSizeHex>)
 		mstore(pos, <length>)
-		pos := add(pos, 0x20)
+		pos := add(pos, <wordSizeHex>)
 		<#word>
 			mstore(add(pos, <offset>), <wordValue>)
 		</word>
@@ -4385,16 +4416,17 @@ std::string YulUtilFunctions::revertReasonIfDebugBody(
 	templ("allocate", _allocation);
 	templ("sig", util::selectorFromSignatureU256("Error(string)").str());
 	templ("length", std::to_string(_message.length()));
+	templ("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)));
 
-	size_t words = (_message.length() + 31) / 32;
+	size_t words = (_message.length() + VMWordAlignmentMask) / VMWordBytes;
 	std::vector<std::map<std::string, std::string>> wordParams(words);
 	for (size_t i = 0; i < words; ++i)
 	{
-		wordParams[i]["offset"] = std::to_string(i * 32);
-		wordParams[i]["wordValue"] = formatAsStringOrNumber(_message.substr(32 * i, 32));
+		wordParams[i]["offset"] = std::to_string(i * VMWordBytes);
+		wordParams[i]["wordValue"] = formatAsStringOrNumber(_message.substr(VMWordBytes * i, VMWordBytes));
 	}
 	templ("word", wordParams);
-	templ("overallLength", std::to_string(4 + 0x20 + 0x20 + words * 32));
+	templ("overallLength", std::to_string(4 + VMWordBytes + VMWordBytes + words * VMWordBytes));
 
 	return templ.render();
 }
@@ -4431,7 +4463,7 @@ std::string YulUtilFunctions::returnDataSelectorFunction()
 			}
 		)")
 		("functionName", functionName)
-		("shr224", shiftRightFunction(224))
+		("shr224", shiftRightFunction(VMWordBits - 32))
 		.render();
 	});
 }
@@ -4460,16 +4492,17 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 				let length := mload(msg)
 				if gt(length, 0xffffffffffffffff) { leave }
 
-				let end := add(add(msg, 0x20), length)
+				let end := add(add(msg, <wordSizeHex>), length)
 				if gt(end, add(data, sub(returndatasize(), 4))) { leave }
 
-				<finalizeAllocation>(data, add(offset, add(0x20, length)))
+				<finalizeAllocation>(data, add(offset, add(<wordSizeHex>, length)))
 				ret := msg
 			}
 		)")
 		("functionName", functionName)
 		("allocateUnbounded", allocateUnboundedFunction())
 		("finalizeAllocation", finalizeAllocationFunction())
+		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 		.render();
 	});
 }
@@ -4482,13 +4515,14 @@ std::string YulUtilFunctions::tryDecodePanicDataFunction()
 		return util::Whiskers(R"(
 			function <functionName>() -> success, data {
 				if gt(returndatasize(), 0x23) {
-					returndatacopy(0, 4, 0x20)
+					returndatacopy(0, 4, <wordSizeHex>)
 					success := 1
 					data := mload(0)
 				}
 			}
 		)")
 		("functionName", functionName)
+		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 		.render();
 	});
 }
@@ -4506,13 +4540,14 @@ std::string YulUtilFunctions::extractReturndataFunction()
 				}
 				default {
 					data := <allocateArray>(returndatasize())
-					returndatacopy(add(data, 0x20), 0, returndatasize())
+					returndatacopy(add(data, <wordSizeHex>), 0, returndatasize())
 				}
 			}
 		)")
 		("functionName", functionName)
 		("allocateArray", allocateMemoryArrayFunction(*TypeProvider::bytesMemory()))
 		("emptyArray", zeroValueFunction(*TypeProvider::bytesMemory()))
+		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 		.render();
 	});
 }
@@ -4562,11 +4597,12 @@ std::string YulUtilFunctions::externalCodeFunction()
 			function <functionName>(addr) -> mpos {
 				let length := extcodesize(addr)
 				mpos := <allocateArray>(length)
-				extcodecopy(addr, add(mpos, 0x20), 0, length)
+				extcodecopy(addr, add(mpos, <wordSizeHex>), 0, length)
 			}
 		)")
 		("functionName", functionName)
 		("allocateArray", allocateMemoryArrayFunction(*TypeProvider::bytesMemory()))
+		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 		.render();
 	});
 }

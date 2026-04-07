@@ -1758,7 +1758,7 @@ bigint ArrayType::unlimitedStaticCalldataSize(bool _padded) const
 	hypAssert(!isDynamicallySized(), "");
 	bigint size = bigint(length()) * calldataStride();
 	if (_padded)
-		size = ((size + 31) / 32) * 32;
+		size = ((size + VMWordAlignmentMask) / VMWordBytes) * VMWordBytes;
 	return size;
 }
 
@@ -3221,7 +3221,7 @@ unsigned FunctionType::calldataEncodedSize(bool _padded) const
 {
 	unsigned size = storageBytes();
 	if (_padded)
-		size = ((size + 31) / 32) * 32;
+		size = ((size + VMWordAlignmentMask) / VMWordBytes) * VMWordBytes;
 	return size;
 }
 

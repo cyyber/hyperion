@@ -185,6 +185,7 @@ bool hyperion::util::isValidDecimal(std::string const& _string)
 
 std::string hyperion::util::formatAsStringOrNumber(std::string const& _value)
 {
+	// TODO: Update to VMWordBytes when h256 is replaced with h512
 	assertThrow(_value.length() <= 32, StringTooLong, "String to be formatted longer than 32 bytes.");
 
 	for (auto const& c: _value)

@@ -132,7 +132,7 @@ std::map<std::string, Builtin> SemanticTest::makeBuiltins()
 			[](FunctionCall const& _call) -> std::optional<bytes>
 			{
 				if (_call.arguments.parameters.empty())
-					return toBigEndian(0);
+					return toBigEndian(u256(0));
 				else
 					return _call.arguments.rawBytes();
 			}

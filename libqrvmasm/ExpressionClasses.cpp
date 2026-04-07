@@ -175,7 +175,7 @@ u256 const* ExpressionClasses::knownConstant(Id _c)
 	constant.setMatchGroup(1, matchGroups);
 	if (!constant.matches(representative(_c), *this))
 		return nullptr;
-	return &constant.d();
+	return &matchGroups[1]->item->data();
 }
 
 AssemblyItem const* ExpressionClasses::storeItem(AssemblyItem const& _item)

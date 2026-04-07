@@ -146,7 +146,7 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 	{
 		if (auto mappingType = dynamic_cast<MappingType const*>(returnType))
 		{
-			hypAssert(CompilerUtils::freeMemoryPointer >= 0x40, "");
+			hypAssert(CompilerUtils::freeMemoryPointer >= 2 * VMWordBytes, "");
 
 			// pop offset
 			m_context << Instruction::POP;
@@ -166,10 +166,10 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 					let key_len := mload(key_ptr)
 					// Temp. use the memory after the array data for the slot
 					// position
-					let post_data_ptr := add(key_ptr, add(key_len, 0x20))
+					let post_data_ptr := add(key_ptr, add(key_len, 0x40))
 					let orig_data := mload(post_data_ptr)
 					mstore(post_data_ptr, slot_pos)
-					let hash := keccak256(add(key_ptr, 0x20), add(key_len, 0x20))
+					let hash := keccak256(add(key_ptr, 0x40), add(key_len, 0x40))
 					mstore(post_data_ptr, orig_data)
 					slot_pos := hash
 				})", {"slot_pos", "key_ptr"});
@@ -181,12 +181,12 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 				hypAssert(paramTypes[i]->isValueType(), "Expected value type for mapping key");
 
 				// move storage offset to memory.
-				utils().storeInMemory(32);
+				utils().storeInMemory(VMWordBytes);
 
 				// move key to memory.
 				utils().copyToStackTop(static_cast<unsigned>(paramTypes.size() - i), 1);
 				utils().storeInMemory(0);
-				m_context << u256(64) << u256(0);
+				m_context << u256(2 * VMWordBytes) << u256(0);
 				m_context << Instruction::KECCAK256;
 			}
 
@@ -369,7 +369,7 @@ bool ExpressionCompiler::visit(TupleExpression const& _tuple)
 		ArrayType const& arrayType = dynamic_cast<ArrayType const&>(*_tuple.annotation().type);
 
 		hypAssert(!arrayType.isDynamicallySized(), "Cannot create dynamically sized inline array.");
-		utils().allocateMemory(std::max(u256(32u), arrayType.memoryDataSize()));
+		utils().allocateMemory(std::max(u256(VMWordBytes), arrayType.memoryDataSize()));
 		m_context << Instruction::DUP1;
 
 		for (auto const& component: _tuple.components())
@@ -665,7 +665,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		TypeType const& type = dynamic_cast<TypeType const&>(*_functionCall.expression().annotation().type);
 		auto const& structType = dynamic_cast<StructType const&>(*type.actualType());
 
-		utils().allocateMemory(std::max(u256(32u), structType.memoryDataSize()));
+		utils().allocateMemory(std::max(u256(VMWordBytes), structType.memoryDataSize()));
 		m_context << Instruction::DUP1;
 
 		for (unsigned i = 0; i < arguments.size(); ++i)
@@ -899,7 +899,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				// Optimization: If type is bytes or string, then do not encode,
 				// but directly compute keccak256 on memory.
 				ArrayUtils(m_context).retrieveLength(*TypeProvider::bytesMemory());
-				m_context << Instruction::SWAP1 << u256(0x20) << Instruction::ADD;
+				m_context << Instruction::SWAP1 << u256(VMWordBytes) << Instruction::ADD;
 				m_context << Instruction::KECCAK256;
 			}
 			else
@@ -1153,7 +1153,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					targetTypes.emplace_back(argument->annotation().type);
 				else if (
 					auto const* literalType = dynamic_cast<StringLiteralType const*>(argument->annotation().type);
-					literalType && !literalType->value().empty() && literalType->value().size() <= 32
+					literalType && !literalType->value().empty() && literalType->value().size() <= VMWordBytes
 				)
 					targetTypes.emplace_back(TypeProvider::fixedBytes(static_cast<unsigned>(literalType->value().size())));
 				else
@@ -1173,11 +1173,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			}
 			utils().fetchFreeMemoryPointer();
 			// stack: <arg1> <arg2> ... <argn> <free mem>
-			m_context << u256(32) << Instruction::ADD;
+			m_context << u256(VMWordBytes) << Instruction::ADD;
 			utils().packedEncode(argumentTypes, targetTypes);
 			utils().fetchFreeMemoryPointer();
 			m_context.appendInlineAssembly(R"({
-				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), 0x20))
+				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), 0x40))
 			})", {"mem_end", "mem_ptr"});
 			m_context << Instruction::SWAP1;
 			utils().storeFreeMemoryPointer();
@@ -1212,12 +1212,12 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << Instruction::DUP1;
 			// Stack: memptr requested_length requested_length
 			if (arrayType.isByteArrayOrString())
-				// Round up to multiple of 32
-				m_context << u256(31) << Instruction::ADD << u256(31) << Instruction::NOT << Instruction::AND;
+				// Round up to multiple of VMWordBytes
+				m_context << u256(VMWordAlignmentMask) << Instruction::ADD << u256(VMWordAlignmentMask) << Instruction::NOT << Instruction::AND;
 			else
 				m_context << arrayType.baseType()->memoryHeadSize() << Instruction::MUL;
 			// stacK: memptr requested_length data_size
-			m_context << u256(32) << Instruction::ADD;
+			m_context << u256(VMWordBytes) << Instruction::ADD;
 			m_context << Instruction::DUP3 << Instruction::ADD;
 			utils().storeFreeMemoryPointer();
 			// Stack: memptr requested_length
@@ -1227,7 +1227,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			auto skipInit = m_context.appendConditionalJump();
 			// Always initialize because the free memory pointer might point at
 			// a dirty memory area.
-			m_context << Instruction::DUP2 << u256(32) << Instruction::ADD;
+			m_context << Instruction::DUP2 << u256(VMWordBytes) << Instruction::ADD;
 			utils().zeroInitialiseMemoryArray(arrayType);
 			m_context << skipInit;
 			m_context << Instruction::POP;
@@ -1326,8 +1326,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			utils().fetchFreeMemoryPointer();
 			// stack now: [<selector/functionPointer/signature>] <arg1> .. <argN> <free_mem>
 
-			// adjust by 32(+4) bytes to accommodate the length(+selector)
-			m_context << u256(32 + (hasSelectorOrSignature ? 4 : 0)) << Instruction::ADD;
+			// adjust by VMWordBytes(+4) bytes to accommodate the length(+selector)
+			m_context << u256(VMWordBytes + (hasSelectorOrSignature ? 4 : 0)) << Instruction::ADD;
 			// stack now: [<selector/functionPointer/signature>] <arg1> .. <argN> <data_encoding_area_start>
 
 			if (isPacked)
@@ -1345,7 +1345,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 
 			// size is end minus start minus length slot
 			m_context.appendInlineAssembly(R"({
-				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), 0x20))
+				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), 0x40))
 			})", {"mem_end", "mem_ptr"});
 			m_context << Instruction::SWAP1;
 			utils().storeFreeMemoryPointer();
@@ -1409,7 +1409,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				// load current memory, mask and combine the selector
 				std::string mask = formatNumber((u256(-1) >> 32));
 				m_context.appendInlineAssembly(R"({
-					let data_start := add(mem_ptr, 0x20)
+					let data_start := add(mem_ptr, 0x40)
 					let data := mload(data_start)
 					let mask := )" + mask + R"(
 					mstore(data_start, or(and(data, mask), selector))
@@ -1441,7 +1441,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			else
 			{
 				utils().convertType(*firstArgType, *TypeProvider::bytesMemory());
-				m_context << Instruction::DUP1 << u256(32) << Instruction::ADD;
+				m_context << Instruction::DUP1 << u256(VMWordBytes) << Instruction::ADD;
 				m_context << Instruction::SWAP1 << Instruction::MLOAD;
 				// stack now: <mem_pos> <length>
 
@@ -1778,7 +1778,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 
 			m_context << Instruction::DUP1;
 			// Account for the size field of `bytes memory`
-			m_context << u256(32) << Instruction::ADD;
+			m_context << u256(VMWordBytes) << Instruction::ADD;
 			utils().allocateMemory();
 			// Stack post: <address> <size> <mem_offset>
 
@@ -1788,7 +1788,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			m_context << u256(0) << Instruction::SWAP1 << Instruction::DUP1;
 			// Stack post: <address> <size> 0 <mem_offset> <mem_offset>
 
-			m_context << u256(32) << Instruction::ADD << Instruction::SWAP1;
+			m_context << u256(VMWordBytes) << Instruction::ADD << Instruction::SWAP1;
 			// Stack post: <address> <size> 0 <mem_offset_adjusted> <mem_offset>
 
 			m_context << Instruction::SWAP4;
@@ -1891,13 +1891,13 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			hypAssert(!contractType.isSuper(), "");
 			ContractDefinition const& contract = contractType.contractDefinition();
 			utils().fetchFreeMemoryPointer();
-			m_context << Instruction::DUP1 << u256(32) << Instruction::ADD;
+			m_context << Instruction::DUP1 << u256(VMWordBytes) << Instruction::ADD;
 			utils().copyContractCodeToMemory(contract, member == "creationCode");
 			// Stack: start end
 			m_context.appendInlineAssembly(
 				Whiskers(R"({
-					mstore(start, sub(end, add(start, 0x20)))
-					mstore(<free>, and(add(end, 31), not(31)))
+					mstore(start, sub(end, add(start, 0x40)))
+					mstore(<free>, and(add(end, 63), not(63)))
 				})")("free", std::to_string(CompilerUtils::freeMemoryPointer)).render(),
 				{"start", "end"}
 			);
@@ -1910,11 +1910,11 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			ContractDefinition const& contract = contractType.isSuper() ?
 				*contractType.contractDefinition().superContract(m_context.mostDerivedContract()) :
 				dynamic_cast<ContractType const&>(*arg).contractDefinition();
-			utils().allocateMemory(((contract.name().length() + 31) / 32) * 32 + 32);
+			utils().allocateMemory(((contract.name().length() + VMWordAlignmentMask) / VMWordBytes) * VMWordBytes + VMWordBytes);
 			// store string length
 			m_context << u256(contract.name().length()) << Instruction::DUP2 << Instruction::MSTORE;
 			// adjust pointer
-			m_context << Instruction::DUP1 << u256(32) << Instruction::ADD;
+			m_context << Instruction::DUP1 << u256(VMWordBytes) << Instruction::ADD;
 			utils().storeStringData(contract.name());
 		}
 		else if (member == "interfaceId")
@@ -1975,10 +1975,10 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 				if (memberType->isValueType())
 				{
 					hypAssert(memberType->calldataEncodedSize() > 0, "");
-					hypAssert(memberType->storageBytes() <= 32, "");
-					if (memberType->storageBytes() < 32 && m_context.useABICoderV2())
+					hypAssert(memberType->storageBytes() <= VMWordBytes, "");
+					if (memberType->storageBytes() < VMWordBytes && m_context.useABICoderV2())
 					{
-						m_context << u256(32);
+						m_context << u256(VMWordBytes);
 						CompilerUtils(m_context).abiDecodeV2({memberType}, false);
 					}
 					else
@@ -2126,7 +2126,7 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 				m_context << u256(0); // memory position
 				appendExpressionCopyToMemory(*keyType, *_indexAccess.indexExpression());
 				m_context << Instruction::SWAP1;
-				hypAssert(CompilerUtils::freeMemoryPointer >= 0x40, "");
+				hypAssert(CompilerUtils::freeMemoryPointer >= 2 * VMWordBytes, "");
 				utils().storeInMemoryDynamic(*TypeProvider::uint256());
 				m_context << u256(0);
 			}
@@ -2781,9 +2781,9 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// Stack: return_data_start return_data_size
 		if (needToUpdateFreeMemoryPtr)
 			m_context.appendInlineAssembly(R"({
-				// round size to the next multiple of 32
-				let newMem := add(start, and(add(size, 0x1f), not(0x1f)))
-				mstore(0x40, newMem)
+				// round size to the next multiple of 64
+				let newMem := add(start, and(add(size, 0x3f), not(0x3f)))
+				mstore(0x80, newMem)
 			})", {"start", "size"});
 
 		utils().abiDecode(returnTypes, true);

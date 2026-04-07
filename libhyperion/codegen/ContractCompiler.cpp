@@ -497,7 +497,7 @@ void ContractCompiler::appendFunctionSelector(ContractDefinition const& _contrac
 			else
 			{
 				m_context << Instruction::DUP1 << Instruction::MLOAD << Instruction::SWAP1;
-				m_context << u256(0x20) << Instruction::ADD;
+				m_context << u256(VMWordBytes) << Instruction::ADD;
 				m_context << Instruction::RETURN;
 			}
 		}

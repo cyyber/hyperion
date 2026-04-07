@@ -1275,13 +1275,13 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 
 		Whiskers templ(R"(
 			let <data> := <allocateUnbounded>()
-			let <memPtr> := add(<data>, 0x20)
+			let <memPtr> := add(<data>, 0x40)
 			<?+selector>
 				mstore(<memPtr>, <selector>)
 				<memPtr> := add(<memPtr>, 4)
 			</+selector>
 			let <mend> := <encode>(<memPtr><arguments>)
-			mstore(<data>, sub(<mend>, add(<data>, 0x20)))
+			mstore(<data>, sub(<mend>, add(<data>, 0x40)))
 			<finalizeAllocation>(<data>, sub(<mend>, <data>))
 		)");
 		templ("data", IRVariable(_functionCall).part("mpos").name());
@@ -2669,7 +2669,7 @@ void IRGeneratorForStatements::appendBareCall(
 			let <pos> := <allocateUnbounded>()
 			let <length> := sub(<encode>(<pos> <?+arg>,</+arg> <arg>), <pos>)
 		<!needsEncoding>
-			let <pos> := add(<arg>, 0x20)
+			let <pos> := add(<arg>, 0x40)
 			let <length> := mload(<arg>)
 		</needsEncoding>
 

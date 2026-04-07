@@ -122,16 +122,23 @@ void CompilerUtils::revertWithError(
 void CompilerUtils::returnDataToArray()
 {
 	m_context << Instruction::RETURNDATASIZE;
-	m_context.appendInlineAssembly(R"({
-		switch v case 0 {
-			v := 0x60
-		} default {
-			v := mload(0x40)
-			mstore(0x40, add(v, and(add(returndatasize(), 0x3f), not(0x1f))))
-			mstore(v, returndatasize())
-			returndatacopy(add(v, 0x20), 0, returndatasize())
-		}
-	})", {"v"});
+	m_context.appendInlineAssembly(
+		util::Whiskers(R"({
+			switch v case 0 {
+				v := <emptyArrayPtr>
+			} default {
+				v := mload(<freeMemPtr>)
+				mstore(<freeMemPtr>, add(v, and(add(returndatasize(), <alignMask2>), not(<alignMask>))))
+				mstore(v, returndatasize())
+				returndatacopy(add(v, <wordSize>), 0, returndatasize())
+			}
+		})")
+		("emptyArrayPtr", std::to_string(3 * VMWordBytes))
+		("freeMemPtr", std::to_string(freeMemoryPointer))
+		("alignMask2", toCompactHexWithPrefix(u256(2 * VMWordBytes - 1)))
+		("alignMask", toCompactHexWithPrefix(u256(VMWordAlignmentMask)))
+		("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)))
+		.render(), {"v"});
 }
 
 void CompilerUtils::accessCalldataTail(Type const& _type)
@@ -209,7 +216,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 		m_context << Instruction::DUP1;
 		storeStringData(bytesConstRef(str->value()));
 		if (_padToWordBoundaries)
-			m_context << u256(std::max<size_t>(32, ((str->value().size() + 31) / 32) * 32));
+			m_context << u256(std::max<size_t>(VMWordBytes, ((str->value().size() + VMWordAlignmentMask) / VMWordBytes) * VMWordBytes));
 		else
 			m_context << u256(str->value().size());
 		m_context << Instruction::ADD;
@@ -221,7 +228,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 	{
 		combineExternalFunctionType(true);
 		m_context << Instruction::DUP2 << Instruction::MSTORE;
-		m_context << u256(_padToWordBoundaries ? 32 : 24) << Instruction::ADD;
+		m_context << u256(_padToWordBoundaries ? VMWordBytes : 24) << Instruction::ADD;
 	}
 	else if (_type.isValueType())
 	{
@@ -304,7 +311,7 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 					Whiskers templ(R"({
 						if gt(ptr, 0x100000000) { <revertStringPointer> }
 						ptr := add(ptr, base_offset)
-						let array_data_start := add(ptr, 0x20)
+						let array_data_start := add(ptr, <wordSize>)
 						if gt(array_data_start, input_end) { <revertStringStart> }
 						let array_length := mload(ptr)
 						if or(
@@ -312,8 +319,9 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 							gt(add(array_data_start, mul(array_length, <item_size>)), input_end)
 						) { <revertStringLength> }
 						mstore(dst, array_length)
-						dst := add(dst, 0x20)
+						dst := add(dst, <wordSize>)
 					})");
+					templ("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)));
 					templ("item_size", std::to_string(arrayType.calldataStride()));
 					// TODO add test
 					templ("revertStringPointer", m_context.revertReasonIfDebug("ABI memory decoding: invalid data pointer"));
@@ -326,7 +334,7 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 					ArrayUtils(m_context).copyArrayToMemory(arrayType, true);
 					// stack: v1 v2 ... v(k-1) dstmem input_end base_offset current_offset mem_end
 					storeFreeMemoryPointer();
-					m_context << u256(0x20) << Instruction::ADD;
+					m_context << u256(VMWordBytes) << Instruction::ADD;
 				}
 				else
 				{
@@ -355,8 +363,9 @@ void CompilerUtils::abiDecode(TypePointers const& _typeParameters, bool _fromMem
 					m_context << Instruction::DUP3 << Instruction::ADD;
 					// stack: input_end base_offset next_pointer array_head_ptr
 					m_context.appendInlineAssembly(Whiskers(R"({
-						if gt(add(array_head_ptr, 0x20), input_end) { <revertString> }
+						if gt(add(array_head_ptr, <wordSize>), input_end) { <revertString> }
 					})")
+					("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)))
 					("revertString", m_context.revertReasonIfDebug("ABI calldata decoding: invalid head pointer"))
 					.render(), {"input_end", "base_offset", "next_ptr", "array_head_ptr"});
 
@@ -466,7 +475,7 @@ void CompilerUtils::encodeToMemory(
 		if (targetType->isDynamicallySized() && !_copyDynamicDataInPlace)
 		{
 			// leave end_of_mem as dyn head pointer
-			m_context << Instruction::DUP1 << u256(32) << Instruction::ADD;
+			m_context << Instruction::DUP1 << u256(VMWordBytes) << Instruction::ADD;
 			dynPointers++;
 			assertThrow(
 				(argSize + dynPointers) < 16,
@@ -959,14 +968,14 @@ void CompilerUtils::convertType(
 		if (targetTypeCategory == Type::Category::FixedBytes)
 		{
 			unsigned const numBytes = dynamic_cast<FixedBytesType const&>(_targetType).numBytes();
-			hypAssert(data.size() <= 32);
+			hypAssert(data.size() <= VMWordBytes);
 			m_context << (u256(h256(data, h256::AlignLeft)) & (~(u256(-1) >> (8 * numBytes))));
 		}
 		else if (targetTypeCategory == Type::Category::Array)
 		{
 			auto const& arrayType = dynamic_cast<ArrayType const&>(_targetType);
 			hypAssert(arrayType.isByteArrayOrString());
-			size_t storageSize = 32 + ((data.size() + 31) / 32) * 32;
+			size_t storageSize = VMWordBytes + ((data.size() + VMWordAlignmentMask) / VMWordBytes) * VMWordBytes;
 			allocateMemory(storageSize);
 			// stack: mempos
 			m_context << Instruction::DUP1 << u256(data.size());
@@ -1053,7 +1062,7 @@ void CompilerUtils::convertType(
 					ArrayUtils(m_context).convertLengthToSize(targetType, true);
 					// stack: <source ref> (variably sized) <length> <size>
 					if (targetType.isDynamicallySized())
-						m_context << u256(0x20) << Instruction::ADD;
+						m_context << u256(VMWordBytes) << Instruction::ADD;
 					allocateMemory();
 					// stack: <source ref> (variably sized) <length> <mem start>
 					m_context << Instruction::DUP1;
@@ -1305,7 +1314,7 @@ void CompilerUtils::convertType(
 			// All other types should not be convertible to non-equal types.
 			hypAssert(_typeOnStack == _targetType, "Invalid type conversion requested.");
 
-		if (_cleanupNeeded && _targetType.canBeStored() && _targetType.storageBytes() < 32)
+		if (_cleanupNeeded && _targetType.canBeStored() && _targetType.storageBytes() < VMWordBytes)
 			m_context
 				<< ((u256(1) << (8 * _targetType.storageBytes())) - 1)
 				<< Instruction::AND;
@@ -1498,7 +1507,7 @@ unsigned CompilerUtils::sizeOnStack(std::vector<Type const*> const& _variableTyp
 void CompilerUtils::computeHashStatic()
 {
 	storeInMemory(0);
-	m_context << u256(32) << u256(0) << Instruction::KECCAK256;
+	m_context << u256(VMWordBytes) << u256(0) << Instruction::KECCAK256;
 }
 
 void CompilerUtils::copyContractCodeToMemory(ContractDefinition const& contract, bool _creation)
@@ -1528,9 +1537,9 @@ void CompilerUtils::storeStringData(bytesConstRef _data)
 {
 	//@todo provide both alternatives to the optimiser
 	// stack: mempos
-	if (_data.size() <= 32)
+	if (_data.size() <= VMWordBytes)
 	{
-		for (unsigned i = 0; i < _data.size(); i += 32)
+		for (unsigned i = 0; i < _data.size(); i += VMWordBytes)
 		{
 			m_context << u256(h256(_data.cropped(i), h256::AlignLeft));
 			storeInMemoryDynamic(*TypeProvider::uint256());
@@ -1563,15 +1572,15 @@ unsigned CompilerUtils::loadFromMemoryHelper(Type const& _type, bool _fromCallda
 		m_context << Instruction::POP << u256(0);
 		return numBytes;
 	}
-	hypAssert(numBytes <= 32, "Static memory load of more than 32 bytes requested.");
+	hypAssert(numBytes <= VMWordBytes, "Static memory load of more than VMWordBytes bytes requested.");
 	m_context << (_fromCalldata ? Instruction::CALLDATALOAD : Instruction::MLOAD);
 	bool cleanupNeeded = true;
 	if (isExternalFunctionType)
 		splitExternalFunctionType(true);
-	else if (numBytes != 32)
+	else if (numBytes != VMWordBytes)
 	{
 		// add leading or trailing zeros by dividing/multiplying depending on alignment
-		unsigned shiftFactor = (32 - numBytes) * 8;
+		unsigned shiftFactor = (VMWordBytes - numBytes) * 8;
 		rightShiftNumberOnStack(shiftFactor);
 		if (type->leftAligned())
 		{
@@ -1600,13 +1609,13 @@ void CompilerUtils::cleanHigherOrderBits(IntegerType const& _typeOnStack)
 
 void CompilerUtils::leftShiftNumberOnStack(unsigned _bits)
 {
-	hypAssert(_bits < 256);
+	hypAssert(_bits < VMWordBits);
 	m_context << _bits << Instruction::SHL;
 }
 
 void CompilerUtils::rightShiftNumberOnStack(unsigned _bits)
 {
-	hypAssert(_bits < 256);
+	hypAssert(_bits < VMWordBits);
 	// NOTE: If we add signed right shift, SAR rounds differently than SDIV
 	m_context << _bits << Instruction::SHR;
 }
@@ -1628,16 +1637,16 @@ unsigned CompilerUtils::prepareMemoryStore(Type const& _type, bool _padToWords, 
 	);
 
 	hypAssert(
-		numBytes <= 32,
-		"Memory store of more than 32 bytes requested (Type: " + _type.toString(true) + ")."
+		numBytes <= VMWordBytes,
+		"Memory store of more than " + std::to_string(VMWordBytes) + " bytes requested (Type: " + _type.toString(true) + ")."
 	);
 
 	if (_cleanup)
 		convertType(_type, _type, true);
 
-	if (numBytes != 32 && !_type.leftAligned() && !_padToWords)
+	if (numBytes != VMWordBytes && !_type.leftAligned() && !_padToWords)
 		// shift the value accordingly before storing
-		leftShiftNumberOnStack((32 - numBytes) * 8);
+		leftShiftNumberOnStack((VMWordBytes - numBytes) * 8);
 
 	return numBytes;
 }

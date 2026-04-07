@@ -231,7 +231,7 @@ void StorageItem::retrieveValue(SourceLocation const&, bool _remove) const
 	}
 	if (!_remove)
 		CompilerUtils(m_context).copyToStackTop(sizeOnStack(), sizeOnStack());
-	if (m_dataType->storageBytes() == 32)
+	if (m_dataType->storageBytes() == VMWordBytes)
 		m_context << Instruction::POP << Instruction::SLOAD;
 	else
 	{
@@ -289,9 +289,9 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 	// stack: value storage_key storage_offset
 	if (m_dataType->isValueType())
 	{
-		hypAssert(m_dataType->storageBytes() <= 32, "Invalid storage bytes size.");
+		hypAssert(m_dataType->storageBytes() <= VMWordBytes, "Invalid storage bytes size.");
 		hypAssert(m_dataType->storageBytes() > 0, "Invalid storage bytes size.");
-		if (m_dataType->storageBytes() == 32)
+		if (m_dataType->storageBytes() == VMWordBytes)
 		{
 			hypAssert(m_dataType->sizeOnStack() == 1, "Invalid stack size.");
 			// offset should be zero
@@ -482,7 +482,7 @@ void StorageItem::setToZero(SourceLocation const&, bool _removeReference) const
 		hypAssert(m_dataType->isValueType(), "Clearing of unsupported type requested: " + m_dataType->toString());
 		if (!_removeReference)
 			CompilerUtils(m_context).copyToStackTop(sizeOnStack(), sizeOnStack());
-		if (m_dataType->storageBytes() == 32)
+		if (m_dataType->storageBytes() == VMWordBytes)
 		{
 			// offset should be zero
 			m_context

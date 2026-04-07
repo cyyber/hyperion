@@ -131,7 +131,7 @@ AssemblyItem Pattern::toAssemblyItem(SourceLocation const& _location) const
 	if (m_type == Operation)
 		return AssemblyItem(m_instruction, _location);
 	else
-		return AssemblyItem(m_type, data(), _location);
+		return AssemblyItem(m_type, u256(data()), _location);
 }
 
 std::string Pattern::toString() const
@@ -181,7 +181,7 @@ bool Pattern::matchesBaseItem(AssemblyItem const* _item) const
 	else if (m_type == Operation)
 		return m_instruction == _item->instruction();
 	else if (m_requireDataMatch)
-		return data() == _item->data();
+		return data() == Word(_item->data());
 	return true;
 }
 
@@ -193,7 +193,7 @@ Pattern::Expression const& Pattern::matchGroupValue() const
 	return *(*m_matchGroups)[m_matchGroup];
 }
 
-u256 const& Pattern::data() const
+Pattern::Word const& Pattern::data() const
 {
 	assertThrow(m_data, OptimizerException, "");
 	return *m_data;

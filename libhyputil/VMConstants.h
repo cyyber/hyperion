@@ -28,8 +28,8 @@
 namespace hyperion
 {
 
-/// VM word size in bytes. Currently 32 (256-bit), target: 64 (512-bit).
-static constexpr unsigned VMWordBytes = 32;
+/// VM word size in bytes.
+static constexpr unsigned VMWordBytes = 64;
 /// VM word size in bits.
 static constexpr unsigned VMWordBits = VMWordBytes * 8;
 /// Hex representation of VM word size (used in Yul templates as 0x20 or 0x40).
