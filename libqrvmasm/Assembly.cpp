@@ -962,18 +962,18 @@ LinkerObject const& Assembly::assemble() const
 			break;
 		}
 		case PushLibraryAddress:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH20));
+			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH48));
 			ret.linkReferences[ret.bytecode.size()] = m_libraries.at(i.data());
-			ret.bytecode.resize(ret.bytecode.size() + 20);
+			ret.bytecode.resize(ret.bytecode.size() + 48);
 			break;
 		case PushImmutable:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH32));
+			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH64));
 			// Maps keccak back to the "identifier" std::string of that immutable.
 			ret.immutableReferences[i.data()].first = m_immutables.at(i.data());
-			// Record the bytecode offset of the PUSH32 argument.
+			// Record the bytecode offset of the PUSH64 argument.
 			ret.immutableReferences[i.data()].second.emplace_back(ret.bytecode.size());
-			// Advance bytecode by 32 bytes (default initialized).
-			ret.bytecode.resize(ret.bytecode.size() + 32);
+			// Advance bytecode by 64 bytes (default initialized).
+			ret.bytecode.resize(ret.bytecode.size() + 64);
 			break;
 		case VerbatimBytecode:
 			ret.bytecode += i.verbatimData();
@@ -1005,8 +1005,8 @@ LinkerObject const& Assembly::assemble() const
 			break;
 		}
 		case PushDeployTimeAddress:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH20));
-			ret.bytecode.resize(ret.bytecode.size() + 20);
+			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH48));
+			ret.bytecode.resize(ret.bytecode.size() + 48);
 			break;
 		case Tag:
 		{

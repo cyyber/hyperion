@@ -34,7 +34,7 @@
 
 namespace hyperion::test
 {
-using Address = util::h160;
+using Address = util::h384;
 using StorageMap = std::map<qrvmc::bytes32, qrvmc::StorageValue>;
 
 struct QRVMPrecompileOutput {

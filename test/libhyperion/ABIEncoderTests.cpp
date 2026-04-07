@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(value_types)
 		compileAndRun(sourceCode);
 		callContractFunction("f()");
 		REQUIRE_LOG_DATA(encodeArgs(
-			10, u256(65534), u256(0x121212), u256(-1), std::string("\x1b\xab\xab"), true, h160("fffffffffffffffffffffffffffffffffffffffb")
+			10, u256(65534), u256(0x121212), u256(-1), std::string("\x1b\xab\xab"), true, h384("fffffffffffffffffffffffffffffffffffffffb")
 		));
 	)
 }
@@ -264,9 +264,9 @@ BOOST_AUTO_TEST_CASE(storage_array)
 		compileAndRun(sourceCode);
 		callContractFunction("f()");
 		REQUIRE_LOG_DATA(encodeArgs(
-			h160("ffffffffffffffffffffffffffffffffffffffff"),
-			h160("fffffffffffffffffffffffffffffffffffffffe"),
-			h160("fffffffffffffffffffffffffffffffffffffffd")
+			h384("ffffffffffffffffffffffffffffffffffffffff"),
+			h384("fffffffffffffffffffffffffffffffffffffffe"),
+			h384("fffffffffffffffffffffffffffffffffffffffd")
 		));
 	)
 }
@@ -291,9 +291,9 @@ BOOST_AUTO_TEST_CASE(storage_array_dyn)
 		REQUIRE_LOG_DATA(encodeArgs(
 			0x20,
 			3,
-			h160("0000000000000000000000000000000000000001"),
-			h160("0000000000000000000000000000000000000002"),
-			h160("0000000000000000000000000000000000000003")
+			h384("0000000000000000000000000000000000000001"),
+			h384("0000000000000000000000000000000000000002"),
+			h384("0000000000000000000000000000000000000003")
 		));
 	)
 }
