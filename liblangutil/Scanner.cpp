@@ -710,7 +710,7 @@ void Scanner::scanToken()
 			token = selectToken(Token::BitNot);
 			break;
 		case 'Q':
-			// NOTE(rgeraldes24): address literal exception: if not exactly 40 
+			// NOTE(rgeraldes24): address literal exception: if not exactly 96
 			// hex chars it will fallthrough and go through the identifier flow
 			if (scanAddress()) {
 				token = Token::AddressLiteral;
@@ -1031,7 +1031,7 @@ bool Scanner::scanAddress()
 	// not be an identifier start or a decimal digit; see ECMA-262
 	// section 7.8.3, page 17 (note that we read only one decimal digit
 	// if the value is 0).
-	if (i != 40 || isDecimalDigit(m_char) || isIdentifierStart(m_char)) {
+	if (i != 96 || isDecimalDigit(m_char) || isIdentifierStart(m_char)) {
 		rollback(i+1);
 		return false;
 	}
