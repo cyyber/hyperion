@@ -4,5 +4,6 @@
 	case "2":u256 {}
 }
 // ====
-// dialect: qrvmTyped 
+// dialect: qrvmTyped
 // ----
+// DeclarationError 6792: (36-52): Duplicate case "0" defined.

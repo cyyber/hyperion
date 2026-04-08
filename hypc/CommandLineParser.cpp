@@ -431,11 +431,11 @@ void CommandLineParser::parseLibraryOption(std::string const& _input)
 					"Note that the address must be prefixed with \"Q\"."
 				);
 
-			if (addrString.length() != 41)
+			if (addrString.length() != 97)
 				hypThrow(
 					CommandLineValidationError,
 					"Invalid length for address for library \"" + libName + "\": " +
-					std::to_string(addrString.substr(1).length()) + " instead of 40 hex characters."
+					std::to_string(addrString.substr(1).length()) + " instead of 96 hex characters."
 				);
 			if (!util::passesAddressChecksum(addrString, false))
 				hypThrow(

@@ -84,7 +84,7 @@ void DataFlowAnalyzer::operator()(ExpressionStatement& _statement)
 		{
 			ASTModifier::operator()(_statement);
 			cxx20::erase_if(m_state.environment.memory, mapTuple([&](auto&& key, auto&& /* value */) {
-				return !m_knowledgeBase.knownToBeDifferentByAtLeast32(vars->first, key);
+				return !m_knowledgeBase.knownToBeDifferentByAtLeastWordSize(vars->first, key);
 			}));
 			// TODO erase keccak knowledge, but in a more clever way
 			m_state.environment.keccak = {};

@@ -285,7 +285,7 @@ inline unsigned getLogNumber(Instruction _inst)
 /// @returns the PUSH<_number> instruction
 inline Instruction pushInstruction(unsigned _number)
 {
-	assertThrow(_number <= 32, InvalidOpcode, std::string("Invalid PUSH instruction requested (") + std::to_string(_number) + ").");
+	assertThrow(_number <= 64, InvalidOpcode, std::string("Invalid PUSH instruction requested (") + std::to_string(_number) + ").");
 	return Instruction(unsigned(Instruction::PUSH0) + _number);
 }
 

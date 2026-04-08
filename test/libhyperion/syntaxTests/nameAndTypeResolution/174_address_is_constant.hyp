@@ -2,3 +2,4 @@ contract C {
     address constant x = Q1212121212121212121212121212121212121212;
 }
 // ----
+// DeclarationError 7576: (38-79): Undeclared identifier.

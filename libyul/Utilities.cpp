@@ -26,6 +26,7 @@
 
 #include <libhyputil/CommonData.h>
 #include <libhyputil/FixedHash.h>
+#include <libhyputil/VMConstants.h>
 
 #include <boost/algorithm/string.hpp>
 
@@ -106,9 +107,15 @@ u256 hyperion::yul::valueOfNumberLiteral(Literal const& _literal)
 u256 hyperion::yul::valueOfStringLiteral(Literal const& _literal)
 {
 	yulAssert(_literal.kind == LiteralKind::String, "Expected string literal!");
-	yulAssert(_literal.value.str().size() <= 32, "Literal string too long!");
+	yulAssert(_literal.value.str().size() <= VMWordBytes, "Literal string too long!");
 
-	return u256(h256(_literal.value.str(), h256::FromBinary, h256::AlignLeft));
+	u256 value = 0;
+	for (char c: _literal.value.str())
+		value = (value << 8) | uint8_t(c);
+	// Left-align: shift remaining bytes to fill the word
+	if (_literal.value.str().size() < VMWordBytes)
+		value <<= (VMWordBytes - _literal.value.str().size()) * 8;
+	return value;
 }
 
 u256 yul::valueOfBoolLiteral(Literal const& _literal)

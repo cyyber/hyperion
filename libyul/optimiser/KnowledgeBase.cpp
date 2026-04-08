@@ -26,6 +26,7 @@
 #include <libyul/optimiser/DataFlowAnalyzer.h>
 
 #include <libhyputil/CommonData.h>
+#include <libhyputil/VMConstants.h>
 
 #include <variant>
 
@@ -55,10 +56,10 @@ std::optional<u256> KnowledgeBase::differenceIfKnownConstant(YulString _a, YulSt
 }
 
 
-bool KnowledgeBase::knownToBeDifferentByAtLeast32(YulString _a, YulString _b)
+bool KnowledgeBase::knownToBeDifferentByAtLeastWordSize(YulString _a, YulString _b)
 {
 	if (std::optional<u256> difference = differenceIfKnownConstant(_a, _b))
-		return difference >= 32 && difference <= u256(0) - 32;
+		return difference >= VMWordBytes && difference <= u256(0) - VMWordBytes;
 
 	return false;
 }
