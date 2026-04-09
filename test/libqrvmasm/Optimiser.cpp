@@ -1453,81 +1453,77 @@ BOOST_AUTO_TEST_CASE(verbatim_knownstate)
 				BOOST_CHECK(stackElements.at(height1) != stackElements.at(height2));
 }
 
-BOOST_AUTO_TEST_CASE(cse_remove_redundant_shift_masking, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(cse_remove_redundant_shift_masking)
 {
-	// TODO: Re-enable when AssemblyItem uses u512. Currently disabled because
-	// Pattern::WordSize=512 but AssemblyItem::data() is u256, causing mismatch
-	// in shift/mask optimization rules.
-	// Full 512-bit testing requires AssemblyItem to use u512.
-	for (unsigned i = 1; i < 256; i++)
+	for (unsigned i = 1; i < 512; i++)
 	{
 		checkCSE({
-			u256(boost::multiprecision::pow(u256(2), i) - 1),
+			u512(boost::multiprecision::pow(bigint(2), i) - 1),
 			Instruction::CALLVALUE,
-			u256(256-i),
+			u512(512-i),
 			Instruction::SHR,
 			Instruction::AND
 		}, {
 			Instruction::CALLVALUE,
-			u256(256-i),
+			u512(512-i),
 			Instruction::SHR,
 		});
 
 		checkCSE({
 			Instruction::CALLVALUE,
-			u256(256-i),
+			u512(512-i),
 			Instruction::SHR,
-			u256(boost::multiprecision::pow(u256(2), i)-1),
+			u512(boost::multiprecision::pow(bigint(2), i)-1),
 			Instruction::AND
 		}, {
 			Instruction::CALLVALUE,
-			u256(256-i),
+			u512(512-i),
 			Instruction::SHR,
 		});
 	}
 
 	// Check that opt. does NOT trigger
-	for (unsigned i = 1; i < 255; i++)
+	for (unsigned i = 1; i < 511; i++)
 	{
 		checkCSE({
-			u256(boost::multiprecision::pow(u256(2), i) - 1),
+			u512(boost::multiprecision::pow(bigint(2), i) - 1),
 			Instruction::CALLVALUE,
-			u256(255-i),
+			u512(511-i),
 			Instruction::SHR,
 			Instruction::AND
 		}, { // Opt. did some reordering
 			Instruction::CALLVALUE,
-			u256(255-i),
+			u512(511-i),
 			Instruction::SHR,
-			u256(boost::multiprecision::pow(u256(2), i)-1),
+			u512(boost::multiprecision::pow(bigint(2), i)-1),
 			Instruction::AND
 		});
 
 		checkCSE({
 			Instruction::CALLVALUE,
-			u256(255-i),
+			u512(511-i),
 			Instruction::SHR,
-			u256(boost::multiprecision::pow(u256(2), i)-1),
+			u512(boost::multiprecision::pow(bigint(2), i)-1),
 			Instruction::AND
 		}, { // Opt. did some reordering
-			u256(boost::multiprecision::pow(u256(2), i)-1),
+			u512(boost::multiprecision::pow(bigint(2), i)-1),
 			Instruction::CALLVALUE,
-			u256(255-i),
+			u512(511-i),
 			Instruction::SHR,
 			Instruction::AND
 		});
 	}
 
-	//(x >> (31*8)) & 0xffffffff
+	//(x >> (63*8)) & 0xffffffff
 	checkCSE({
 		Instruction::CALLVALUE,
-		u256(31*8),
+		u512(63*8),
 		Instruction::SHR,
-		u256(0xffffffff),
+		u512(0xffffffff),
 		Instruction::AND
 	}, {
 		Instruction::CALLVALUE,
-		u256(31*8),
+		u512(63*8),
 		Instruction::SHR
 	});
 }
