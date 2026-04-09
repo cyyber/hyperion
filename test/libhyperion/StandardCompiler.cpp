@@ -383,20 +383,20 @@ BOOST_AUTO_TEST_CASE(basic_compilation)
 	BOOST_CHECK(contract["qrvm"]["bytecode"]["object"].isString());
 	BOOST_CHECK_EQUAL(
 		hyperion::test::bytecodeSansMetadata(contract["qrvm"]["bytecode"]["object"].asString()),
-		std::string("6080604052348015600e575f80fd5b5060") +
-		(VersionIsRelease ? "3e" : util::toHex(bytes{uint8_t(60 + VersionStringStrict.size())})) +
-		"80601a5f395ff3fe60806040525f80fdfe"
+		std::string("61010060805234a015600f575fa0fd5b5060") +
+		(VersionIsRelease ? "3f" : util::toHex(bytes{uint8_t(61 + VersionStringStrict.size())})) +
+		"a0601b5f395ff3fe6101006080525fa0fdfe"
 	);
 	BOOST_CHECK(contract["qrvm"]["assembly"].isString());
 	BOOST_CHECK(contract["qrvm"]["assembly"].asString().find(
-		"    /* \"fileA\":0:14  contract A { } */\n  mstore(0x40, 0x80)\n  "
+		"    /* \"fileA\":0:14  contract A { } */\n  mstore(0x80, 0x0100)\n  "
 		"callvalue\n  dup1\n  "
 		"iszero\n  tag_1\n  jumpi\n  "
 		"0x00\n  "
 		"dup1\n  revert\n"
 		"tag_1:\n  pop\n  dataSize(sub_0)\n  dup1\n  "
 		"dataOffset(sub_0)\n  0x00\n  codecopy\n  0x00\n  return\nstop\n\nsub_0: assembly {\n        "
-		"/* \"fileA\":0:14  contract A { } */\n      mstore(0x40, 0x80)\n      "
+		"/* \"fileA\":0:14  contract A { } */\n      mstore(0x80, 0x0100)\n      "
 		"0x00\n      "
 		"dup1\n      revert\n\n    auxdata: 0xa26469706673582212"
 	) == 0);
@@ -418,8 +418,8 @@ BOOST_AUTO_TEST_CASE(basic_compilation)
 	BOOST_CHECK(contract["qrvm"]["legacyAssembly"][".code"].isArray());
 	BOOST_CHECK_EQUAL(
 		util::jsonCompactPrint(contract["qrvm"]["legacyAssembly"][".code"]),
-		"[{\"begin\":0,\"end\":14,\"name\":\"PUSH\",\"source\":0,\"value\":\"80\"},"
-		"{\"begin\":0,\"end\":14,\"name\":\"PUSH\",\"source\":0,\"value\":\"40\"},"
+		"[{\"begin\":0,\"end\":14,\"name\":\"PUSH\",\"source\":0,\"value\":\"100\"},"
+		"{\"begin\":0,\"end\":14,\"name\":\"PUSH\",\"source\":0,\"value\":\"80\"},"
 		"{\"begin\":0,\"end\":14,\"name\":\"MSTORE\",\"source\":0},"
 		"{\"begin\":0,\"end\":14,\"name\":\"CALLVALUE\",\"source\":0},"
 		"{\"begin\":0,\"end\":14,\"name\":\"DUP1\",\"source\":0},"

@@ -61,7 +61,7 @@ GasEstimator::GasConsumption GasEstimator::functionalEstimation(
 			hashValue,
 			Instruction::SHR,
 			Ids{classes.find(u256(VMWordBits - 32)), calldata}
-		);	
+		);
 		// lt(calldatasize(), 4) equals to 0 (ignore the shortcut for fallback functions)
 		classes.forceEqual(
 			classes.find(u256(0)),

@@ -42,7 +42,7 @@ unsigned ConstantOptimisationMethod::optimiseConstants(
 	for (AssemblyItem const& item: _items)
 		if (item.type() == Push)
 			pushes[item]++;
-	std::map<u256, AssemblyItems> pendingReplacements;
+	std::map<u512, AssemblyItems> pendingReplacements;
 	for (auto it: pushes)
 	{
 		AssemblyItem const& item = it.first;
@@ -53,11 +53,12 @@ unsigned ConstantOptimisationMethod::optimiseConstants(
 		params.isCreation = _isCreation;
 		params.runs = _runs;
 		params.qrvmVersion= _qrvmVersion;
-		LiteralMethod lit(params, item.data());
+		u256 dataVal = u256(item.data());
+		LiteralMethod lit(params, dataVal);
 		bigint literalGas = lit.gasNeeded();
-		CodeCopyMethod copy(params, item.data());
+		CodeCopyMethod copy(params, dataVal);
 		bigint copyGas = copy.gasNeeded();
-		ComputeMethod compute(params, item.data());
+		ComputeMethod compute(params, dataVal);
 		bigint computeGas = compute.gasNeeded();
 		AssemblyItems replacement;
 		if (copyGas < literalGas && copyGas < computeGas)
@@ -107,7 +108,7 @@ size_t ConstantOptimisationMethod::bytesRequired(AssemblyItems const& _items)
 
 void ConstantOptimisationMethod::replaceConstants(
 	AssemblyItems& _items,
-	std::map<u256, AssemblyItems> const& _replacements
+	std::map<u512, AssemblyItems> const& _replacements
 )
 {
 	AssemblyItems replaced;
@@ -162,7 +163,7 @@ AssemblyItems const& CodeCopyMethod::copyRoutine()
 {
 	AssemblyItems static copyRoutine{
 		// constant to be reused 3+ times
-		u256(0),
+		u512(0),
 
 		// back up memory
 		// mload(0)
@@ -170,8 +171,8 @@ AssemblyItems const& CodeCopyMethod::copyRoutine()
 		Instruction::MLOAD,
 
 		// codecopy(0, <offset>, 32)
-		u256(32),
-		AssemblyItem(PushData, u256(1) << 16), // replaced above in actualCopyRoutine[4]
+		u512(32),
+		AssemblyItem(PushData, u512(1) << 16), // replaced above in actualCopyRoutine[4]
 		Instruction::DUP4,
 		Instruction::CODECOPY,
 
@@ -190,7 +191,7 @@ AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
 {
 	if (_value < 0x10000)
 		// Very small value, not worth computing
-		return AssemblyItems{_value};
+		return AssemblyItems{AssemblyItem(u512(_value))};
 	else if (numberEncodingSize(~_value) < numberEncodingSize(_value))
 		// Negated is shorter to represent
 		return findRepresentation(~_value) + AssemblyItems{Instruction::NOT};
@@ -198,7 +199,7 @@ AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
 	{
 		// Decompose value into a * 2**k + b where abs(b) << 2**k
 		// Is not always better, try literal and decomposition method.
-		AssemblyItems routine{u256(_value)};
+		AssemblyItems routine{AssemblyItem(u512(_value))};
 		bigint bestGas = gasNeeded(routine);
 		for (unsigned bits = 255; bits > 8 && m_maxSteps > 0; --bits)
 		{
@@ -223,7 +224,7 @@ AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
 			if (lowerPart != 0)
 				newRoutine += findRepresentation(u256(abs(lowerPart)));
 			newRoutine += findRepresentation(upperPart);
-			newRoutine += AssemblyItems{u256(bits), Instruction::SHL};
+			newRoutine += AssemblyItems{AssemblyItem(u512(bits)), Instruction::SHL};
 			if (lowerPart > 0)
 				newRoutine += AssemblyItems{Instruction::ADD};
 			else if (lowerPart < 0)
@@ -289,7 +290,7 @@ bool ComputeMethod::checkRepresentation(u256 const& _value, AssemblyItems const&
 			break;
 		}
 		case Push:
-			stack.push_back(item.data());
+			stack.push_back(u256(item.data()));
 			break;
 		default:
 			return false;

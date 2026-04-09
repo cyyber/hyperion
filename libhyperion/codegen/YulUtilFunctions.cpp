@@ -2545,14 +2545,14 @@ std::string YulUtilFunctions::bytesOrStringConcatFunction(
 		else if (_functionTypeKind == FunctionType::Kind::BytesConcat)
 			hypAssert(
 				argumentType->isImplicitlyConvertibleTo(*TypeProvider::bytesMemory()) ||
-				argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(32))
+				argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(48))
 			);
 
 		if (argumentType->category() == Type::Category::FixedBytes)
 			targetTypes.emplace_back(argumentType);
 		else if (
 			auto const* literalType = dynamic_cast<StringLiteralType const*>(argumentType);
-			literalType && !literalType->value().empty() && literalType->value().size() <= 32
+			literalType && !literalType->value().empty() && literalType->value().size() <= 48
 		)
 			targetTypes.emplace_back(TypeProvider::fixedBytes(static_cast<unsigned>(literalType->value().size())));
 		else

@@ -5,5 +5,5 @@ contract C {
     }
 }
 // ----
-// TypeError 9574: (52-122): Type address is not implicitly convertible to expected type address payable.
-// TypeError 9574: (132-193): Type address is not implicitly convertible to expected type address payable.
+// DeclarationError 7576: (80-121): Undeclared identifier.
+// DeclarationError 7576: (152-193): Undeclared identifier.

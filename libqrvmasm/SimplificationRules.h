@@ -118,7 +118,7 @@ public:
 	/// @returns the id of the matched expression if this pattern is part of a match group.
 	Id id() const { return matchGroupValue().id; }
 	/// @returns the data of the matched expression if this pattern is part of a match group.
-	Word d() const { return Word(matchGroupValue().item->data()); }
+	Word const& d() const { return matchGroupValue().item->data(); }
 
 	std::string toString() const;
 

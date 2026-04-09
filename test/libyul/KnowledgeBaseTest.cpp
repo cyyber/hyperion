@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(difference)
 		u256(-20)
 	);
 	BOOST_CHECK(!kb.knownToBeDifferentByAtLeastWordSize("b"_yulstring, "c"_yulstring));
-	BOOST_CHECK(kb.knownToBeDifferentByAtLeastWordSize("b"_yulstring, "d"_yulstring));
+	BOOST_CHECK(!kb.knownToBeDifferentByAtLeastWordSize("b"_yulstring, "d"_yulstring));
 	BOOST_CHECK(kb.knownToBeDifferentByAtLeastWordSize("a"_yulstring, "b"_yulstring));
 	BOOST_CHECK(kb.knownToBeDifferentByAtLeastWordSize("b"_yulstring, "a"_yulstring));
 

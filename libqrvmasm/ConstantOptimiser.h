@@ -92,7 +92,7 @@ protected:
 	}
 
 	/// Replaces all constants i by the code given in @a _replacement[i].
-	static void replaceConstants(AssemblyItems& _items, std::map<u256, AssemblyItems> const& _replacements);
+	static void replaceConstants(AssemblyItems& _items, std::map<u512, AssemblyItems> const& _replacements);
 
 	Params m_params;
 	u256 const& m_value;

@@ -190,12 +190,22 @@ bool hyperion::util::isValidDecimal(std::string const& _string)
 
 std::string hyperion::util::formatAsStringOrNumber(std::string const& _value)
 {
-	// TODO: Update to VMWordBytes when h256 is replaced with h512
-	assertThrow(_value.length() <= 32, StringTooLong, "String to be formatted longer than 32 bytes.");
+	assertThrow(_value.length() <= 64, StringTooLong, "String to be formatted longer than 64 bytes.");
 
 	for (auto const& c: _value)
 		if (c <= 0x1f || c >= 0x7f || c == '"')
-			return "0x" + h256(_value, h256::AlignLeft).hex();
+		{
+			// Left-align value in hex, padded to word size
+			std::string hex;
+			for (char ch: _value)
+			{
+				uint8_t b = static_cast<uint8_t>(ch);
+				hex += "0123456789abcdef"[b >> 4];
+				hex += "0123456789abcdef"[b & 0xf];
+			}
+			hex.resize(128, '0'); // pad to 64 bytes = 128 hex chars
+			return "0x" + hex;
+		}
 
 	return escapeAndQuoteString(_value);
 }

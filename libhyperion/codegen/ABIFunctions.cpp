@@ -1009,7 +1009,7 @@ std::string ABIFunctions::abiEncodingFunctionStringLiteral(
 		else
 		{
 			hypAssert(_to.category() == Type::Category::FixedBytes, "");
-			hypAssert(value.size() <= 32, "");
+			hypAssert(value.size() <= VMWordBytes, "");
 			Whiskers templ(R"(
 				function <functionName>(pos) {
 					mstore(pos, <wordValue>)

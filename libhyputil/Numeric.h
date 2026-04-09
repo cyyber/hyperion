@@ -161,6 +161,12 @@ inline std::string toHex(u256 val)
 	return util::toHex(toBigEndian(val));
 }
 
+/// Convenience function for conversion of a u512 to hex
+inline std::string toHex(u512 val)
+{
+	return util::toHex(toCompactBigEndian(val, 1));
+}
+
 template <class T>
 inline std::string toCompactHexWithPrefix(T _value)
 {

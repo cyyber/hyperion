@@ -969,7 +969,12 @@ void CompilerUtils::convertType(
 		{
 			unsigned const numBytes = dynamic_cast<FixedBytesType const&>(_targetType).numBytes();
 			hypAssert(data.size() <= VMWordBytes);
-			m_context << (u256(h256(data, h256::AlignLeft)) & (~(u256(-1) >> (8 * numBytes))));
+			u256 dataValue = 0;
+			for (uint8_t b: data)
+				dataValue = (dataValue << 8) | b;
+			if (data.size() < VMWordBytes)
+				dataValue <<= (VMWordBytes - data.size()) * 8;
+			m_context << (dataValue & (~(u256(-1) >> (8 * numBytes))));
 		}
 		else if (targetTypeCategory == Type::Category::Array)
 		{
@@ -1541,7 +1546,14 @@ void CompilerUtils::storeStringData(bytesConstRef _data)
 	{
 		for (unsigned i = 0; i < _data.size(); i += VMWordBytes)
 		{
-			m_context << u256(h256(_data.cropped(i), h256::AlignLeft));
+			// Convert data chunk to u256, left-aligned in word
+			bytesConstRef chunk = _data.cropped(i, std::min<size_t>(_data.size() - i, VMWordBytes));
+			u256 value = 0;
+			for (uint8_t b: chunk)
+				value = (value << 8) | b;
+			if (chunk.size() < VMWordBytes)
+				value <<= (VMWordBytes - chunk.size()) * 8;
+			m_context << value;
 			storeInMemoryDynamic(*TypeProvider::uint256());
 		}
 		m_context << Instruction::POP;

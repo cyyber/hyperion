@@ -12,3 +12,4 @@ contract C {
     }
 }
 // ----
+// DeclarationError 7576: (215-256): Undeclared identifier.

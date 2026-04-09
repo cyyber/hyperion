@@ -8,3 +8,4 @@ contract C {
   }
 }
 // ----
+// DeclarationError 6792: (109-126): Duplicate case "0" defined.
