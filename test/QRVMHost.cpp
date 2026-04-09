@@ -332,7 +332,7 @@ h384 QRVMHost::convertFromQRVMC(qrvmc::address const& _addr)
 qrvmc::address QRVMHost::convertToQRVMC(h384 const& _addr)
 {
 	qrvmc::address a;
-	for (unsigned i = 0; i < 20; ++i)
+	for (unsigned i = 0; i < 48; ++i)
 		a.bytes[i] = _addr[i];
 	return a;
 }

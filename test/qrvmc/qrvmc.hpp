@@ -1,4 +1,4 @@
-// QRVMC: Quantum Resistant Client-VM Connector API.
+// EVMC: Ethereum Client-VM Connector API.
 // Copyright 2018 The EVMC Authors.
 // Licensed under the Apache License, Version 2.0.
 #pragma once
@@ -79,33 +79,16 @@ struct bytes32 : qrvmc_bytes32
 
     /// Converting constructor from unsigned integer value.
     ///
-    /// This constructor assigns the @p v value to the last 8 bytes [24:31]
+    /// This constructor assigns the @p v value to the last 8 bytes [56:63]
     /// in big-endian order.
     constexpr explicit bytes32(uint64_t v) noexcept
-      : qrvmc_bytes32{{0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
+      : qrvmc_bytes32{{0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0,
+                       0, 0, 0, 0, 0, 0, 0, 0,
                        static_cast<uint8_t>(v >> 56),
                        static_cast<uint8_t>(v >> 48),
                        static_cast<uint8_t>(v >> 40),
@@ -230,13 +213,14 @@ inline constexpr bool operator!=(const bytes32& a, const bytes32& b) noexcept
 /// The "less than" comparison operator for the qrvmc::bytes32 type.
 inline constexpr bool operator<(const bytes32& a, const bytes32& b) noexcept
 {
-    return load64be(&a.bytes[0]) < load64be(&b.bytes[0]) ||
-           (load64be(&a.bytes[0]) == load64be(&b.bytes[0]) &&
-            (load64be(&a.bytes[8]) < load64be(&b.bytes[8]) ||
-             (load64be(&a.bytes[8]) == load64be(&b.bytes[8]) &&
-              (load64be(&a.bytes[16]) < load64be(&b.bytes[16]) ||
-               (load64be(&a.bytes[16]) == load64be(&b.bytes[16]) &&
-                load64be(&a.bytes[24]) < load64be(&b.bytes[24]))))));
+    for (size_t i = 0; i < sizeof(a.bytes); i += 8)
+    {
+        auto va = load64be(&a.bytes[i]);
+        auto vb = load64be(&b.bytes[i]);
+        if (va != vb)
+            return va < vb;
+    }
+    return false;
 }
 
 /// The "greater than" comparison operator for the qrvmc::bytes32 type.
