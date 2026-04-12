@@ -290,7 +290,7 @@ void ExpressionEvaluator::operator()(Literal const& _literal)
 	static YulString const trueString("true");
 	static YulString const falseString("false");
 
-	setValue(valueOfLiteral(_literal));
+	setValue(u256(valueOfLiteral(_literal)));
 }
 
 void ExpressionEvaluator::operator()(Identifier const& _identifier)

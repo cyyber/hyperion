@@ -29,6 +29,7 @@
 #include <libqrvmasm/Instruction.h>
 
 #include <libhyputil/StackTooDeepString.h>
+#include <libhyputil/VMConstants.h>
 
 using namespace hyperion;
 using namespace hyperion::qrvmasm;
@@ -261,7 +262,7 @@ void StorageItem::retrieveValue(SourceLocation const&, bool _remove) const
 		}
 		else if (type->leftAligned())
 		{
-			CompilerUtils(m_context).leftShiftNumberOnStack(256 - 8 * type->storageBytes());
+			CompilerUtils(m_context).leftShiftNumberOnStack(VMWordBits - 8 * type->storageBytes());
 			cleaned = true;
 		}
 		else if (
@@ -315,7 +316,7 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 			// stack: value storage_ref multiplier old_full_value
 			// clear bytes in old value
 			m_context
-				<< Instruction::DUP2 << ((u256(1) << (8 * m_dataType->storageBytes())) - 1)
+				<< Instruction::DUP2 << u256((bigint(1) << (8 * m_dataType->storageBytes())) - 1)
 				<< Instruction::MUL;
 			m_context << Instruction::NOT << Instruction::AND << Instruction::SWAP1;
 			// stack: value storage_ref cleared_value multiplier
@@ -348,7 +349,7 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 					_sourceType.encodingType() &&
 					_sourceType.encodingType()->category() == Type::Category::FixedBytes
 				), "source not fixed bytes");
-				CompilerUtils(m_context).rightShiftNumberOnStack(256 - 8 * m_dataType->storageBytes());
+				CompilerUtils(m_context).rightShiftNumberOnStack(VMWordBits - 8 * m_dataType->storageBytes());
 			}
 			else
 			{
@@ -521,22 +522,22 @@ void StorageByteArrayElement::retrieveValue(SourceLocation const&, bool _remove)
 	else
 		m_context << Instruction::DUP2 << Instruction::SLOAD
 			<< Instruction::DUP2 << Instruction::BYTE;
-	m_context << (u256(1) << (256 - 8)) << Instruction::MUL;
+	m_context << (u512(1) << (VMWordBits - 8)) << Instruction::MUL;
 }
 
 void StorageByteArrayElement::storeValue(Type const&, SourceLocation const&, bool _move) const
 {
 	// stack: value ref byte_number
-	m_context << u256(31) << Instruction::SUB << u256(0x100) << Instruction::EXP;
-	// stack: value ref (1<<(8*(31-byte_number)))
+	m_context << u256(VMWordBytes - 1) << Instruction::SUB << u256(0x100) << Instruction::EXP;
+	// stack: value ref (1<<(8*(VMWordBytes-1-byte_number)))
 	m_context << Instruction::DUP2 << Instruction::SLOAD;
-	// stack: value ref (1<<(8*(31-byte_number))) old_full_value
+	// stack: value ref (1<<(8*(VMWordBytes-1-byte_number))) old_full_value
 	// clear byte in old value
 	m_context << Instruction::DUP2 << u256(0xff) << Instruction::MUL
 		<< Instruction::NOT << Instruction::AND;
-	// stack: value ref (1<<(32-byte_number)) old_full_value_with_cleared_byte
+	// stack: value ref (1<<(VMWordBytes-byte_number)) old_full_value_with_cleared_byte
 	m_context << Instruction::SWAP1;
-	m_context << (u256(1) << (256 - 8)) << Instruction::DUP5 << Instruction::DIV
+	m_context << (u512(1) << (VMWordBits - 8)) << Instruction::DUP5 << Instruction::DIV
 		<< Instruction::MUL << Instruction::OR;
 	// stack: value ref new_full_value
 	m_context << Instruction::SWAP1 << Instruction::SSTORE;
@@ -548,7 +549,7 @@ void StorageByteArrayElement::setToZero(SourceLocation const&, bool _removeRefer
 {
 	// stack: ref byte_number
 	hypAssert(_removeReference, "");
-	m_context << u256(31) << Instruction::SUB << u256(0x100) << Instruction::EXP;
+	m_context << u256(VMWordBytes - 1) << Instruction::SUB << u256(0x100) << Instruction::EXP;
 	// stack: ref (1<<(8*(31-byte_number)))
 	m_context << Instruction::DUP2 << Instruction::SLOAD;
 	// stack: ref (1<<(8*(31-byte_number))) old_full_value

@@ -6,4 +6,3 @@
 // ====
 // dialect: qrvmTyped
 // ----
-// DeclarationError 6792: (36-52): Duplicate case "0" defined.

@@ -63,7 +63,7 @@ void QRLAssemblyAdapter::appendInstruction(qrvmasm::Instruction _instruction)
 	m_assembly.append(_instruction);
 }
 
-void QRLAssemblyAdapter::appendConstant(u256 const& _constant)
+void QRLAssemblyAdapter::appendConstant(u512 const& _constant)
 {
 	m_assembly.append(_constant);
 }

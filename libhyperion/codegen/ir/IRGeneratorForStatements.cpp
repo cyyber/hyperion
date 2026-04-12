@@ -125,9 +125,9 @@ private:
 
 			if (variable->value()->annotation().type->category() == Type::Category::RationalNumber)
 			{
-				u256 intValue = dynamic_cast<RationalNumberType const&>(*variable->value()->annotation().type).literalValue(nullptr);
+				u512 intValue = dynamic_cast<RationalNumberType const&>(*variable->value()->annotation().type).literalValue(nullptr);
 				if (auto const* bytesType = dynamic_cast<FixedBytesType const*>(variable->type()))
-					intValue <<= 256 - 8 * bytesType->numBytes();
+					intValue <<= VMWordBits - 8 * bytesType->numBytes();
 				else
 					hypAssert(variable->type()->category() == Type::Category::Integer);
 				value = intValue.str();
@@ -1054,7 +1054,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		TypePointers nonIndexedParamTypes;
 		if (!event.isAnonymous())
 			define(indexedArgs.emplace_back(m_context.newYulVariable(), *TypeProvider::uint256())) <<
-				formatNumber(u256(h256::Arith(keccak256(functionType->externalSignature())))) << "\n";
+				formatNumber(u512(h256::Arith(keccak256(functionType->externalSignature()))) << (VMWordBits - 256)) << "\n";
 		for (size_t i = 0; i < event.parameters().size(); ++i)
 		{
 			Expression const& arg = *arguments[i];
@@ -1229,7 +1229,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			if (selectorType.kind() == FunctionType::Kind::Declaration)
 			{
 				hypAssert(selectorType.hasDeclaration());
-				selector = formatNumber(selectorType.externalIdentifier() << (256 - 32));
+				selector = formatNumber(u512(selectorType.externalIdentifier()) << (VMWordBits - 32));
 			}
 			else
 			{
@@ -1244,7 +1244,9 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			// hash the signature
 			Type const& selectorType = type(*arguments.front());
 			if (auto const* stringType = dynamic_cast<StringLiteralType const*>(&selectorType))
-				selector = formatNumber(util::selectorFromSignatureU256(stringType->value()));
+				// Use left-aligned bytes4 encoding: selector at top of VM word (shl(VMWordBits-32, sel)).
+				// Use bigint to avoid u256 overflow when VMWordBits > 256.
+				selector = toCompactHexWithPrefix(u512(bigint(util::selectorFromSignatureU32(stringType->value())) << (VMWordBits - 32)));
 			else
 			{
 				// Used to reset the free memory pointer later.
@@ -1811,8 +1813,9 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 					functionType.declaration().isPartOfExternalInterface(),
 					""
 				);
+				// selectorFromSignatureU256 returns sel at top of u256; shift to top of VM word.
 				define(IRVariable{_memberAccess}) << formatNumber(
-					util::selectorFromSignatureU256(functionType.externalSignature())
+					u512(util::selectorFromSignatureU256(functionType.externalSignature())) << (VMWordBits - 256)
 				) << "\n";
 			}
 			else if (functionType.kind() == FunctionType::Kind::Event)
@@ -1822,8 +1825,9 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 				hypAssert(
 					!(dynamic_cast<EventDefinition const&>(functionType.declaration()).isAnonymous())
 				);
+				// Event signature hash is bytes32 — left-align in the 64-byte VM word.
 				define(IRVariable{_memberAccess}) << formatNumber(
-					u256(h256::Arith(util::keccak256(functionType.externalSignature())))
+					u512(h256::Arith(util::keccak256(functionType.externalSignature()))) << (VMWordBits - 256)
 				) << "\n";
 			}
 			else
@@ -1876,7 +1880,7 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 		else if (member == "sig")
 			define(_memberAccess) <<
 				"and(calldataload(0), " <<
-				formatNumber(u256(0xffffffff) << (256 - 32)) <<
+				formatNumber(u512(0xffffffff) << (VMWordBits - 32)) <<
 				")\n";
 		else if (member == "gas")
 			hypAssert(false, "Gas has been removed.");
@@ -1912,7 +1916,7 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 			auto const& contractType = dynamic_cast<ContractType const&>(*arg);
 			hypAssert(!contractType.isSuper());
 			ContractDefinition const& contract = contractType.contractDefinition();
-			define(_memberAccess) << formatNumber(u256{contract.interfaceId()} << (256 - 32)) << "\n";
+			define(_memberAccess) << formatNumber(u512{contract.interfaceId()} << (VMWordBits - 32)) << "\n";
 		}
 		else if (member == "min" || member == "max")
 		{
@@ -2323,7 +2327,7 @@ void IRGeneratorForStatements::endVisit(IndexAccess const& _indexAccess)
 		("length", std::to_string(fixedBytesType.numBytes()))
 		("panic", m_utils.panicFunction(PanicCode::ArrayOutOfBounds))
 		("array", IRVariable(_indexAccess.baseExpression()).name())
-		("shl248", m_utils.shiftLeftFunction(256 - 8))
+		("shl248", m_utils.shiftLeftFunction(VMWordBits - 8))
 		("result", IRVariable(_indexAccess).name())
 		.render();
 	}
@@ -2594,7 +2598,8 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 		templ("success", m_context.newYulVariable());
 	templ("allocateUnbounded", m_utils.allocateUnboundedFunction());
 	templ("finalizeAllocation", m_utils.finalizeAllocationFunction());
-	templ("shl28", m_utils.shiftLeftFunction(8 * (32 - 4)));
+	// Shift selector to the top of the VM word so dispatcher (shr(VMWordBits-32, calldataload(0))) picks it up.
+	templ("shl28", m_utils.shiftLeftFunction(VMWordBits - 32));
 
 	templ("funSel", IRVariable(_functionCall.expression()).part("functionSelector").name());
 	templ("address", IRVariable(_functionCall.expression()).part("address").name());
@@ -3307,7 +3312,7 @@ void IRGeneratorForStatements::revertWithError(
 	})");
 	templ("pos", m_context.newYulVariable());
 	templ("end", m_context.newYulVariable());
-	templ("hash", util::selectorFromSignatureU256(_signature).str());
+	templ("hash", (u512(util::selectorFromSignatureU256(_signature)) << (VMWordBits - 256)).str());
 	templ("allocateUnbounded", m_utils.allocateUnboundedFunction());
 
 	std::vector<std::string> errorArgumentVars;

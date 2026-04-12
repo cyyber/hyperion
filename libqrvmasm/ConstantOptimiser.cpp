@@ -53,7 +53,7 @@ unsigned ConstantOptimisationMethod::optimiseConstants(
 		params.isCreation = _isCreation;
 		params.runs = _runs;
 		params.qrvmVersion= _qrvmVersion;
-		u256 dataVal = u256(item.data());
+		u512 dataVal = item.data();
 		LiteralMethod lit(params, dataVal);
 		bigint literalGas = lit.gasNeeded();
 		CodeCopyMethod copy(params, dataVal);
@@ -153,7 +153,7 @@ bigint CodeCopyMethod::gasNeeded() const
 AssemblyItems CodeCopyMethod::execute(Assembly& _assembly) const
 {
 	bytes data = toBigEndian(m_value);
-	assertThrow(data.size() == 32, OptimizerException, "Invalid number encoding.");
+	assertThrow(data.size() == 64, OptimizerException, "Invalid number encoding.");
 	AssemblyItems actualCopyRoutine = copyRoutine();
 	actualCopyRoutine[4] = _assembly.newData(data);
 	return actualCopyRoutine;
@@ -170,8 +170,8 @@ AssemblyItems const& CodeCopyMethod::copyRoutine()
 		Instruction::DUP1,
 		Instruction::MLOAD,
 
-		// codecopy(0, <offset>, 32)
-		u512(32),
+		// codecopy(0, <offset>, 64)
+		u512(64),
 		AssemblyItem(PushData, u512(1) << 16), // replaced above in actualCopyRoutine[4]
 		Instruction::DUP4,
 		Instruction::CODECOPY,
@@ -187,11 +187,11 @@ AssemblyItems const& CodeCopyMethod::copyRoutine()
 	return copyRoutine;
 }
 
-AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
+AssemblyItems ComputeMethod::findRepresentation(u512 const& _value)
 {
 	if (_value < 0x10000)
 		// Very small value, not worth computing
-		return AssemblyItems{AssemblyItem(u512(_value))};
+		return AssemblyItems{AssemblyItem(_value)};
 	else if (numberEncodingSize(~_value) < numberEncodingSize(_value))
 		// Negated is shorter to represent
 		return findRepresentation(~_value) + AssemblyItems{Instruction::NOT};
@@ -199,17 +199,17 @@ AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
 	{
 		// Decompose value into a * 2**k + b where abs(b) << 2**k
 		// Is not always better, try literal and decomposition method.
-		AssemblyItems routine{AssemblyItem(u512(_value))};
+		AssemblyItems routine{AssemblyItem(_value)};
 		bigint bestGas = gasNeeded(routine);
-		for (unsigned bits = 255; bits > 8 && m_maxSteps > 0; --bits)
+		for (unsigned bits = 511; bits > 8 && m_maxSteps > 0; --bits)
 		{
 			unsigned gapDetector = unsigned((_value >> (bits - 8)) & 0x1ff);
 			if (gapDetector != 0xff && gapDetector != 0x100)
 				continue;
 
-			u256 powerOfTwo = u256(1) << bits;
-			u256 upperPart = _value >> bits;
-			bigint lowerPart = _value & (powerOfTwo - 1);
+			u512 powerOfTwo = u512(1) << bits;
+			u512 upperPart = _value >> bits;
+			bigint lowerPart = bigint(_value) & bigint(powerOfTwo - 1);
 			if ((powerOfTwo - lowerPart) < lowerPart)
 			{
 				lowerPart = lowerPart - powerOfTwo; // make it negative
@@ -222,7 +222,7 @@ AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
 
 			AssemblyItems newRoutine;
 			if (lowerPart != 0)
-				newRoutine += findRepresentation(u256(abs(lowerPart)));
+				newRoutine += findRepresentation(u512(abs(lowerPart)));
 			newRoutine += findRepresentation(upperPart);
 			newRoutine += AssemblyItems{AssemblyItem(u512(bits)), Instruction::SHL};
 			if (lowerPart > 0)
@@ -243,10 +243,11 @@ AssemblyItems ComputeMethod::findRepresentation(u256 const& _value)
 	}
 }
 
-bool ComputeMethod::checkRepresentation(u256 const& _value, AssemblyItems const& _routine) const
+bool ComputeMethod::checkRepresentation(u512 const& _value, AssemblyItems const& _routine) const
 {
 	// This is a tiny QRVM that can only evaluate some instructions.
-	std::vector<u256> stack;
+	std::vector<u512> stack;
+	u512 const mask = (u512(1) << 512) - 1;
 	for (AssemblyItem const& item: _routine)
 	{
 		switch (item.type())
@@ -255,32 +256,32 @@ bool ComputeMethod::checkRepresentation(u256 const& _value, AssemblyItems const&
 		{
 			if (stack.size() < item.arguments())
 				return false;
-			u256* sp = &stack.back();
+			u512* sp = &stack.back();
 			switch (item.instruction())
 			{
 			case Instruction::MUL:
-				sp[-1] = sp[0] * sp[-1];
+				sp[-1] = u512((bigint(sp[0]) * bigint(sp[-1])) & bigint(mask));
 				break;
 			case Instruction::EXP:
 				if (sp[-1] > 0xff)
 					return false;
-				sp[-1] = boost::multiprecision::pow(sp[0], unsigned(sp[-1]));
+				sp[-1] = u512(boost::multiprecision::pow(bigint(sp[0]), unsigned(sp[-1])) & bigint(mask));
 				break;
 			case Instruction::ADD:
-				sp[-1] = sp[0] + sp[-1];
+				sp[-1] = u512((bigint(sp[0]) + bigint(sp[-1])) & bigint(mask));
 				break;
 			case Instruction::SUB:
-				sp[-1] = sp[0] - sp[-1];
+				sp[-1] = u512((bigint(sp[0]) - bigint(sp[-1])) & bigint(mask));
 				break;
 			case Instruction::NOT:
-				sp[0] = ~sp[0];
+				sp[0] = sp[0] ^ mask;
 				break;
 			case Instruction::SHL:
-				assertThrow(sp[0] <= u256(255), OptimizerException, "Invalid shift generated.");
-				sp[-1] = u256(bigint(sp[-1]) << unsigned(sp[0]));
+				assertThrow(sp[0] <= u512(511), OptimizerException, "Invalid shift generated.");
+				sp[-1] = u512((bigint(sp[-1]) << unsigned(sp[0])) & bigint(mask));
 				break;
 			case Instruction::SHR:
-				assertThrow(sp[0] <= u256(255), OptimizerException, "Invalid shift generated.");
+				assertThrow(sp[0] <= u512(511), OptimizerException, "Invalid shift generated.");
 				sp[-1] = sp[-1] >> unsigned(sp[0]);
 				break;
 			default:
@@ -290,7 +291,7 @@ bool ComputeMethod::checkRepresentation(u256 const& _value, AssemblyItems const&
 			break;
 		}
 		case Push:
-			stack.push_back(u256(item.data()));
+			stack.push_back(item.data());
 			break;
 		default:
 			return false;

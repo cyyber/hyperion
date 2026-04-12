@@ -1539,7 +1539,7 @@ BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 	for (auto const& op: ops)
 	{
 		checkCSE({
-			u256("0xffffffffffffffffffffffffffffffffffffffff"),
+			u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 			op,
 			Instruction::AND
 		}, {
@@ -1548,7 +1548,7 @@ BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 
 		checkCSE({
 			op,
-			u256("0xffffffffffffffffffffffffffffffffffffffff"),
+			u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 			Instruction::AND
 		}, {
 			op
@@ -1578,21 +1578,21 @@ BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 
 	// leave other opcodes untouched
 	checkCSE({
-		u256("0xffffffffffffffffffffffffffffffffffffffff"),
+		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 		Instruction::CALLVALUE,
 		Instruction::AND
 	}, {
 		Instruction::CALLVALUE,
-		u256("0xffffffffffffffffffffffffffffffffffffffff"),
+		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 		Instruction::AND
 	});
 
 	checkCSE({
 		Instruction::CALLVALUE,
-		u256("0xffffffffffffffffffffffffffffffffffffffff"),
+		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 		Instruction::AND
 	}, {
-		u256("0xffffffffffffffffffffffffffffffffffffffff"),
+		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
 		Instruction::CALLVALUE,
 		Instruction::AND
 	});

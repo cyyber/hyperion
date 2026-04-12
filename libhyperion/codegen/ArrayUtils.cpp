@@ -32,6 +32,7 @@
 #include <libhyputil/FunctionSelector.h>
 #include <libhyputil/Whiskers.h>
 #include <libhyputil/StackTooDeepString.h>
+#include <libhyputil/VMConstants.h>
 
 #include <libqrvmasm/Instruction.h>
 #include <liblangutil/Exceptions.h>
@@ -888,7 +889,7 @@ void ArrayUtils::popStorageArrayElement(ArrayType const& _type) const
 			}
 			sstore(ref, slot_value)
 		})");
-		code("panicSelector", util::selectorFromSignatureU256("Panic(uint256)").str());
+		code("panicSelector", (u512(util::selectorFromSignatureU256("Panic(uint256)")) << (VMWordBits - 256)).str());
 		code("emptyArrayPop", std::to_string(unsigned(util::PanicCode::EmptyArrayPop)));
 		m_context.appendInlineAssembly(code.render(), {"ref", "slot_value", "length"});
 		m_context << Instruction::POP << Instruction::POP << Instruction::POP;

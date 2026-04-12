@@ -414,7 +414,7 @@ std::optional<u256> DataFlowAnalyzer::valueOfIdentifier(YulString const& _name) 
 {
 	if (AssignedValue const* value = variableValue(_name))
 		if (Literal const* literal = std::get_if<Literal>(value->value))
-			return valueOfLiteral(*literal);
+			return u256(valueOfLiteral(*literal));
 	return std::nullopt;
 }
 

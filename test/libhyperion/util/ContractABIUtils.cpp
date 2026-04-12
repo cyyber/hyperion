@@ -345,12 +345,12 @@ hyperion::frontend::test::ParameterList ContractABIUtils::failureParameters(byte
 			parameters.push_back(Parameter{bytes(), "", ABIType{ABIType::UnsignedDec}, FormatInfo{}});
 			/// If _bytes contains at least a 1 byte message (function selector + tail pointer + message length + message)
 			/// append an additional string parameter to represent that message.
-			if (_bytes.size() > 68)
+			if (_bytes.size() > 132)
 				parameters.push_back(Parameter{bytes(), "", ABIType{ABIType::String}, FormatInfo{}});
 		}
 		else
-			for (size_t i = 4; i < _bytes.size(); i += 32)
-				parameters.push_back(Parameter{bytes(), "", ABIType{ABIType::HexString, ABIType::AlignNone, 32}, FormatInfo{}});
+			for (size_t i = 4; i < _bytes.size(); i += 64)
+				parameters.push_back(Parameter{bytes(), "", ABIType{ABIType::HexString, ABIType::AlignNone, 64}, FormatInfo{}});
 		return parameters;
 	}
 }

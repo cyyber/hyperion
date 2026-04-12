@@ -40,15 +40,15 @@ using namespace hyperion::frontend::test;
 
 bytes BytesUtils::alignLeft(bytes _bytes)
 {
-	hyptestAssert(_bytes.size() <= 32, "");
+	hyptestAssert(_bytes.size() <= 64, "");
 	size_t size = _bytes.size();
-	return std::move(_bytes) + bytes(32 - size, 0);
+	return std::move(_bytes) + bytes(64 - size, 0);
 }
 
 bytes BytesUtils::alignRight(bytes _bytes)
 {
-	hyptestAssert(_bytes.size() <= 32, "");
-	return bytes(32 - _bytes.size(), 0) + std::move(_bytes);
+	hyptestAssert(_bytes.size() <= 64, "");
+	return bytes(64 - _bytes.size(), 0) + std::move(_bytes);
 }
 
 bytes BytesUtils::applyAlign(
@@ -86,7 +86,10 @@ bytes BytesUtils::convertNumber(std::string const& _literal)
 {
 	try
 	{
-		return toCompactBigEndian(u256{_literal});
+		// Handle negative numbers via two's complement in u512 (to support 64-byte slots)
+		if (!_literal.empty() && _literal.at(0) == '-')
+			return toCompactBigEndian(u512(0) - u512{_literal.substr(1)});
+		return toCompactBigEndian(u512{_literal});
 	}
 	catch (std::exception const&)
 	{
@@ -147,7 +150,7 @@ std::string BytesUtils::formatUnsigned(bytes const& _bytes)
 {
 	std::stringstream os;
 
-	hyptestAssert(!_bytes.empty() && _bytes.size() <= 32, "");
+	hyptestAssert(!_bytes.empty() && _bytes.size() <= 64, "");
 
 	return fromBigEndian<u256>(_bytes).str();
 }
@@ -156,9 +159,11 @@ std::string BytesUtils::formatSigned(bytes const& _bytes)
 {
 	std::stringstream os;
 
-	hyptestAssert(!_bytes.empty() && _bytes.size() <= 32, "");
+	hyptestAssert(!_bytes.empty() && _bytes.size() <= 64, "");
 
-	if (*_bytes.begin() & 0x80)
+	// For 64-byte slots, the sign bit is at the start of the u256 portion (byte at offset size-32)
+	size_t signByteOffset = _bytes.size() > 32 ? _bytes.size() - 32 : 0;
+	if (_bytes[signByteOffset] & 0x80)
 		os << u2s(fromBigEndian<u256>(_bytes));
 	else
 		os << fromBigEndian<u256>(_bytes);
@@ -183,7 +188,7 @@ std::string BytesUtils::formatBoolean(bytes const& _bytes)
 
 std::string BytesUtils::formatHex(bytes const& _bytes, bool _shorten)
 {
-	hyptestAssert(!_bytes.empty() && _bytes.size() <= 32, "");
+	hyptestAssert(!_bytes.empty() && _bytes.size() <= 64, "");
 	u256 value = fromBigEndian<u256>(_bytes);
 	std::string output = toCompactHexWithPrefix(value);
 
@@ -263,16 +268,16 @@ std::string BytesUtils::formatRawBytes(
 
 	if (_bytes.size() != ContractABIUtils::encodingSize(_parameters))
 	{
-		// Interpret all full 32-byte values as integers.
-		parameters = ContractABIUtils::defaultParameters(_bytes.size() / 32);
+		// Interpret all full 64-byte values as integers.
+		parameters = ContractABIUtils::defaultParameters(_bytes.size() / 64);
 
 		// We'd introduce trailing zero bytes if we interpreted the final bit as an integer.
 		// We want a right-aligned sequence of bytes instead.
-		if (_bytes.size() % 32 != 0)
+		if (_bytes.size() % 64 != 0)
 			parameters.push_back({
 				bytes(),
 				"",
-				ABIType{ABIType::HexString, ABIType::AlignRight, _bytes.size() % 32},
+				ABIType{ABIType::HexString, ABIType::AlignRight, _bytes.size() % 64},
 				FormatInfo{},
 			});
 	}
@@ -313,7 +318,8 @@ std::string BytesUtils::formatBytes(
 		// be signed. If an unsigned was detected in the expectations,
 		// but the actual result returned a signed, it would be formatted
 		// incorrectly.
-		if (*_bytes.begin() & 0x80)
+		// For 64-byte slots, the sign bit is at the start of the u256 portion (byte at offset size-32)
+		if (_bytes.size() > 32 ? (_bytes[_bytes.size() - 32] & 0x80) : (*_bytes.begin() & 0x80))
 			os << formatSigned(_bytes);
 		else
 		{
@@ -390,16 +396,16 @@ std::string BytesUtils::formatBytesRange(
 
 	if (_bytes.size() != ContractABIUtils::encodingSize(_parameters))
 	{
-		// Interpret all full 32-byte values as integers.
-		parameters = ContractABIUtils::defaultParameters(_bytes.size() / 32);
+		// Interpret all full 64-byte values as integers.
+		parameters = ContractABIUtils::defaultParameters(_bytes.size() / 64);
 
 		// We'd introduce trailing zero bytes if we interpreted the final bit as an integer.
 		// We want a right-aligned sequence of bytes instead.
-		if (_bytes.size() % 32 != 0)
+		if (_bytes.size() % 64 != 0)
 			parameters.push_back({
 				bytes(),
 				"",
-				ABIType{ABIType::HexString, ABIType::AlignRight, _bytes.size() % 32},
+				ABIType{ABIType::HexString, ABIType::AlignRight, _bytes.size() % 64},
 				FormatInfo{},
 			});
 	}

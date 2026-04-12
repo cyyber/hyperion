@@ -84,7 +84,7 @@ void ExecutionFramework::reset()
 	m_qrvmcHost->reset();
 	for (size_t i = 0; i < 10; i++)
 		m_qrvmcHost->accounts[QRVMHost::convertToQRVMC(account(i))].balance =
-			QRVMHost::convertToQRVMC(u256(1) << 100);
+			QRVMHost::convertUintToQRVMC(u256(1) << 100);
 }
 
 std::pair<bool, string> ExecutionFramework::compareAndCreateMessage(
@@ -128,14 +128,14 @@ u256 ExecutionFramework::gasPrice() const
 	// here and below we use "return u256{....}" instead of just "return {....}"
 	// to please MSVC and avoid unexpected
 	// warning C4927 : illegal conversion; more than one user - defined conversion has been implicitly applied
-	return u256{QRVMHost::convertFromQRVMC(m_qrvmcHost->tx_context.tx_gas_price)};
+	return QRVMHost::convertUintFromQRVMC(m_qrvmcHost->tx_context.tx_gas_price);
 }
 
-u256 ExecutionFramework::blockHash(u256 const& _number) const
+h256 ExecutionFramework::blockHash(u256 const& _number) const
 {
-	return u256{QRVMHost::convertFromQRVMC(
+	return QRVMHost::convertFromQRVMC(
 		m_qrvmcHost->get_block_hash(static_cast<int64_t>(_number & numeric_limits<uint64_t>::max()))
-	)};
+	);
 }
 
 u256 ExecutionFramework::blockNumber() const
@@ -161,7 +161,7 @@ void ExecutionFramework::sendMessage(bytes const& _data, bool _isCreation, u256 
 	message.input_data = _data.data();
 	message.input_size = _data.size();
 	message.sender = QRVMHost::convertToQRVMC(m_sender);
-	message.value = QRVMHost::convertToQRVMC(_value);
+	message.value = QRVMHost::convertUintToQRVMC(_value);
 
 	if (_isCreation)
 	{
@@ -214,7 +214,7 @@ void ExecutionFramework::sendQuanta(h384 const& _addr, u256 const& _amount)
 	}
 	qrvmc_message message{};
 	message.sender = QRVMHost::convertToQRVMC(m_sender);
-	message.value = QRVMHost::convertToQRVMC(_amount);
+	message.value = QRVMHost::convertUintToQRVMC(_amount);
 	message.kind = QRVMC_CALL;
 	message.recipient = QRVMHost::convertToQRVMC(_addr);
 	message.code_address = message.recipient;
@@ -276,7 +276,7 @@ bytes ExecutionFramework::logData(size_t _logIdx) const
 
 u256 ExecutionFramework::balanceAt(h384 const& _addr) const
 {
-	return u256(QRVMHost::convertFromQRVMC(m_qrvmcHost->get_balance(QRVMHost::convertToQRVMC(_addr))));
+	return QRVMHost::convertUintFromQRVMC(m_qrvmcHost->get_balance(QRVMHost::convertToQRVMC(_addr)));
 }
 
 bool ExecutionFramework::storageEmpty(h384 const& _addr) const

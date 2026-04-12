@@ -960,7 +960,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				}
 			if (!event.isAnonymous())
 			{
-				m_context << u256(h256::Arith(keccak256(function.externalSignature())));
+				// Event signature hash is bytes32 — left-align in the 64-byte VM word.
+				m_context << (u512(h256::Arith(keccak256(function.externalSignature()))) << (VMWordBits - 256));
 				++numIndexed;
 			}
 			hypAssert(numIndexed <= 4, "Too many indexed arguments.");
@@ -1365,7 +1366,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					// hash the signature
 					if (auto const* stringType = dynamic_cast<StringLiteralType const*>(selectorType))
 					{
-						m_context << util::selectorFromSignatureU256(stringType->value());
+						m_context << (u512(util::selectorFromSignatureU256(stringType->value())) << (VMWordBits - 256));
 						dataOnStack = TypeProvider::fixedBytes(4);
 					}
 					else
@@ -1407,7 +1408,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				// stack: <memory pointer> <selector>
 
 				// load current memory, mask and combine the selector
-				std::string mask = formatNumber((u256(-1) >> 32));
+				std::string mask = formatNumber((u512(-1) >> 32));
 				m_context.appendInlineAssembly(R"({
 					let data_start := add(mem_ptr, 0x40)
 					let data := mload(data_start)
@@ -1653,12 +1654,12 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			utils().popStackElement(*functionType);
 
 			if (functionType->kind() == FunctionType::Kind::Event)
-				m_context << u256(h256::Arith(util::keccak256(functionType->externalSignature())));
+				m_context << (u512(h256::Arith(util::keccak256(functionType->externalSignature()))) << (VMWordBits - 256));
 			else
 			{
 				m_context << functionType->externalIdentifier();
 				/// need to store it as bytes4
-				utils().leftShiftNumberOnStack(224);
+				utils().leftShiftNumberOnStack(VMWordBits - 32);
 			}
 			return false;
 		}
@@ -1676,7 +1677,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 							hypAssert(false, "Contract member is neither variable nor function.");
 						m_context << identifier;
 						/// need to store it as bytes4
-						utils().leftShiftNumberOnStack(224);
+						utils().leftShiftNumberOnStack(VMWordBits - 32);
 						return false;
 					}
 	}
@@ -1837,7 +1838,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			m_context << Instruction::SWAP1 << Instruction::POP;
 
 			/// need to store it as bytes4
-			utils().leftShiftNumberOnStack(224);
+			utils().leftShiftNumberOnStack(VMWordBits - 32);
 		}
 		else if (member == "address")
 		{
@@ -1879,7 +1880,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			m_context << u256(0) << Instruction::CALLDATASIZE;
 		else if (member == "sig")
 			m_context << u256(0) << Instruction::CALLDATALOAD
-				<< (u256(0xffffffff) << (256 - 32)) << Instruction::AND;
+				<< (u512(0xffffffff) << (VMWordBits - 32)) << Instruction::AND;
 		else if (member == "gas")
 			hypAssert(false, "Gas has been removed.");
 		else if (member == "blockhash")
@@ -1921,7 +1922,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 		{
 			Type const* arg = dynamic_cast<MagicType const&>(*_memberAccess.expression().annotation().type).typeArgument();
 			ContractDefinition const& contract = dynamic_cast<ContractType const&>(*arg).contractDefinition();
-			m_context << (u256{contract.interfaceId()} << (256 - 32));
+			m_context << (u512{contract.interfaceId()} << (VMWordBits - 32));
 		}
 		else if (member == "min" || member == "max")
 		{
@@ -2194,7 +2195,7 @@ bool ExpressionCompiler::visit(IndexAccess const& _indexAccess)
 			m_context.appendConditionalPanic(util::PanicCode::ArrayOutOfBounds);
 
 			m_context << Instruction::BYTE;
-			utils().leftShiftNumberOnStack(256 - 8);
+			utils().leftShiftNumberOnStack(VMWordBits - 8);
 			break;
 		}
 		case Type::Category::TypeType:
@@ -2366,9 +2367,9 @@ void ExpressionCompiler::appendCompareOperatorCode(Token _operator, Type const& 
 			hypUnimplementedAssert(functionType->sizeOnStack() == 2, "");
 			m_context << Instruction::SWAP3;
 
-			m_context << ((u256(1) << 160) - 1) << Instruction::AND;
+			m_context << ((u512(1) << 384) - 1) << Instruction::AND;
 			m_context << Instruction::SWAP1;
-			m_context << ((u256(1) << 160) - 1) << Instruction::AND;
+			m_context << ((u512(1) << 384) - 1) << Instruction::AND;
 			m_context << Instruction::EQ;
 			m_context << Instruction::SWAP2;
 			m_context << ((u256(1) << 32) - 1) << Instruction::AND;

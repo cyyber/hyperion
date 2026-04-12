@@ -1016,7 +1016,13 @@ std::string ABIFunctions::abiEncodingFunctionStringLiteral(
 				}
 			)");
 			templ("functionName", functionName);
-			templ("wordValue", formatAsStringOrNumber(value));
+			// Left-align the literal bytes in the 64-byte word.
+			u512 leftAligned = 0;
+			for (char c: value)
+				leftAligned = (leftAligned << 8) | static_cast<uint8_t>(c);
+			if (value.size() < VMWordBytes)
+				leftAligned <<= (VMWordBytes - value.size()) * 8;
+			templ("wordValue", formatNumber(leftAligned));
 			return templ.render();
 		}
 	});

@@ -3426,7 +3426,7 @@ bool TypeChecker::visit(IndexAccess const& _access)
 			if (expectType(*index, *TypeProvider::uint256()))
 			{
 				if (auto indexValue = dynamic_cast<RationalNumberType const*>(type(*index)))
-					length = indexValue->literalValue(nullptr);
+					length = u256(indexValue->literalValue(nullptr));
 				else
 					m_errorReporter.fatalTypeError(3940_error, index->location(), "Integer constant expected.");
 			}

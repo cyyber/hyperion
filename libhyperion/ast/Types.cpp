@@ -148,7 +148,7 @@ void StorageOffsets::computeOffsets(TypePointers const& _types)
 		Type const* type = _types[i];
 		if (!type->canBeStored())
 			continue;
-		if (byteOffset + type->storageBytes() > 32)
+		if (byteOffset + type->storageBytes() > VMWordBytes)
 		{
 			// would overflow, go to next slot
 			++slotOffset;
@@ -157,7 +157,7 @@ void StorageOffsets::computeOffsets(TypePointers const& _types)
 		hypAssert(slotOffset < bigint(1) << 256 ,"Object too large for storage.");
 		offsets[i] = std::make_pair(u256(slotOffset), byteOffset);
 		hypAssert(type->storageSize() >= 1, "Invalid storage size.");
-		if (type->storageSize() == 1 && byteOffset + type->storageBytes() <= 32)
+		if (type->storageSize() == 1 && byteOffset + type->storageBytes() <= VMWordBytes)
 			byteOffset += type->storageBytes();
 		else
 		{
@@ -520,11 +520,11 @@ std::string AddressType::canonicalName() const
 	return "address";
 }
 
-u256 AddressType::literalValue(Literal const* _literal) const
+u512 AddressType::literalValue(Literal const* _literal) const
 {
 	hypAssert(_literal, "");
 	hypAssert(boost::starts_with(_literal->value(), "Q"), "");
-	return u256(boost::replace_all_copy(_literal->value(), "Q", "0x"));
+	return u512(boost::replace_all_copy(_literal->value(), "Q", "0x"));
 }
 
 TypeResult AddressType::unaryOperatorResult(Token _operator) const
@@ -1173,12 +1173,12 @@ std::string RationalNumberType::toString(bool) const
 	return "rational_const " + numerator + " / " + denominator;
 }
 
-u256 RationalNumberType::literalValue(Literal const*) const
+u512 RationalNumberType::literalValue(Literal const*) const
 {
 	// We ignore the literal and hope that the type was correctly determined to represent
 	// its value.
 
-	u256 value;
+	u512 value;
 	bigint shiftedValue;
 
 	if (!isFractional())
@@ -1192,13 +1192,18 @@ u256 RationalNumberType::literalValue(Literal const*) const
 	}
 
 	// we ignore the literal and hope that the type was correctly determined
-	hypAssert(shiftedValue <= u256(-1), "Number constant too large.");
-	hypAssert(shiftedValue >= -(bigint(1) << 255), "Number constant too small.");
+	hypAssert(shiftedValue <= u512(-1), "Number constant too large.");
+	hypAssert(shiftedValue >= -(bigint(1) << 511), "Number constant too small.");
 
 	if (m_value >= rational(0))
-		value = u256(shiftedValue);
+		value = u512(shiftedValue);
 	else
-		value = s2u(s256(shiftedValue));
+	{
+		// Sign-extend to full VM word width (512 bits = 64 bytes) using two's complement
+		// 2^512 + shiftedValue = proper u512 two's complement for negative
+		bigint twoPow = bigint(1) << 512;
+		value = u512(twoPow + shiftedValue);
+	}
 	return value;
 }
 
@@ -1418,13 +1423,13 @@ bool FixedBytesType::operator==(Type const& _other) const
 	return other.m_bytes == m_bytes;
 }
 
-u256 BoolType::literalValue(Literal const* _literal) const
+u512 BoolType::literalValue(Literal const* _literal) const
 {
 	hypAssert(_literal, "");
 	if (_literal->token() == Token::TrueLiteral)
-		return u256(1);
+		return u512(1);
 	else if (_literal->token() == Token::FalseLiteral)
-		return u256(0);
+		return u512(0);
 	else
 		hypAssert(false, "Bool type constructed from non-boolean literal.");
 }
@@ -1774,9 +1779,9 @@ unsigned ArrayType::calldataEncodedTailSize() const
 {
 	hypAssert(isDynamicallyEncoded(), "");
 	if (isDynamicallySized())
-		// We do not know the dynamic length itself, but at least the uint256 containing the
+		// We do not know the dynamic length itself, but at least the word containing the
 		// length must still be present.
-		return 32;
+		return VMWordBytes;
 	bigint size = unlimitedStaticCalldataSize(false);
 	hypAssert(size <= std::numeric_limits<unsigned>::max(), "Array size does not fit unsigned.");
 	return unsigned(size);

@@ -365,7 +365,7 @@ public:
 	{
 		return canonicalName();
 	}
-	virtual u256 literalValue(Literal const*) const
+	virtual u512 literalValue(Literal const*) const
 	{
 		hypAssert(false, "Literal value requested for type without literals: " + toString(false));
 	}
@@ -464,7 +464,7 @@ public:
 	std::string toString(bool _withoutDataLocation) const override;
 	std::string canonicalName() const override;
 
-	u256 literalValue(Literal const* _literal) const override;
+	u512 literalValue(Literal const* _literal) const override;
 
 	Type const* encodingType() const override { return this; }
 	TypeResult interfaceType(bool) const override { return this; }
@@ -602,7 +602,7 @@ public:
 	bool canBeStored() const override { return false; }
 
 	std::string toString(bool _withoutDataLocation) const override;
-	u256 literalValue(Literal const* _literal) const override;
+	u512 literalValue(Literal const* _literal) const override;
 	Type const* mobileType() const override;
 
 	/// @returns the underlying raw literal value.
@@ -729,7 +729,7 @@ public:
 	bool nameable() const override { return true; }
 
 	std::string toString(bool) const override { return "bool"; }
-	u256 literalValue(Literal const* _literal) const override;
+	u512 literalValue(Literal const* _literal) const override;
 	Type const* encodingType() const override { return this; }
 	TypeResult interfaceType(bool) const override { return this; }
 };
@@ -777,7 +777,7 @@ public:
 	{
 		return nullptr;
 	}
-	unsigned memoryHeadSize() const override { return 32; }
+	unsigned memoryHeadSize() const override { return VMWordBytes; }
 	u256 memoryDataSize() const override = 0;
 
 	unsigned calldataEncodedSize(bool) const override = 0;
@@ -927,7 +927,7 @@ public:
 	std::string richIdentifier() const override;
 	bool operator==(Type const& _other) const override;
 	unsigned calldataEncodedSize(bool) const override { hypAssert(false, ""); }
-	unsigned calldataEncodedTailSize() const override { return 32; }
+	unsigned calldataEncodedTailSize() const override { return VMWordBytes; }
 	bool isDynamicallySized() const override { return true; }
 	bool isDynamicallyEncoded() const override { return true; }
 	std::string toString(bool _withoutDataLocation) const override;

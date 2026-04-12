@@ -81,13 +81,14 @@ BOOST_AUTO_TEST_CASE(storage_layout_simple)
 		{"second", TypeProvider::fromElementaryTypeName("uint120")},
 		{"wraps", TypeProvider::fromElementaryTypeName("uint16")}
 	}));
-	BOOST_REQUIRE_EQUAL(u256(2), members.storageSize());
+	// With 64-byte slot, uint128(16) + uint120(15) + uint16(2) = 33 bytes fits in one slot
+	BOOST_REQUIRE_EQUAL(u256(1), members.storageSize());
 	BOOST_REQUIRE(members.memberStorageOffset("first") != nullptr);
 	BOOST_REQUIRE(members.memberStorageOffset("second") != nullptr);
 	BOOST_REQUIRE(members.memberStorageOffset("wraps") != nullptr);
 	BOOST_CHECK(*members.memberStorageOffset("first") == std::make_pair(u256(0), unsigned(0)));
 	BOOST_CHECK(*members.memberStorageOffset("second") == std::make_pair(u256(0), unsigned(16)));
-	BOOST_CHECK(*members.memberStorageOffset("wraps") == std::make_pair(u256(1), unsigned(0)));
+	BOOST_CHECK(*members.memberStorageOffset("wraps") == std::make_pair(u256(0), unsigned(31)));
 }
 
 BOOST_AUTO_TEST_CASE(storage_layout_mapping)

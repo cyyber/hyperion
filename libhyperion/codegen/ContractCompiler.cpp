@@ -237,22 +237,22 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	m_context.appendInlineAssembly(
 		util::Whiskers(R"(
 		{
-			// If code starts at 11, an mstore(0) writes to the full PUSH20 plus data
-			// without the need for a shift.
-			let codepos := 11
+			// If code starts at 15, an mstore(0) writes to the full PUSH48 plus 48-byte address
+			// without the need for a shift (64-byte word - 48-byte address - 1 byte PUSH48 = 15).
+			let codepos := 15
 			codecopy(codepos, subOffset, subSize)
-			// Check that the first opcode is a PUSH20
-			if iszero(eq(0x73, byte(0, mload(codepos)))) {
+			// Check that the first opcode is a PUSH48 (0x8f)
+			if iszero(eq(0x8f, byte(0, mload(codepos)))) {
 				mstore(0, <panicSelector>)
 				mstore(4, <panicCode>)
 				revert(0, 0x24)
 			}
 			mstore(0, address())
-			mstore8(codepos, 0x73)
+			mstore8(codepos, 0x8f)
 			return(codepos, subSize)
 		}
 		)")
-		("panicSelector", util::selectorFromSignatureU256("Panic(uint256)").str())
+		("panicSelector", (u512(util::selectorFromSignatureU256("Panic(uint256)")) << (VMWordBits - 256)).str())
 		("panicCode", "0")
 		.render(),
 		{"subSize", "subOffset"}
@@ -734,12 +734,12 @@ bool ContractCompiler::visit(InlineAssembly const& _inlineAssembly)
 					// In such case we should not get here.
 					hypAssert(variable, "");
 
-					u256 value;
+					u512 value;
 					if (variable->value()->annotation().type->category() == Type::Category::RationalNumber)
 					{
 						value = dynamic_cast<RationalNumberType const&>(*variable->value()->annotation().type).literalValue(nullptr);
 						if (FixedBytesType const* bytesType = dynamic_cast<FixedBytesType const*>(variable->type()))
-							value = value << (256 - 8 * bytesType->numBytes());
+							value = value << (VMWordBits - 8 * bytesType->numBytes());
 						else
 							hypAssert(variable->type()->category() == Type::Category::Integer, "");
 					}
@@ -763,7 +763,7 @@ bool ContractCompiler::visit(InlineAssembly const& _inlineAssembly)
 							hypAssert(variable->type()->category() == Type::Category::FixedBytes, "");
 							unsigned const numBytes = dynamic_cast<FixedBytesType const&>(*variable->type()).numBytes();
 							hypAssert(stringLiteral.value().size() <= numBytes, "");
-							value = u256(h256(stringLiteral.value(), h256::AlignLeft));
+							value = u512(util::h512(stringLiteral.value(), util::h512::AlignLeft));
 							break;
 						}
 						default:

@@ -163,12 +163,40 @@ public:
 
 	static std::pair<bool, std::string> compareAndCreateMessage(bytes const& _result, bytes const& _expectation);
 
+	/// Encode a value as left-aligned bytes32 (for bytesN types).
+	/// In 64-byte ABI slot: data in upper bytes, zeros in lower bytes.
+	static bytes encodeBytes32(u256 const& _value)
+	{
+		bytes be = toBigEndian(_value);
+		// Left-align: value in upper 32 bytes (bytes 0-31), zeros in lower (bytes 32-63)
+		be.resize(64, 0);
+		return be;
+	}
+
 	static bytes encode(bool _value) { return encode(uint8_t(_value)); }
-	static bytes encode(int _value) { return encode(u256(_value)); }
+	static bytes encode(int _value)
+	{
+		// Sign-extend to 64-byte ABI slot for signed integers
+		if (_value < 0)
+		{
+			bytes result(64, 0xff);
+			// Store the signed int value in the last sizeof(int) bytes
+			for (size_t i = 0; i < sizeof(int); ++i)
+				result[63 - i] = static_cast<uint8_t>(_value >> (8 * i));
+			return result;
+		}
+		return encode(u256(_value));
+	}
 	static bytes encode(size_t _value) { return encode(u256(_value)); }
 	static bytes encode(char const* _value) { return encode(std::string(_value)); }
-	static bytes encode(uint8_t _value) { return bytes(31, 0) + bytes{_value}; }
-	static bytes encode(u256 const& _value) { return toBigEndian(_value); }
+	static bytes encode(uint8_t _value) { return bytes(63, 0) + bytes{_value}; }
+	static bytes encode(u256 const& _value)
+	{
+		// Pad u256 (32 bytes) to 64-byte ABI slot
+		bytes result(32, 0);
+		result += toBigEndian(_value);
+		return result;
+	}
 	/// @returns the fixed-point encoding of a rational number with a given
 	/// number of fractional bits.
 	static bytes encode(std::pair<rational, int> const& _valueAndPrecision)
@@ -177,11 +205,24 @@ public:
 		int fractionalBits = _valueAndPrecision.second;
 		return encode(u256((value.numerator() << fractionalBits) / value.denominator()));
 	}
-	static bytes encode(util::h256 const& _value) { return _value.asBytes(); }
-	static bytes encode(util::h384 const& _value) { return encode(util::h256(_value, util::h256::AlignRight)); }
+	static bytes encode(util::h256 const& _value)
+	{
+		// h256 represents bytes32 — left-aligned in 64-byte ABI slot.
+		// Data in upper 32 bytes, lower 32 bytes are zero.
+		bytes result = _value.asBytes();
+		result.resize(64, 0);
+		return result;
+	}
+	static bytes encode(util::h384 const& _value)
+	{
+		// Pad h384 (48 bytes) to 64-byte ABI slot (right-aligned, zero-padded on left)
+		bytes result(16, 0);
+		result += _value.asBytes();
+		return result;
+	}
 	static bytes encode(bytes const& _value, bool _padLeft = true)
 	{
-		bytes padding = bytes((32 - _value.size() % 32) % 32, 0);
+		bytes padding = bytes((64 - _value.size() % 64) % 64, 0);
 		return _padLeft ? padding + _value : _value + padding;
 	}
 	static bytes encode(std::string const& _value) { return encode(util::asBytes(_value), false); }
@@ -211,12 +252,12 @@ public:
 	template <class Arg>
 	static bytes encodeDyn(Arg const& _arg)
 	{
-		return encodeArgs(u256(0x20), u256(_arg.size()), _arg);
+		return encodeArgs(u256(0x40), u256(_arg.size()), _arg);
 	}
 
 	u256 gasLimit() const;
 	u256 gasPrice() const;
-	u256 blockHash(u256 const& _blockNumber) const;
+	util::h256 blockHash(u256 const& _blockNumber) const;
 	u256 blockNumber() const;
 
 	template<typename Range>

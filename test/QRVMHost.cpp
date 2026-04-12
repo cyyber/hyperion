@@ -159,9 +159,9 @@ void QRVMHost::newTransactionFrame()
 
 void QRVMHost::transfer(qrvmc::MockedAccount& _sender, qrvmc::MockedAccount& _recipient, u256 const& _value) noexcept
 {
-	assertThrow(u256(convertFromQRVMC(_sender.balance)) >= _value, Exception, "Insufficient balance for transfer");
-	_sender.balance = convertToQRVMC(u256(convertFromQRVMC(_sender.balance)) - _value);
-	_recipient.balance = convertToQRVMC(u256(convertFromQRVMC(_recipient.balance)) + _value);
+	assertThrow(convertUintFromQRVMC(_sender.balance) >= _value, Exception, "Insufficient balance for transfer");
+	_sender.balance = convertUintToQRVMC(convertUintFromQRVMC(_sender.balance) - _value);
+	_recipient.balance = convertUintToQRVMC(convertUintFromQRVMC(_recipient.balance) + _value);
 }
 
 void QRVMHost::recordCalls(qrvmc_message const& _message) noexcept
@@ -175,18 +175,18 @@ void QRVMHost::recordCalls(qrvmc_message const& _message) noexcept
 qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 {
 	recordCalls(_message);
-	if (_message.recipient == "Q0000000000000000000000000000000000000001"_address)
+	if (_message.recipient == "Q000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"_address)
 		return precompileDepositRoot(_message);
-	else if (_message.recipient == "Q0000000000000000000000000000000000000002"_address)
+	else if (_message.recipient == "Q000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"_address)
 		return precompileSha256(_message);
-	else if (_message.recipient == "Q0000000000000000000000000000000000000004"_address)
+	else if (_message.recipient == "Q000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"_address)
 		return precompileIdentity(_message);
-	else if (_message.recipient == "Q0000000000000000000000000000000000000005"_address)
+	else if (_message.recipient == "Q000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005"_address)
 		return precompileModExp(_message);
 
 	auto const stateBackup = accounts;
 
-	u256 value{convertFromQRVMC(_message.value)};
+	u256 value{convertUintFromQRVMC(_message.value)};
 	auto& sender = accounts[_message.sender];
 
 	qrvmc::bytes code;
@@ -205,6 +205,7 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 			return result;
 		}
 	}
+
 
 	if (message.kind == QRVMC_CREATE)
 	{
@@ -230,8 +231,8 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 		bytes encodedNonce = encodeRlpInteger(sender.nonce);
 
 		h384 createAddress(keccak256(
-			bytes{static_cast<uint8_t>(0xc0 + 21 + encodedNonce.size())} +
-			bytes{0x94} +
+			bytes{static_cast<uint8_t>(0xc0 + 49 + encodedNonce.size())} +
+			bytes{0xb0} +
 			bytes(begin(message.sender.bytes), end(message.sender.bytes)) +
 			encodedNonce
 		), h384::AlignRight);
@@ -271,7 +272,7 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 
 	if (value != 0 && message.kind != QRVMC_DELEGATECALL)
 	{
-		if (value > convertFromQRVMC(sender.balance))
+		if (value > convertUintFromQRVMC(sender.balance))
 		{
 			qrvmc::Result result;
 			result.status_code = QRVMC_INSUFFICIENT_BALANCE;
@@ -339,14 +340,36 @@ qrvmc::address QRVMHost::convertToQRVMC(h384 const& _addr)
 
 h256 QRVMHost::convertFromQRVMC(qrvmc::bytes32 const& _data)
 {
-	return h256(bytes(begin(_data.bytes), end(_data.bytes)));
+	// bytes32/hash is left-aligned: data in upper 32 bytes (big-endian MSB = bytes 0-31).
+	// This matches how VM stores bytes32 on stack (upper 256 bits of uint512).
+	return h256(bytes(_data.bytes, _data.bytes + 32));
 }
 
 qrvmc::bytes32 QRVMHost::convertToQRVMC(h256 const& _data)
 {
-	qrvmc::bytes32 d;
+	qrvmc::bytes32 d{};
+	// bytes32/hash left-aligned: place in upper 32 bytes (bytes 0-31).
 	for (unsigned i = 0; i < 32; ++i)
 		d.bytes[i] = _data[i];
+	return d;
+}
+
+u256 QRVMHost::convertUintFromQRVMC(qrvmc::bytes32 const& _data)
+{
+	// Same as convertFromQRVMC but returns u256
+	u256 result = 0;
+	for (unsigned i = 32; i < 64; ++i)
+		result = (result << 8) | _data.bytes[i];
+	return result;
+}
+
+qrvmc::bytes32 QRVMHost::convertUintToQRVMC(u256 const& _value)
+{
+	// Same layout as convertToQRVMC(h256)
+	qrvmc::bytes32 d{};
+	bytes be = toBigEndian(_value);
+	for (unsigned i = 0; i < 32; ++i)
+		d.bytes[32 + i] = be[i];
 	return d;
 }
 
