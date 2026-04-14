@@ -79,7 +79,7 @@ void ElementaryTypeNameToken::assertDetails(Token _baseType, unsigned const& _fi
 	{
 		hypAssert(_second == 0, "There should not be a second size argument to type " + std::string(TokenTraits::toString(_baseType)) + ".");
 		hypAssert(
-			_first <= 256 && _first % 8 == 0,
+			_first <= 384 && _first % 8 == 0,
 			"No elementary type " + std::string(TokenTraits::toString(_baseType)) + std::to_string(_first) + "."
 		);
 	}
@@ -171,8 +171,8 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 		{
 			if (*it < '0' || *it > '9')
 				return -1;
-			//  Overflow check. The largest acceptable value is 256 in the callers.
-			if (ret >= 256)
+			//  Overflow check. The largest acceptable value is 384 in the callers.
+			if (ret >= 384)
 				return -1;
 			ret *= 10;
 			ret += *it - '0';
@@ -194,7 +194,7 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 		}
 		else if (keyword == Token::UInt || keyword == Token::Int)
 		{
-			if (0 < m && m <= 256 && m % 8 == 0 && positionX == _literal.end())
+			if (0 < m && m <= 384 && m % 8 == 0 && positionX == _literal.end())
 			{
 				if (keyword == Token::UInt)
 					return std::make_tuple(Token::UIntM, m, 0);
