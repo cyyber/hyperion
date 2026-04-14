@@ -383,10 +383,13 @@ qrvmc::Result QRVMHost::precompileSha256(qrvmc_message const& _message) noexcept
 {
 	// static data so that we do not need a release routine...
 	bytes static hash;
-	hash = picosha2::hash256(bytes(
+	bytes const rawHash = picosha2::hash256(bytes(
 		_message.input_data,
 		_message.input_data + _message.input_size
 	));
+	// Pad to 64 bytes (VMWordBytes), bytes32 left-aligned in upper 32 bytes.
+	hash = rawHash;
+	hash.resize(64, 0);
 
 	// Base 60 gas + 12 gas / word.
 	int64_t gas_cost = 60 + 12 * ((static_cast<int64_t>(_message.input_size) + 31) / 32);

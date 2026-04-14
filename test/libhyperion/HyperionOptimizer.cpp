@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(sequence_number_for_calls)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(string,string)", 0x40, 0x80, 3, "abc", 3, "def");
+	compareVersions("f(string,string)", 0x80, 0x100, 3, "abc", 3, "def");
 }
 
 BOOST_AUTO_TEST_CASE(computing_constants)
@@ -438,7 +438,7 @@ BOOST_AUTO_TEST_CASE(constant_optimization_early_exit)
 	char const* sourceCode = R"(
 	contract HexEncoding {
 		function hexEncodeTest(address addr) public returns (bytes32 ret) {
-			uint x = uint(uint160(addr)) / 2**32;
+			uint x = uint(uint384(addr)) / 2**32;
 
 			// Nibble interleave
 			x = x & 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
@@ -458,7 +458,7 @@ BOOST_AUTO_TEST_CASE(constant_optimization_early_exit)
 			assembly {
 				mstore(0, x)
 			}
-			x = uint160(addr) * 2**96;
+			x = uint384(addr) * 2**96;
 
 			// Nibble interleave
 			x = x & 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff;
@@ -634,8 +634,8 @@ BOOST_AUTO_TEST_CASE(optimise_multi_stores)
 	)";
 	compileBothVersions(sourceCode);
 	compareVersions("f()");
-	BOOST_CHECK_EQUAL(numInstructions(m_nonOptimizedBytecode, Instruction::SSTORE), 8);
-	BOOST_CHECK_EQUAL(numInstructions(m_optimizedBytecode, Instruction::SSTORE), 7);
+	BOOST_CHECK_EQUAL(numInstructions(m_nonOptimizedBytecode, Instruction::SSTORE), 9);
+	BOOST_CHECK_EQUAL(numInstructions(m_optimizedBytecode, Instruction::SSTORE), 8);
 }
 
 BOOST_AUTO_TEST_CASE(optimise_constant_to_codecopy)
@@ -687,7 +687,7 @@ BOOST_AUTO_TEST_CASE(byte_access)
 		}
 	)";
 	compileBothVersions(sourceCode);
-	compareVersions("f(bytes32)", u256("0x1223344556677889900112233445566778899001122334455667788990011223"));
+	compareVersions("f(bytes32)", util::h256("0x1223344556677889900112233445566778899001122334455667788990011223"));
 }
 
 BOOST_AUTO_TEST_CASE(shift_optimizer_bug)

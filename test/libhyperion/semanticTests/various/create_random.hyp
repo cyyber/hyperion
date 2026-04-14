@@ -17,18 +17,18 @@ contract C {
 
     function testCalc() external returns (address a1, address a2) {
         a1 = calculateCreate(address(this), 1);
-        a2 = calculateCreate2(address(this), keccak256(hex"60016000f3"), bytes32(uint256(uint160(address(this)))));
+        a2 = calculateCreate2(address(this), keccak256(hex"60016000f3"), bytes32(uint256(uint384(address(this)))));
     }
 
     function calculateCreate(address from, uint256 nonce) private pure returns (address) {
         assert(nonce <= 127);
         bytes memory data =
-            bytes.concat(hex"d694", bytes20(uint160(from)), nonce == 0 ? bytes1(hex"80") : bytes1(uint8(nonce)));
-        return address(uint160(uint256(keccak256(data)))); // Take the lower 160-bits
+            bytes.concat(hex"d694", bytes48(uint384(from)), nonce == 0 ? bytes1(hex"80") : bytes1(uint8(nonce)));
+        return address(uint384(uint256(keccak256(data)))); // Take the lower 160-bits
     }
 
     function calculateCreate2(address creator, bytes32 codehash, bytes32 salt) private pure returns (address) {
-        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), creator, salt, codehash)))));
+        return address(uint384(uint256(keccak256(abi.encodePacked(bytes1(0xff), creator, salt, codehash)))));
     }
 }
 // ----

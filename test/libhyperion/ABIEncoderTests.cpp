@@ -617,10 +617,11 @@ BOOST_AUTO_TEST_CASE(bytesNN_arrays)
 				bytes arr;
 				for (size_t i = 0; i < size; i ++)
 				{
-					// bytesN value left-aligned in 64-byte slot
+					// bytesN: padded to 64-byte slot (new), left-aligned
 					bytes value(64, 0);
-					for (size_t j = 0; j < width; ++j)
-						value[width - 1 - j] = static_cast<uint8_t>((i + 1) >> (8 * j));
+					uint64_t val = static_cast<uint64_t>(i + 1);
+					for (size_t j = 0; j < width && j < 8; ++j)
+						value[width - 1 - j] = static_cast<uint8_t>(val >> (8 * j));
 					arr += value;
 				}
 				bytes encoded = encodeArgs(
@@ -669,8 +670,9 @@ BOOST_AUTO_TEST_CASE(bytesNN_arrays_dyn)
 				for (size_t i = 0; i < size; i ++)
 				{
 					bytes value(64, 0);
-					for (size_t j = 0; j < width; ++j)
-						value[width - 1 - j] = static_cast<uint8_t>((i + 1) >> (8 * j));
+					uint64_t val = static_cast<uint64_t>(i + 1);
+					for (size_t j = 0; j < width && j < 8; ++j)
+						value[width - 1 - j] = static_cast<uint8_t>(val >> (8 * j));
 					arr += value;
 				}
 				bytes encoded = encodeArgs(
