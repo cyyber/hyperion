@@ -1739,7 +1739,20 @@ std::string YulUtilFunctions::clearStorageRangeFunction(Type const& _type)
 
 	std::string functionName = "clear_storage_range_" + _type.identifier();
 
+	bool clearFullSlot = _type.storageBytes() < VMWordBytes;
 	return m_functionCollector.createFunction(functionName, [&]() {
+		if (clearFullSlot)
+			return Whiskers(R"(
+				function <functionName>(start, end) {
+					for {} lt(start, end) { start := add(start, <increment>) }
+					{
+						sstore(start, 0)
+					}
+				}
+			)")
+			("functionName", functionName)
+			("increment", _type.storageSize().str())
+			.render();
 		return Whiskers(R"(
 			function <functionName>(start, end) {
 				for {} lt(start, end) { start := add(start, <increment>) }
@@ -1749,7 +1762,7 @@ std::string YulUtilFunctions::clearStorageRangeFunction(Type const& _type)
 			}
 		)")
 		("functionName", functionName)
-		("setToZero", storageSetToZeroFunction(_type.storageBytes() < VMWordBytes ? *TypeProvider::uint256() : _type))
+		("setToZero", storageSetToZeroFunction(_type))
 		("increment", _type.storageSize().str())
 		.render();
 	});

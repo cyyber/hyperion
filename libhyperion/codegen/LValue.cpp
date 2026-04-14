@@ -277,7 +277,7 @@ void StorageItem::retrieveValue(SourceLocation const&, bool _remove) const
 		if (!cleaned)
 		{
 			hypAssert(type->sizeOnStack() == 1, "");
-			m_context << ((u256(0x1) << (8 * type->storageBytes())) - 1) << Instruction::AND;
+			m_context << ((u512(0x1) << (8 * type->storageBytes())) - 1) << Instruction::AND;
 		}
 	}
 }
@@ -316,7 +316,7 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 			// stack: value storage_ref multiplier old_full_value
 			// clear bytes in old value
 			m_context
-				<< Instruction::DUP2 << u256((bigint(1) << (8 * m_dataType->storageBytes())) - 1)
+				<< Instruction::DUP2 << u512((bigint(1) << (8 * m_dataType->storageBytes())) - 1)
 				<< Instruction::MUL;
 			m_context << Instruction::NOT << Instruction::AND << Instruction::SWAP1;
 			// stack: value storage_ref cleared_value multiplier
@@ -339,7 +339,7 @@ void StorageItem::storeValue(Type const& _sourceType, SourceLocation const& _loc
 				{
 					hypAssert(fun->sizeOnStack() == 1, "");
 					m_context <<
-						((u256(1) << (8 * m_dataType->storageBytes())) - 1) <<
+						((u512(1) << (8 * m_dataType->storageBytes())) - 1) <<
 						Instruction::AND;
 				}
 			}
@@ -499,7 +499,7 @@ void StorageItem::setToZero(SourceLocation const&, bool _removeReference) const
 			// stack: storage_ref multiplier old_full_value
 			// clear bytes in old value
 			m_context
-				<< Instruction::SWAP1 << ((u256(1) << (8 * m_dataType->storageBytes())) - 1)
+				<< Instruction::SWAP1 << ((u512(1) << (8 * m_dataType->storageBytes())) - 1)
 				<< Instruction::MUL;
 			m_context << Instruction::NOT << Instruction::AND;
 			// stack: storage_ref cleared_value

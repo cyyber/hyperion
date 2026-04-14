@@ -1331,7 +1331,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		{
 			IRVariable var = convert(*arguments[0], *TypeProvider::bytesMemory());
 			templ("abiDecode", m_context.abiFunctions().tupleDecoder(targetTypes, true));
-			templ("offset", "add(" + var.part("mpos").name() + ", 32)");
+			templ("offset", "add(" + var.part("mpos").name() + ", 64)");
 			templ("length",
 				m_utils.arrayLengthFunction(*TypeProvider::bytesMemory()) + "(" + var.part("mpos").name() + ")"
 			);
@@ -1382,8 +1382,9 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		if (auto const* stringLiteral = dynamic_cast<StringLiteralType const*>(arguments.front()->annotation().type))
 		{
 			// Optimization: Compute keccak256 on string literals at compile-time.
+			// keccak256 result is bytes32, must be left-aligned in 512-bit word.
 			define(_functionCall) <<
-				("0x" + keccak256(stringLiteral->value()).hex()) <<
+				("0x" + keccak256(stringLiteral->value()).hex() + std::string(64, '0')) <<
 				"\n";
 		}
 		else
@@ -1895,9 +1896,9 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 			m_context.subObjectsCreated().insert(&contract);
 			appendCode() << Whiskers(R"(
 				let <size> := datasize("<objectName>")
-				let <result> := <allocationFunction>(add(<size>, 32))
+				let <result> := <allocationFunction>(add(<size>, 64))
 				mstore(<result>, <size>)
-				datacopy(add(<result>, 32), dataoffset("<objectName>"), <size>)
+				datacopy(add(<result>, 64), dataoffset("<objectName>"), <size>)
 			)")
 			("allocationFunction", m_utils.allocationFunction())
 			("size", m_context.newYulVariable())

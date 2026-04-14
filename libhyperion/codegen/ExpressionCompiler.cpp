@@ -893,7 +893,8 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			arguments.front()->accept(*this);
 			if (auto const* stringLiteral = dynamic_cast<StringLiteralType const*>(argType))
 				// Optimization: Compute keccak256 on string literals at compile-time.
-				m_context << u256(keccak256(stringLiteral->value()));
+				// keccak256 result is bytes32, must be left-aligned in 512-bit word.
+				m_context << (u512(h256::Arith(keccak256(stringLiteral->value()))) << (VMWordBits - 256));
 			else if (*argType == *TypeProvider::bytesMemory() || *argType == *TypeProvider::stringMemory())
 			{
 				// Optimization: If type is bytes or string, then do not encode,

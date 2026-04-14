@@ -192,8 +192,10 @@ public:
 	static bytes encode(uint8_t _value) { return bytes(63, 0) + bytes{_value}; }
 	static bytes encode(u256 const& _value)
 	{
-		// Pad u256 (32 bytes) to 64-byte ABI slot
-		bytes result(32, 0);
+		// Pad u256 (32 bytes) to 64-byte ABI slot.
+		// If the high bit is set, treat as negative and sign-extend with 0xff.
+		bool negative = (_value >> 255) != 0;
+		bytes result(32, negative ? 0xff : 0x00);
 		result += toBigEndian(_value);
 		return result;
 	}
@@ -268,7 +270,7 @@ public:
 			result += encode(u256(_elements.size()));
 		if (_dynamicallyEncoded)
 		{
-			u256 offset = u256(_elements.size()) * 32;
+			u256 offset = u256(_elements.size()) * 64;
 			std::vector<bytes> subEncodings;
 			for (auto const& element: _elements)
 			{

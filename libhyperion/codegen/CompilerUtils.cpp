@@ -228,7 +228,7 @@ void CompilerUtils::storeInMemoryDynamic(Type const& _type, bool _padToWordBound
 	{
 		combineExternalFunctionType(true);
 		m_context << Instruction::DUP2 << Instruction::MSTORE;
-		m_context << u256(_padToWordBoundaries ? VMWordBytes : 24) << Instruction::ADD;
+		m_context << u256(_padToWordBoundaries ? VMWordBytes : 52) << Instruction::ADD;
 	}
 	else if (_type.isValueType())
 	{
@@ -951,9 +951,9 @@ void CompilerUtils::convertType(
 					cleanHigherOrderBits(targetType);
 				if (chopSignBitsPending)
 				{
-					if (targetType.numBits() < 256)
+					if (targetType.numBits() < VMWordBits)
 						m_context
-							<< u256((bigint(1) << targetType.numBits()) - 1)
+							<< u512((bigint(1) << targetType.numBits()) - 1)
 							<< Instruction::AND;
 					chopSignBitsPending = false;
 				}
@@ -1616,7 +1616,7 @@ void CompilerUtils::cleanHigherOrderBits(IntegerType const& _typeOnStack)
 	else if (_typeOnStack.isSigned())
 		m_context << u256(_typeOnStack.numBits() / 8 - 1) << Instruction::SIGNEXTEND;
 	else
-		m_context << u256((bigint(1) << _typeOnStack.numBits()) - 1) << Instruction::AND;
+		m_context << u512((bigint(1) << _typeOnStack.numBits()) - 1) << Instruction::AND;
 }
 
 void CompilerUtils::leftShiftNumberOnStack(unsigned _bits)
