@@ -383,19 +383,11 @@ Parameter TestFileParser::parseParameter()
 		std::string parsed = parseHexNumber();
 		parameter.rawString += parsed;
 		bytes hexBytes = BytesUtils::convertHexNumber(parsed);
-		// Hex literals of exactly 32 bytes are bytes32-like values (hashes, selectors)
-		// that should be left-aligned in the 64-byte ABI slot.
-		if (parameter.alignment == Parameter::Alignment::None && hexBytes.size() == 32)
-		{
-			parameter.abiType.align = ABIType::AlignLeft;
-			parameter.rawBytes = BytesUtils::alignLeft(std::move(hexBytes));
-		}
-		else
-			parameter.rawBytes = BytesUtils::applyAlign(
-				parameter.alignment,
-				parameter.abiType,
-				std::move(hexBytes)
-			);
+		parameter.rawBytes = BytesUtils::applyAlign(
+			parameter.alignment,
+			parameter.abiType,
+			std::move(hexBytes)
+		);
 	}
 	else if (accept(Token::Address))
 	{

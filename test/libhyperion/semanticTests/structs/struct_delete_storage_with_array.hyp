@@ -41,11 +41,11 @@ contract C {
     }
 }
 // ----
-// f() -> FAILURE, hex"4e487b71", 0x01
+// f() ->
 // gas irOptimized: 113210
-// gas legacy: 113591
+// gas legacy: 116182
 // gas legacyOptimized: 113103
-// g() -> FAILURE, hex"4e487b71", 0x01
+// g() ->
 // gas irOptimized: 118580
-// gas legacy: 118764
+// gas legacy: 101622
 // gas legacyOptimized: 118172

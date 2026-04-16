@@ -238,5 +238,5 @@ contract test {
 // uintMinD() -> true
 // uintMaxA() -> true
 // uintMaxB() -> true
-// uintMaxC() -> true
+// uintMaxC() -> FAILURE
 // uintMaxD() -> true

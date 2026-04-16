@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(format_unsigned_singleline_signed_encoding)
 
 	BOOST_REQUIRE_EQUAL(test.format(), "// f(uint8): 1 -> 1");
 
-	test.setRawBytes(bytes(32, 0) + toBigEndian(u256{-1}));
+	test.setRawBytes(toBigEndian(u512(0) - u512(1)));
 	test.setFailure(false);
 
 	BOOST_REQUIRE_EQUAL(test.format("", TestFunctionCall::RenderMode::ActualValuesExpectedGas), "// f(uint8): 1 -> -1");
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(format_multiple_unsigned_singleline)
 
 BOOST_AUTO_TEST_CASE(format_signed_singleline)
 {
-	bytes expectedBytes = bytes(32, 0) + toBigEndian(u256{-1});
+	bytes expectedBytes = toBigEndian(u512(0) - u512(1));
 	ABIType abiType{ABIType::UnsignedDec, ABIType::AlignRight, 64};
 	Parameter param{expectedBytes, "-1", abiType, FormatInfo{}};
 	FunctionCallExpectations expectations{std::vector<Parameter>{param}, false, std::string{}, {}};
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(format_signed_singleline)
 
 	BOOST_REQUIRE_EQUAL(test.format(), "// f(int8): -1 -> -1");
 
-	test.setRawBytes(bytes(32, 0) + toBigEndian(u256{-2}));
+	test.setRawBytes(toBigEndian(u512(0) - u512(2)));
 	test.setFailure(false);
 
 	BOOST_REQUIRE_EQUAL(test.format("", TestFunctionCall::RenderMode::ActualValuesExpectedGas), "// f(int8): -1 -> -2");

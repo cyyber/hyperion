@@ -3065,11 +3065,11 @@ std::string YulUtilFunctions::prepareStoreFunction(Type const& _type)
 		{
 			Whiskers templ(R"(
 				function <functionName>(addr, selector) -> ret {
-					ret := <prepareBytes>(<combine>(addr, selector))
+					ret := <shr>(<combine>(addr, selector))
 				}
 			)");
 			templ("functionName", functionName);
-			templ("prepareBytes", prepareStoreFunction(*TypeProvider::fixedBytes(24)));
+			templ("shr", shiftRightFunction(VMWordBits - 8 * funType->storageBytes()));
 			templ("combine", combineExternalFunctionIdFunction());
 			return templ.render();
 		}
@@ -4502,7 +4502,7 @@ std::string YulUtilFunctions::panicFunction(util::PanicCode _code)
 {
 	std::string functionName = "panic_error_" + toCompactHexWithPrefix(uint64_t(_code));
 	return m_functionCollector.createFunction(functionName, [&]() {
-		// Panic(uint256) ABI: selector (4 bytes) + code (32 bytes) = 36 bytes (0x24).
+		// Panic(uint256) ABI: selector (4 bytes) + code (64 bytes) = 68 bytes (0x44).
 		// selectorFromSignatureU256 returns sel << 224 (top of u256). Shift further to top of VM word.
 		return Whiskers(R"(
 			function <functionName>() {

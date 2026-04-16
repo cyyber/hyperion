@@ -478,6 +478,8 @@ BOOST_AUTO_TEST_CASE(unary_operators)
 		push0Bytes +
 		bytes{
 			uint8_t(Instruction::SUB),
+			uint8_t(Instruction::PUSH1), 0x1f,
+			uint8_t(Instruction::SIGNEXTEND),
 			uint8_t(Instruction::NOT),
 			uint8_t(Instruction::PUSH1), 0x2,
 			uint8_t(Instruction::EQ),
@@ -491,6 +493,8 @@ BOOST_AUTO_TEST_CASE(unary_operators)
 		push0Bytes +
 		bytes{
 			uint8_t(Instruction::SUB),
+			uint8_t(Instruction::PUSH1), 0x1f,
+			uint8_t(Instruction::SIGNEXTEND),
 			uint8_t(Instruction::NOT),
 			uint8_t(Instruction::EQ),
 			uint8_t(Instruction::ISZERO)

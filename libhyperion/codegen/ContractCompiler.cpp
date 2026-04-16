@@ -245,7 +245,7 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 			if iszero(eq(0x8f, byte(0, mload(codepos)))) {
 				mstore(0, <panicSelector>)
 				mstore(4, <panicCode>)
-				revert(0, 0x24)
+				revert(0, 0x44)
 			}
 			mstore(0, address())
 			mstore8(codepos, 0x8f)

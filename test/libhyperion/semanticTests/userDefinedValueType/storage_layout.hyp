@@ -69,4 +69,4 @@ contract C {
 // storage_d() -> 0, 3
 // storage_e() -> 1, 0
 // storage_f() -> 2, 0
-// storage_g() -> 2, 0x14
+// storage_g() -> 2, 0x30

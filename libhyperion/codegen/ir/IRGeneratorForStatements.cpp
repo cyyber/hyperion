@@ -149,7 +149,8 @@ private:
 					hypAssert(variable->type()->category() == Type::Category::FixedBytes);
 					unsigned const numBytes = dynamic_cast<FixedBytesType const&>(*variable->type()).numBytes();
 					hypAssert(stringLiteral.value().size() <= numBytes);
-					value = formatNumber(u256(h256(stringLiteral.value(), h256::AlignLeft)));
+					u512 litVal = u512(h256::Arith(h256(stringLiteral.value(), h256::AlignLeft))) << (VMWordBits - 256);
+					value = formatNumber(litVal);
 					break;
 				}
 				default:

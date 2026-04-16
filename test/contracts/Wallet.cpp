@@ -559,7 +559,7 @@ BOOST_AUTO_TEST_CASE(multisig_value_transfer)
 	BOOST_REQUIRE(callContractFunction("addOwner(address)", account(3)) == encodeArgs());
 	// 4 owners, set required to 3
 	BOOST_REQUIRE(callContractFunction("changeRequirement(uint256)", u256(3)) == encodeArgs());
-	h384 destination = h384("0x5c6d6026d3fb35cd7175fd0054ae8df50d8f8b41");
+	h384 destination = h384("0x000000000000000000000000000000000000000000000000000000005c6d6026d3fb35cd7175fd0054ae8df50d8f8b41");
 	BOOST_CHECK_EQUAL(balanceAt(destination), 0);
 	m_sender = account(0);
 	sendQuanta(account(1), 10 * quanta);
@@ -589,7 +589,7 @@ BOOST_AUTO_TEST_CASE(revoke_addOwner)
 	BOOST_REQUIRE(callContractFunction("changeRequirement(uint256)", u256(3)) == encodeArgs());
 	// add a new owner
 	h384 deployer = m_sender;
-	h256 opHash = util::keccak256(util::selectorFromSignatureH32("addOwner(address)").asBytes() + h256(0x33).asBytes());
+	h256 opHash = util::keccak256(util::selectorFromSignatureH32("addOwner(address)").asBytes() + encode(h384(0x33)));
 	BOOST_REQUIRE(callContractFunction("addOwner(address)", h384(0x33)) == encodeArgs());
 	BOOST_REQUIRE(callContractFunction("isOwner(address)", h384(0x33)) == encodeArgs(false));
 	m_sender = account(0);
@@ -622,7 +622,7 @@ BOOST_AUTO_TEST_CASE(revoke_transaction)
 	BOOST_REQUIRE(callContractFunction("changeRequirement(uint256)", u256(3)) == encodeArgs());
 	// create a transaction
 	h384 deployer = m_sender;
-	h384 destination = h384("0x5c6d6026d3fb35cd7175fd0054ae8df50d8f8b41");
+	h384 destination = h384("0x000000000000000000000000000000000000000000000000000000005c6d6026d3fb35cd7175fd0054ae8df50d8f8b41");
 	BOOST_CHECK_EQUAL(balanceAt(destination), 0);
 	m_sender = account(0);
 	sendQuanta(account(1), 10 * quanta);
@@ -662,7 +662,7 @@ BOOST_AUTO_TEST_CASE(daylimit)
 	BOOST_REQUIRE(callContractFunction("changeRequirement(uint256)", u256(3)) == encodeArgs());
 
 	// try to send tx over daylimit
-	h384 destination = h384("0x5c6d6026d3fb35cd7175fd0054ae8df50d8f8b41");
+	h384 destination = h384("0x000000000000000000000000000000000000000000000000000000005c6d6026d3fb35cd7175fd0054ae8df50d8f8b41");
 	BOOST_CHECK_EQUAL(balanceAt(destination), 0);
 	sendQuanta(account(1), 10 * quanta);
 	m_sender = account(1);

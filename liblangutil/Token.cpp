@@ -73,7 +73,7 @@ void ElementaryTypeNameToken::assertDetails(Token _baseType, unsigned const& _fi
 	if (_baseType == Token::BytesM)
 	{
 		hypAssert(_second == 0, "There should not be a second size argument to type bytesM.");
-		hypAssert(_first <= 32, "No elementary type bytes" + std::to_string(_first) + ".");
+		hypAssert(_first <= 48, "No elementary type bytes" + std::to_string(_first) + ".");
 	}
 	else if (_baseType == Token::UIntM || _baseType == Token::IntM)
 	{
@@ -189,7 +189,7 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 		Token keyword = keywordByName(baseType);
 		if (keyword == Token::Bytes)
 		{
-			if (0 < m && m <= 32 && positionX == _literal.end())
+			if (0 < m && m <= 48 && positionX == _literal.end())
 				return std::make_tuple(Token::BytesM, m, 0);
 		}
 		else if (keyword == Token::UInt || keyword == Token::Int)

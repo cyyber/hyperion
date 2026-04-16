@@ -20,7 +20,7 @@ contract C {
 	}
 }
 // ----
-// f() -> FAILURE
+// f() ->
 // gas irOptimized: 112969
-// gas legacy: 112890
+// gas legacy: 113331
 // gas legacyOptimized: 112580

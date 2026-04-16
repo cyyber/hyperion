@@ -216,7 +216,9 @@ bool ContractABIUtils::appendTypesFromName(
 )
 {
 	std::string type = _functionOutput["type"].asString();
-	if (isBool(type))
+	if (type == "address")
+		_inplaceTypes.push_back(ABIType{ABIType::Hex});
+	else if (isBool(type))
 		_inplaceTypes.push_back(ABIType{ABIType::Boolean});
 	else if (isUint(type))
 		_inplaceTypes.push_back(ABIType{ABIType::UnsignedDec});
@@ -264,7 +266,15 @@ bool ContractABIUtils::appendTypesFromName(
 	else if (std::optional<ABIType> fixedPointType = isFixedPoint(type))
 		_inplaceTypes.push_back(*fixedPointType);
 	else if (isBytes(type))
-		return false;
+	{
+		_inplaceTypes.push_back(ABIType{ABIType::Hex});
+
+		if (_isCompoundType)
+			_dynamicTypes.push_back(ABIType{ABIType::Hex});
+
+		_dynamicTypes.push_back(ABIType{ABIType::UnsignedDec});
+		_dynamicTypes.push_back(ABIType{ABIType::HexString, ABIType::AlignLeft});
+	}
 	else if (isFixedTupleArray(type))
 		return false;
 	else

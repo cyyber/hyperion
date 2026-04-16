@@ -670,20 +670,20 @@ std::string IntegerType::toString(bool) const
 	return prefix + util::toString(m_bits);
 }
 
-u256 IntegerType::min() const
+u512 IntegerType::min() const
 {
 	if (isSigned())
-		return s2u(s256(minValue()));
+		return s2u(s512(minValue()));
 	else
-		return u256(minValue());
+		return u512(minValue());
 }
 
-u256 IntegerType::max() const
+u512 IntegerType::max() const
 {
 	if (isSigned())
-		return s2u(s256(maxValue()));
+		return s2u(s512(maxValue()));
 	else
-		return u256(maxValue());
+		return u512(maxValue());
 }
 
 bigint IntegerType::minValue() const

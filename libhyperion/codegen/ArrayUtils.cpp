@@ -849,7 +849,7 @@ void ArrayUtils::popStorageArrayElement(ArrayType const& _type) const
 			if iszero(length) {
 				mstore(0, <panicSelector>)
 				mstore(4, <emptyArrayPop>)
-				revert(0, 0x24)
+				revert(0, 0x44)
 			}
 			switch gt(length, 63)
 			case 0 {
@@ -949,10 +949,18 @@ void ArrayUtils::clearStorageLoop(Type const* _type) const
 				Instruction::ISZERO;
 			qrvmasm::AssemblyItem zeroLoopEnd = _context.newTag();
 			_context.appendConditionalJumpTo(zeroLoopEnd);
-			// delete
-			_context << u256(0);
-			StorageItem(_context, *_type).setToZero(SourceLocation(), false);
-			_context << Instruction::POP;
+			// delete - always clear full slot (64 bytes) regardless of type size
+			if (_type->storageBytes() < VMWordBytes)
+			{
+				// For types smaller than a word, clear the entire slot with sstore(pos, 0)
+				_context << u256(0) << Instruction::DUP2 << Instruction::SSTORE;
+			}
+			else
+			{
+				_context << u256(0);
+				StorageItem(_context, *_type).setToZero(SourceLocation(), false);
+				_context << Instruction::POP;
+			}
 			// increment
 			_context << _type->storageSize() << Instruction::ADD;
 			_context.appendJumpTo(loopStart);

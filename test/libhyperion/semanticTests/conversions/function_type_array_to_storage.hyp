@@ -37,6 +37,6 @@ contract C {
     }
 }
 // ----
-// testViewToDefault() -> 12, 22
-// testPureToDefault() -> 13, 23
-// testPureToView() -> 13, 23
+// testViewToDefault() -> 12, 0x16
+// testPureToDefault() -> 13, 0x17
+// testPureToView() -> 13, 0x17

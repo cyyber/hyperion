@@ -520,7 +520,17 @@ bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 		if (m_context.arithmetic() == Arithmetic::Checked)
 			m_context.callYulFunction(m_context.utilFunctions().negateNumberCheckedFunction(type), 1, 1);
 		else
+		{
 			m_context << u256(0) << Instruction::SUB;
+			// In 512-bit VM, need to cleanup/truncate to the target type's bit width
+			if (auto const* intType = dynamic_cast<IntegerType const*>(&type))
+			{
+				if (intType->isSigned())
+					m_context << u256(intType->numBits() / 8 - 1) << Instruction::SIGNEXTEND;
+				else
+					m_context.callYulFunction(m_context.utilFunctions().cleanupFunction(type), 1, 1);
+			}
+		}
 		break;
 	default:
 		hypAssert(false, "Invalid unary operator: " + std::string(TokenTraits::toString(_unaryOperation.getOperator())));

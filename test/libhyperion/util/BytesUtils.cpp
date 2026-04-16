@@ -111,7 +111,7 @@ bytes BytesUtils::convertFixedPoint(std::string const& _literal, size_t& o_fract
 		valueInteger = "0";
 	try
 	{
-		u256 value(valueInteger);
+		u512 value(valueInteger);
 		if (negative)
 			value = s2u(-u2s(value));
 		return toBigEndian(value);
@@ -152,7 +152,7 @@ std::string BytesUtils::formatUnsigned(bytes const& _bytes)
 
 	hyptestAssert(!_bytes.empty() && _bytes.size() <= 64, "");
 
-	return fromBigEndian<u256>(_bytes).str();
+	return fromBigEndian<u512>(_bytes).str();
 }
 
 std::string BytesUtils::formatSigned(bytes const& _bytes)
@@ -161,12 +161,15 @@ std::string BytesUtils::formatSigned(bytes const& _bytes)
 
 	hyptestAssert(!_bytes.empty() && _bytes.size() <= 64, "");
 
-	// For 64-byte slots, the sign bit is at the start of the u256 portion (byte at offset size-32)
-	size_t signByteOffset = _bytes.size() > 32 ? _bytes.size() - 32 : 0;
-	if (_bytes[signByteOffset] & 0x80)
-		os << u2s(fromBigEndian<u256>(_bytes));
+	if (_bytes[0] & 0x80)
+	{
+		// Sign-extend to 64 bytes for proper 512-bit two's complement interpretation
+		bytes extended(64, 0xff);
+		std::copy(_bytes.begin(), _bytes.end(), extended.end() - static_cast<std::ptrdiff_t>(_bytes.size()));
+		os << u2s(fromBigEndian<u512>(extended));
+	}
 	else
-		os << fromBigEndian<u256>(_bytes);
+		os << fromBigEndian<u512>(_bytes);
 
 	return os.str();
 }
@@ -174,7 +177,7 @@ std::string BytesUtils::formatSigned(bytes const& _bytes)
 std::string BytesUtils::formatBoolean(bytes const& _bytes)
 {
 	std::stringstream os;
-	u256 result = fromBigEndian<u256>(_bytes);
+	u512 result = fromBigEndian<u512>(_bytes);
 
 	if (result == 0)
 		os << "false";
@@ -189,7 +192,7 @@ std::string BytesUtils::formatBoolean(bytes const& _bytes)
 std::string BytesUtils::formatHex(bytes const& _bytes, bool _shorten)
 {
 	hyptestAssert(!_bytes.empty() && _bytes.size() <= 64, "");
-	u256 value = fromBigEndian<u256>(_bytes);
+	u512 value = fromBigEndian<u512>(_bytes);
 	std::string output = toCompactHexWithPrefix(value);
 
 	if (_shorten)
@@ -240,12 +243,19 @@ std::string BytesUtils::formatFixedPoint(bytes const& _bytes, bool _signed, size
 	bool negative = false;
 	if (_signed)
 	{
-		s256 signedValue{u2s(fromBigEndian<u256>(_bytes))};
+		bytes effective = _bytes;
+		if (_bytes[0] & 0x80 && _bytes.size() < 64)
+		{
+			// Sign-extend to 64 bytes for proper 512-bit two's complement
+			effective = bytes(64, 0xff);
+			std::copy(_bytes.begin(), _bytes.end(), effective.end() - static_cast<std::ptrdiff_t>(_bytes.size()));
+		}
+		s512 signedValue{u2s(fromBigEndian<u512>(effective))};
 		negative = (signedValue < 0);
 		decimal = signedValue.str();
 	}
 	else
-		decimal = fromBigEndian<u256>(_bytes).str();
+		decimal = fromBigEndian<u512>(_bytes).str();
 	if (_fractionalDigits > 0)
 	{
 		size_t numDigits = decimal.length() - (negative ? 1 : 0);
@@ -318,14 +328,13 @@ std::string BytesUtils::formatBytes(
 		// be signed. If an unsigned was detected in the expectations,
 		// but the actual result returned a signed, it would be formatted
 		// incorrectly.
-		// For 64-byte slots, the sign bit is at the start of the u256 portion (byte at offset size-32)
-		if (_bytes.size() > 32 ? (_bytes[_bytes.size() - 32] & 0x80) : (*_bytes.begin() & 0x80))
+		if (_bytes[0] & 0x80)
 			os << formatSigned(_bytes);
 		else
 		{
 			std::string decimal(formatUnsigned(_bytes));
 			std::string hexadecimal(formatHex(_bytes));
-			unsigned int value = u256(_bytes).convert_to<unsigned int>();
+			unsigned int value = fromBigEndian<u512>(_bytes).convert_to<unsigned int>();
 			if (value < 0x10)
 				os << decimal;
 			else if (value >= 0x10 && value <= 0xff) {
