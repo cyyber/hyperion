@@ -1383,7 +1383,7 @@ void CompilerUtils::pushZeroValue(Type const& _type)
 		[type](CompilerContext& _context) {
 			CompilerUtils utils(_context);
 
-			utils.allocateMemory(std::max<u256>(32u, type->memoryDataSize()));
+			utils.allocateMemory(std::max<u256>(VMWordBytes, type->memoryDataSize()));
 			_context << Instruction::DUP1;
 
 			if (auto structType = dynamic_cast<StructType const*>(type))

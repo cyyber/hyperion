@@ -2788,13 +2788,30 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		else
 			hypAssert(retSize > 0, "");
 		// Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
-		// This ensures it can catch badly formatted input from external calls.
+		// This ensures it can catch badly formatted input from external calls. Round the size up to the
+		// next VM word boundary so abi_decode_tuple_* (which expects whole-word padded slots) sees a complete
+		// word — precompiles like SHA-256 return the raw 32 bytes in a 64-byte-word VM, so without this the
+		// decoder's `slt(sub(end, start), <minimumSize>)` check trips.
+		// We also zero-fill the bytes between returndatasize and the rounded size: STATICCALL only writes
+		// returndatasize bytes into the output memory window, so the trailing bytes of the rounded slot
+		// may contain stale data left over from earlier call frames. Without this, mload-based cleanup
+		// validators (which require the value to match `value & cleanupMask`) see non-zero padding bits
+		// and revert.
 		m_context << qrvmasm::AssemblyItem(Instruction::RETURNDATASIZE);
-		// Stack: return_data_start return_data_size
+		m_context << u256(VMWordAlignmentMask) << Instruction::ADD;
+		m_context << u256(VMWordAlignmentMask) << Instruction::NOT << Instruction::AND;
+		// Stack: return_data_start padded_return_data_size
+		m_context.appendInlineAssembly(R"({
+			let copied := returndatasize()
+			if lt(copied, paddedSize) {
+				// calldatacopy beyond calldatasize() returns zero, which is exactly the padding we want.
+				calldatacopy(add(start, copied), calldatasize(), sub(paddedSize, copied))
+			}
+		})", {"start", "paddedSize"});
 		if (needToUpdateFreeMemoryPtr)
 			m_context.appendInlineAssembly(R"({
-				// round size to the next multiple of 64
-				let newMem := add(start, and(add(size, 0x3f), not(0x3f)))
+				// size is already rounded to the next multiple of 64
+				let newMem := add(start, size)
 				mstore(0x80, newMem)
 			})", {"start", "size"});
 
