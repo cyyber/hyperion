@@ -44,7 +44,7 @@ enum
      *
      * @see @ref versioning
      */
-    QRVMC_ABI_VERSION = 1
+    QRVMC_ABI_VERSION = 2
 };
 
 
