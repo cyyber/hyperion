@@ -3694,9 +3694,9 @@ void TypeChecker::endVisit(Literal const& _literal)
 		std::string msg;
 		if (!_literal.passesAddressChecksum())
 		{
-			msg = "This looks like an address but has an invalid checksum.";
+			msg = "This looks like an address but is not a valid QRL address literal.";
 			if (!_literal.getChecksummedAddress().empty())
-				msg += " Correct checksummed address: \"" + _literal.getChecksummedAddress() + "\".";
+				msg += " Canonical address: \"" + _literal.getChecksummedAddress() + "\".";
 
 			m_errorReporter.syntaxError(
 				9429_error,

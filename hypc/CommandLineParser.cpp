@@ -440,8 +440,8 @@ void CommandLineParser::parseLibraryOption(std::string const& _input)
 			if (!util::passesAddressChecksum(addrString, false))
 				hypThrow(
 					CommandLineValidationError,
-					"Invalid checksum on address for library \"" + libName + "\": " + addrString + "\n"
-					"The correct checksum is " + util::getChecksummedAddress(addrString)
+					"Invalid address for library \"" + libName + "\": " + addrString + "\n"
+					"Expected Q followed by 96 hex characters."
 				);
 			bytes binAddr = util::fromHex(addrString.substr(1));
 			util::h384 address(binAddr, util::h384::AlignRight);

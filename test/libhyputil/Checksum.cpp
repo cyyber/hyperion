@@ -16,7 +16,7 @@
 */
 // SPDX-License-Identifier: GPL-3.0
 /**
- * Unit tests for the address checksum.
+ * Unit tests for address canonicalisation.
  * Addresses are 48 bytes = 96 hex characters after the Q prefix (97 total).
  */
 
@@ -31,7 +31,7 @@
 namespace hyperion::util::test
 {
 
-BOOST_AUTO_TEST_SUITE(Checksum)
+BOOST_AUTO_TEST_SUITE(AddressCanonicalisation)
 
 // 96 hex = 48 bytes. Q + 96 hex = 97 chars.
 // Addresses below are 40 hex of original + 56 hex of padding = 96 hex total.
@@ -50,15 +50,15 @@ BOOST_AUTO_TEST_CASE(calculate)
 	BOOST_CHECK_THROW(getChecksummedAddress("Q5aaeb6053f3e94c9b9a09f33669435e7ef1beaed0000000000000000000000000000000000000000000000000000000K"), InvalidAddress);
 }
 
-BOOST_AUTO_TEST_CASE(checksum_roundtrip)
+BOOST_AUTO_TEST_CASE(canonical_roundtrip)
 {
 	std::string addr = "Q5aaeb6053f3e94c9b9a09f33669435e7ef1beaed00000000000000000000000000000000000000000000000000000000";
-	std::string checksummed = getChecksummedAddress(addr);
-	BOOST_CHECK(passesAddressChecksum(checksummed, true));
+	std::string canonical = getChecksummedAddress(addr);
+	BOOST_CHECK(passesAddressChecksum(canonical, true));
 
 	std::string addr2 = "Qaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-	std::string checksummed2 = getChecksummedAddress(addr2);
-	BOOST_CHECK(passesAddressChecksum(checksummed2, true));
+	std::string canonical2 = getChecksummedAddress(addr2);
+	BOOST_CHECK(passesAddressChecksum(canonical2, true));
 }
 
 BOOST_AUTO_TEST_CASE(all_lowercase_valid)

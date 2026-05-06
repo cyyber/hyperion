@@ -23,7 +23,7 @@ namespace qrvmc
 /// String view of uint8_t chars.
 using bytes_view = std::basic_string_view<uint8_t>;
 
-/// The big-endian 160-bit hash suitable for keeping a QRL address.
+/// The big-endian 384-bit value suitable for keeping a QRL address.
 ///
 /// This type wraps C ::qrvmc_address to make sure objects of this type are always initialized.
 struct address : qrvmc_address
