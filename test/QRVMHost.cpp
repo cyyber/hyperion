@@ -105,9 +105,9 @@ QRVMHost::QRVMHost(langutil::QRVMVersion _qrvmVersion, qrvmc::VM& _vm):
 	// This is the value from the merge block.
 	tx_context.block_prev_randao = 0xa86c2e601b6c44eb4848f7d23d9df3113fbcac42041c49cbed5000cb4f118777_bytes32;
 	tx_context.block_gas_limit = 20000000;
-	tx_context.block_coinbase = "Q7878787878787878787878787878787878787878"_address;
+	tx_context.block_coinbase = "Q000000000000000000000000000000000000000000000000000000007878787878787878787878787878787878787878"_address;
 	tx_context.tx_gas_price = qrvmc::uint256be{3000000000};
-	tx_context.tx_origin = "Q9292929292929292929292929292929292929292"_address;
+	tx_context.tx_origin = "Q000000000000000000000000000000000000000000000000000000009292929292929292929292929292929292929292"_address;
 	// Mainnet according to EIP-155
 	tx_context.chain_id = qrvmc::uint256be{1};
 	// The minimum value of basefee

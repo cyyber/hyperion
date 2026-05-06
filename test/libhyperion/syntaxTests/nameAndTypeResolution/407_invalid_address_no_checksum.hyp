@@ -1,6 +1,6 @@
 contract C {
     function f() pure public {
-        address x = Qfa0bfc97e48458494ccd857e1a85dc91f7f0046e;
+        address x = Q00000000000000000000000000000000000000000000000000000000fa0bfc97e48458494ccd857e1a85dc91f7f0046e;
         x;
     }
 }
