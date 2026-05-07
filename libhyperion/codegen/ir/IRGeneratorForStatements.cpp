@@ -1395,11 +1395,12 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			std::string dataAreaFunction = m_utils.arrayDataAreaFunction(*arrayType);
 			std::string arrayLengthFunction = m_utils.arrayLengthFunction(*arrayType);
 			define(_functionCall) <<
-				"keccak256(" <<
+				m_utils.shiftLeftFunction(VMWordBits - 256) <<
+				"(keccak256(" <<
 				(dataAreaFunction + "(" + array.commaSeparatedList() + ")") <<
 				", " <<
 				(arrayLengthFunction + "(" + array.commaSeparatedList() +")") <<
-				")\n";
+				"))\n";
 		}
 		break;
 	}

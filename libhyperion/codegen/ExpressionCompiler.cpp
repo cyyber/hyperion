@@ -912,6 +912,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				ArrayUtils(m_context).retrieveLength(*TypeProvider::bytesMemory());
 				m_context << Instruction::SWAP1 << u256(VMWordBytes) << Instruction::ADD;
 				m_context << Instruction::KECCAK256;
+				utils().leftShiftNumberOnStack(VMWordBits - 256);
 			}
 			else
 			{
@@ -919,6 +920,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				utils().packedEncode({argType}, TypePointers());
 				utils().toSizeAfterFreeMemoryPointer();
 				m_context << Instruction::KECCAK256;
+				utils().leftShiftNumberOnStack(VMWordBits - 256);
 			}
 			break;
 		}
