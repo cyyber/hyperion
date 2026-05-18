@@ -2435,7 +2435,7 @@ void TypeChecker::typeCheckBytesConcatFunction(
 	{
 		Type const* argumentType = type(*argument);
 		bool notConvertibleToBytes =
-			!argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(48)) &&
+			!argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(AddressBytes)) &&
 			!argumentType->isImplicitlyConvertibleTo(*TypeProvider::bytesMemory());
 		bool numberLiteral = (dynamic_cast<RationalNumberType const*>(argumentType) != nullptr);
 

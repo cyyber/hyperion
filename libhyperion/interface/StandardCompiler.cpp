@@ -896,7 +896,7 @@ std::variant<StandardCompiler::InputsAndSettings, Json::Value> StandardCompiler:
 
 			try
 			{
-				ret.libraries[sourceName + ":" + library] = util::h384(boost::replace_all_copy(address, "Q", "0x"));
+				ret.libraries[sourceName + ":" + library] = util::h512(boost::replace_all_copy(address, "Q", "0x"));
 			}
 			catch (util::BadHexCharacter const&)
 			{

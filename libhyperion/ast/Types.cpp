@@ -501,7 +501,7 @@ BoolResult AddressType::isExplicitlyConvertibleTo(Type const& _convertTo) const
 		if (auto integerType = dynamic_cast<IntegerType const*>(&_convertTo))
 			return (!integerType->isSigned() && integerType->numBits() == AddressBits);
 		else if (auto fixedBytesType = dynamic_cast<FixedBytesType const*>(&_convertTo))
-			return (fixedBytesType->numBytes() == 48);
+			return (fixedBytesType->numBytes() == AddressBytes);
 	}
 
 	return false;
@@ -1344,7 +1344,7 @@ Type const* StringLiteralType::mobileType() const
 FixedBytesType::FixedBytesType(unsigned _bytes): m_bytes(_bytes)
 {
 	hypAssert(
-		m_bytes > 0 && m_bytes <= 48,
+		m_bytes > 0 && m_bytes <= AddressBytes,
 		"Invalid byte number for fixed bytes type: " + util::toString(m_bytes)
 	);
 }
@@ -1366,7 +1366,7 @@ BoolResult FixedBytesType::isExplicitlyConvertibleTo(Type const& _convertTo) con
 	else if (auto addressType = dynamic_cast<AddressType const*>(&_convertTo))
 		return
 			(addressType->stateMutability() != StateMutability::Payable) &&
-			(numBytes() == 48);
+			(numBytes() == AddressBytes);
 	else if (auto fixedPointType = dynamic_cast<FixedPointType const*>(&_convertTo))
 		return fixedPointType->numBits() == numBytes() * 8;
 
@@ -3246,7 +3246,7 @@ bool FunctionType::leftAligned() const
 unsigned FunctionType::storageBytes() const
 {
 	if (m_kind == Kind::External)
-		return 48 + 4;
+		return AddressBytes + 4;
 	else if (m_kind == Kind::Internal)
 		return 8; // it should really not be possible to create larger programs
 	else

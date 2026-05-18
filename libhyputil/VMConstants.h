@@ -37,11 +37,12 @@ static constexpr unsigned VMWordHex = VMWordBytes;
 /// Alignment mask for rounding up to VM word boundary: (value + VMWordAlignmentMask) & ~VMWordAlignmentMask
 static constexpr unsigned VMWordAlignmentMask = VMWordBytes - 1;
 
-/// QRL address width in bits. Currently 384 (48 bytes), target 512 (64 bytes)
-/// for the 64-byte-address migration aligned with go-qrllib AddressSize.
-/// Codegen masks, integer-type cleanup, and the AddressType layout all
-/// derive from this constant — flipping it to 512 widens the address.
-static constexpr unsigned AddressBits = 384;
+/// QRL address width in bits: 512 (64 bytes), matching the go-qrllib
+/// AddressSize after the 64-byte-address migration. Codegen masks,
+/// integer-type cleanup, and the AddressType layout all derive from
+/// this constant — equal to VMWordBits, i.e. the address fills the
+/// entire VM word.
+static constexpr unsigned AddressBits = 512;
 /// QRL address width in bytes (derived from AddressBits).
 static constexpr unsigned AddressBytes = AddressBits / 8;
 

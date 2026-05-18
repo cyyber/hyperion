@@ -1167,7 +1167,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					targetTypes.emplace_back(argument->annotation().type);
 				else if (
 					auto const* literalType = dynamic_cast<StringLiteralType const*>(argument->annotation().type);
-					literalType && !literalType->value().empty() && literalType->value().size() <= 48
+					literalType && !literalType->value().empty() && literalType->value().size() <= AddressBytes
 				)
 					targetTypes.emplace_back(TypeProvider::fixedBytes(static_cast<unsigned>(literalType->value().size())));
 				else
@@ -2380,9 +2380,9 @@ void ExpressionCompiler::appendCompareOperatorCode(Token _operator, Type const& 
 			hypUnimplementedAssert(functionType->sizeOnStack() == 2, "");
 			m_context << Instruction::SWAP3;
 
-			m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND;
+			m_context << (~u512(0) >> (VMWordBits - AddressBits)) << Instruction::AND;
 			m_context << Instruction::SWAP1;
-			m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND;
+			m_context << (~u512(0) >> (VMWordBits - AddressBits)) << Instruction::AND;
 			m_context << Instruction::EQ;
 			m_context << Instruction::SWAP2;
 			m_context << ((u256(1) << 32) - 1) << Instruction::AND;

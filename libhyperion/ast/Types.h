@@ -971,7 +971,7 @@ public:
 		hypAssert(!isSuper(), "");
 		return encodingType()->calldataEncodedSize(_padded);
 	}
-	unsigned storageBytes() const override { hypAssert(!isSuper(), ""); return 48; }
+	unsigned storageBytes() const override { hypAssert(!isSuper(), ""); return AddressBytes; }
 	bool leftAligned() const override { hypAssert(!isSuper(), ""); return false; }
 	bool isValueType() const override { return !isSuper(); }
 	bool nameable() const override { return !isSuper(); }

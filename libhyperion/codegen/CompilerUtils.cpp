@@ -713,7 +713,16 @@ void CompilerUtils::memoryCopy()
 
 void CompilerUtils::splitExternalFunctionType(bool _leftAligned)
 {
-	// We have to split the left-aligned <address(48)><function_id(4)><zeros(12)>
+	// FunctionType layout is <address><selector(4)><zeros(padding)> packed into
+	// one VM word. With AddressBits == VMWordBits (64-byte addresses) this no
+	// longer fits — FunctionType ABI is unsupported and slated for explicit
+	// deprecation in the hypc front-end. Guard here so codegen fails clearly.
+	hypAssert(
+		AddressBits + 32 <= VMWordBits,
+		"FunctionType does not fit in the VM word: address (" + std::to_string(AddressBits) +
+		" bits) + selector (32 bits) exceeds VM word (" + std::to_string(VMWordBits) + " bits)."
+	);
+	// We have to split the left-aligned <address><function_id(4)><zeros>
 	// into two stack slots: address (right aligned), function identifier (right aligned)
 	if (_leftAligned)
 	{
@@ -721,27 +730,32 @@ void CompilerUtils::splitExternalFunctionType(bool _leftAligned)
 		rightShiftNumberOnStack(VMWordBits - AddressBits);
 		// <input> <address>
 		m_context << Instruction::SWAP1;
-		rightShiftNumberOnStack(VMWordBits - 416);
+		rightShiftNumberOnStack(VMWordBits - (AddressBits + 32));
 	}
 	else
 	{
 		m_context << Instruction::DUP1;
 		rightShiftNumberOnStack(32);
-		m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND << Instruction::SWAP1;
+		m_context << (~u512(0) >> (VMWordBits - AddressBits)) << Instruction::AND << Instruction::SWAP1;
 	}
 	m_context << u256(0xffffffffUL) << Instruction::AND;
 }
 
 void CompilerUtils::combineExternalFunctionType(bool _leftAligned)
 {
+	hypAssert(
+		AddressBits + 32 <= VMWordBits,
+		"FunctionType does not fit in the VM word: address (" + std::to_string(AddressBits) +
+		" bits) + selector (32 bits) exceeds VM word (" + std::to_string(VMWordBits) + " bits)."
+	);
 	// <address> <function_id>
 	m_context << u256(0xffffffffUL) << Instruction::AND << Instruction::SWAP1;
 	if (!_leftAligned)
-		m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND;
+		m_context << (~u512(0) >> (VMWordBits - AddressBits)) << Instruction::AND;
 	leftShiftNumberOnStack(32);
 	m_context << Instruction::OR;
 	if (_leftAligned)
-		leftShiftNumberOnStack(VMWordBits - 416);
+		leftShiftNumberOnStack(VMWordBits - (AddressBits + 32));
 }
 
 void CompilerUtils::pushCombinedFunctionEntryLabel(Declaration const& _function, bool _runtimeOnly)

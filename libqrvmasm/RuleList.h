@@ -375,8 +375,11 @@ std::vector<SimplificationRule<Pattern>> simplificationRuleListPart5(
 		Instruction::COINBASE
 	})
 	{
-		assertThrow(Pattern::WordSize > hyperion::AddressBits, OptimizerException, "");
-		Word const mask = (Word(1) << hyperion::AddressBits) - 1;
+		assertThrow(Pattern::WordSize >= hyperion::AddressBits, OptimizerException, "");
+		// `(Word(1) << AddressBits) - 1` overflows when AddressBits == WordSize.
+		// Use a right-shift of all-ones instead, which collapses to ~Word(0)
+		// in the equality case.
+		Word const mask = ~Word(0) >> (Pattern::WordSize - hyperion::AddressBits);
 		rules.push_back({
 			Builtins::AND(Pattern{instr}, mask),
 			[=]() -> Pattern { return {instr}; }
