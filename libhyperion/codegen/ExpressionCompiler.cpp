@@ -2380,9 +2380,9 @@ void ExpressionCompiler::appendCompareOperatorCode(Token _operator, Type const& 
 			hypUnimplementedAssert(functionType->sizeOnStack() == 2, "");
 			m_context << Instruction::SWAP3;
 
-			m_context << ((u512(1) << 384) - 1) << Instruction::AND;
+			m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND;
 			m_context << Instruction::SWAP1;
-			m_context << ((u512(1) << 384) - 1) << Instruction::AND;
+			m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND;
 			m_context << Instruction::EQ;
 			m_context << Instruction::SWAP2;
 			m_context << ((u256(1) << 32) - 1) << Instruction::AND;

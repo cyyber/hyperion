@@ -718,7 +718,7 @@ void CompilerUtils::splitExternalFunctionType(bool _leftAligned)
 	if (_leftAligned)
 	{
 		m_context << Instruction::DUP1;
-		rightShiftNumberOnStack(VMWordBits - 384);
+		rightShiftNumberOnStack(VMWordBits - AddressBits);
 		// <input> <address>
 		m_context << Instruction::SWAP1;
 		rightShiftNumberOnStack(VMWordBits - 416);
@@ -727,7 +727,7 @@ void CompilerUtils::splitExternalFunctionType(bool _leftAligned)
 	{
 		m_context << Instruction::DUP1;
 		rightShiftNumberOnStack(32);
-		m_context << ((u512(1) << 384) - 1) << Instruction::AND << Instruction::SWAP1;
+		m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND << Instruction::SWAP1;
 	}
 	m_context << u256(0xffffffffUL) << Instruction::AND;
 }
@@ -737,7 +737,7 @@ void CompilerUtils::combineExternalFunctionType(bool _leftAligned)
 	// <address> <function_id>
 	m_context << u256(0xffffffffUL) << Instruction::AND << Instruction::SWAP1;
 	if (!_leftAligned)
-		m_context << ((u512(1) << 384) - 1) << Instruction::AND;
+		m_context << ((u512(1) << AddressBits) - 1) << Instruction::AND;
 	leftShiftNumberOnStack(32);
 	m_context << Instruction::OR;
 	if (_leftAligned)
@@ -833,8 +833,8 @@ void CompilerUtils::convertType(
 		}
 		else if (targetTypeCategory == Type::Category::Address)
 		{
-			hypAssert(typeOnStack.numBytes() * 8 == 384);
-			rightShiftNumberOnStack(VMWordBits - 384);
+			hypAssert(typeOnStack.numBytes() * 8 == AddressBits);
+			rightShiftNumberOnStack(VMWordBits - AddressBits);
 		}
 		else
 		{
@@ -889,7 +889,7 @@ void CompilerUtils::convertType(
 					cleanHigherOrderBits(*typeOnStack);
 			}
 			else if (stackTypeCategory == Type::Category::Address)
-				hypAssert(targetBytesType.numBytes() * 8 == 384);
+				hypAssert(targetBytesType.numBytes() * 8 == AddressBits);
 			leftShiftNumberOnStack(VMWordBits - targetBytesType.numBytes() * 8);
 		}
 		else if (targetTypeCategory == Type::Category::Enum)
@@ -927,7 +927,7 @@ void CompilerUtils::convertType(
 				targetTypeCategory == Type::Category::Address,
 				""
 			);
-			IntegerType addressType(384);
+			IntegerType addressType(AddressBits);
 			IntegerType const& targetType = targetTypeCategory == Type::Category::Integer
 				? dynamic_cast<IntegerType const&>(_targetType) : addressType;
 			if (stackTypeCategory == Type::Category::RationalNumber)

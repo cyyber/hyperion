@@ -27,6 +27,7 @@
 #include <libqrvmasm/SimplificationRule.h>
 
 #include <libhyputil/CommonData.h>
+#include <libhyputil/VMConstants.h>
 
 #include <boost/multiprecision/detail/min_max.hpp>
 
@@ -374,8 +375,8 @@ std::vector<SimplificationRule<Pattern>> simplificationRuleListPart5(
 		Instruction::COINBASE
 	})
 	{
-		assertThrow(Pattern::WordSize > 384, OptimizerException, "");
-		Word const mask = (Word(1) << 384) - 1;
+		assertThrow(Pattern::WordSize > hyperion::AddressBits, OptimizerException, "");
+		Word const mask = (Word(1) << hyperion::AddressBits) - 1;
 		rules.push_back({
 			Builtins::AND(Pattern{instr}, mask),
 			[=]() -> Pattern { return {instr}; }
