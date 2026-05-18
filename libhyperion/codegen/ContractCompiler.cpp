@@ -234,24 +234,40 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	m_context.pushSubroutineSize(m_context.runtimeSub());
 	m_context.pushSubroutineOffset(m_context.runtimeSub());
 	// This code replaces the address added by appendDeployTimeAddress().
+	// Layout of the subroutine prefix in bytecode:
+	//   [PUSH<AddressBytes> opcode (1 byte)] [AddressBytes-zero placeholder]
+	// followed by the rest of the runtime. We codecopy that prefix to a
+	// known memory offset, verify the opcode, overwrite the placeholder with
+	// `address()`, then re-assert the opcode byte.
+	//
+	// With AddressBytes < VMWordBytes the whole "opcode + address" prefix
+	// fits inside one mstore window starting at offset 0 — codepos lives in
+	// the gap (VMWordBytes - AddressBytes - 1). With AddressBytes == VMWordBytes
+	// (64-byte addresses) there is no gap, so we lay the prefix at codepos=0
+	// and write the address with mstore(1, address()) so it lands in
+	// positions 1..AddressBytes, leaving position 0 for the opcode.
+	unsigned const pushOpcode = static_cast<unsigned>(Instruction::PUSH0) + AddressBytes;
+	unsigned const codepos = AddressBytes + 1 <= VMWordBytes ? VMWordBytes - AddressBytes - 1 : 0;
+	unsigned const addressMstoreOffset = AddressBytes + 1 <= VMWordBytes ? 0 : 1;
 	m_context.appendInlineAssembly(
 		util::Whiskers(R"(
 		{
-			// If code starts at 15, an mstore(0) writes to the full PUSH48 plus 48-byte address
-			// without the need for a shift (64-byte word - 48-byte address - 1 byte PUSH48 = 15).
-			let codepos := 15
+			let codepos := <codepos>
 			codecopy(codepos, subOffset, subSize)
-			// Check that the first opcode is a PUSH48 (0x8f)
-			if iszero(eq(0x8f, byte(0, mload(codepos)))) {
+			// Check that the first opcode is the expected PUSH<AddressBytes>
+			if iszero(eq(<pushOpcode>, byte(0, mload(codepos)))) {
 				mstore(0, <panicSelector>)
 				mstore(4, <panicCode>)
 				revert(0, 0x44)
 			}
-			mstore(0, address())
-			mstore8(codepos, 0x8f)
+			mstore(<addressMstoreOffset>, address())
+			mstore8(codepos, <pushOpcode>)
 			return(codepos, subSize)
 		}
 		)")
+		("codepos", std::to_string(codepos))
+		("pushOpcode", toCompactHexWithPrefix(pushOpcode))
+		("addressMstoreOffset", std::to_string(addressMstoreOffset))
 		("panicSelector", (u512(util::selectorFromSignatureU256("Panic(uint256)")) << (VMWordBits - 256)).str())
 		("panicCode", "0")
 		.render(),

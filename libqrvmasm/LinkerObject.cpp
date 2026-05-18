@@ -23,6 +23,7 @@
 #include <libqrvmasm/LinkerObject.h>
 #include <libhyputil/CommonData.h>
 #include <libhyputil/Keccak256.h>
+#include <libhyputil/VMConstants.h>
 
 using namespace hyperion;
 using namespace hyperion::util;
@@ -40,7 +41,7 @@ void LinkerObject::link(std::map<std::string, h512> const& _libraryAddresses)
 	std::map<size_t, std::string> remainingRefs;
 	for (auto const& linkRef: linkReferences)
 		if (h512 const* address = matchLibrary(linkRef.second, _libraryAddresses))
-			copy(address->data(), address->data() + 48, bytecode.begin() + std::vector<uint8_t>::difference_type(linkRef.first));
+			copy(address->data(), address->data() + hyperion::AddressBytes, bytecode.begin() + std::vector<uint8_t>::difference_type(linkRef.first));
 		else
 			remainingRefs.insert(linkRef);
 	linkReferences.swap(remainingRefs);
@@ -48,13 +49,18 @@ void LinkerObject::link(std::map<std::string, h512> const& _libraryAddresses)
 
 std::string LinkerObject::toHex() const
 {
+	// Library address placeholder in bytecode hex is `__$<hash>$__` spanning
+	// 2 * AddressBytes hex chars: 2 leading underscores, `$`, (2*AddressBytes - 6)
+	// hash chars, `$`, 2 trailing underscores.
+	size_t constexpr addressHex = 2 * hyperion::AddressBytes;
+	size_t constexpr placeholderInnerLen = addressHex - 4;
 	std::string hex = hyperion::util::toHex(bytecode);
 	for (auto const& ref: linkReferences)
 	{
 		size_t pos = ref.first * 2;
 		std::string hash = libraryPlaceholder(ref.second);
-		hex[pos] = hex[pos + 1] = hex[pos + 94] = hex[pos + 95] = '_';
-		for (size_t i = 0; i < 92; ++i)
+		hex[pos] = hex[pos + 1] = hex[pos + addressHex - 2] = hex[pos + addressHex - 1] = '_';
+		for (size_t i = 0; i < placeholderInnerLen; ++i)
 			hex[pos + 2 + i] = hash.at(i);
 	}
 	return hex;
@@ -62,11 +68,15 @@ std::string LinkerObject::toHex() const
 
 std::string LinkerObject::libraryPlaceholder(std::string const& _libraryName)
 {
+	// Need (2 * AddressBytes - 6) hex chars between the two `$` signs so the
+	// whole placeholder spans 2 * AddressBytes hex chars (with surrounding
+	// `__...__`). A single keccak256 yields 64 hex chars; concatenate further
+	// hashes until we have enough material.
+	size_t constexpr hashHexLen = 2 * hyperion::AddressBytes - 6;
 	std::string hash = keccak256(_libraryName).hex();
-	// Need 90 hex chars for 48-byte placeholder (96 total with __...__).
-	// keccak256 gives 64 hex chars, so concatenate with a secondary hash.
-	hash += keccak256(hash).hex();
-	return "$" + hash.substr(0, 90) + "$";
+	while (hash.size() < hashHexLen)
+		hash += keccak256(hash).hex();
+	return "$" + hash.substr(0, hashHexLen) + "$";
 }
 
 h512 const*

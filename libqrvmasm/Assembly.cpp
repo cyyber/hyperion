@@ -36,6 +36,7 @@
 
 #include <libhyputil/JSON.h>
 #include <libhyputil/StringUtils.h>
+#include <libhyputil/VMConstants.h>
 
 #include <fmt/format.h>
 
@@ -962,9 +963,9 @@ LinkerObject const& Assembly::assemble() const
 			break;
 		}
 		case PushLibraryAddress:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH48));
+			ret.bytecode.push_back(static_cast<uint8_t>(pushInstruction(hyperion::AddressBytes)));
 			ret.linkReferences[ret.bytecode.size()] = m_libraries.at(h256(u256(i.data())));
-			ret.bytecode.resize(ret.bytecode.size() + 48);
+			ret.bytecode.resize(ret.bytecode.size() + hyperion::AddressBytes);
 			break;
 		case PushImmutable:
 			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH64));
@@ -1005,8 +1006,8 @@ LinkerObject const& Assembly::assemble() const
 			break;
 		}
 		case PushDeployTimeAddress:
-			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::PUSH48));
-			ret.bytecode.resize(ret.bytecode.size() + 48);
+			ret.bytecode.push_back(static_cast<uint8_t>(pushInstruction(hyperion::AddressBytes)));
+			ret.bytecode.resize(ret.bytecode.size() + hyperion::AddressBytes);
 			break;
 		case Tag:
 		{

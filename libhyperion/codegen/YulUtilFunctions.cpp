@@ -48,9 +48,13 @@ std::string YulUtilFunctions::identityFunction()
 
 std::string YulUtilFunctions::combineExternalFunctionIdFunction()
 {
-	// addr is 48 bytes (384 bits), selector is 4 bytes (32 bits).
-	// Encoded external function = [addr (48 bytes) | selector (4 bytes) | zeros (12 bytes)]
-	// in the 64-byte word (top-aligned).
+	// addr is AddressBytes (AddressBits), selector is 4 bytes (32 bits).
+	// Encoded external function = [addr | selector(4) | zero-padding] top-aligned
+	// in the 64-byte VM word. With AddressBits == VMWordBits (the 64-byte
+	// address layout) the address fills the whole word and FunctionType ABI
+	// can no longer be carried — splitExternalFunctionType/combineExternalFunctionType
+	// guard with a hypAssert that fires before any runtime code reaches this
+	// path; the helper below stays only for source backwards compatibility.
 	std::string functionName = "combine_external_function_id";
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return Whiskers(R"(
@@ -3870,12 +3874,22 @@ std::string YulUtilFunctions::cleanupFunction(Type const& _type)
 			{
 				case FunctionType::Kind::External:
 				{
-					// External function type: [addr(48), sel(4), zeros(12)] = 64 bytes
-					// Combined via (addr << 32 | sel) << 96, so lower 96 bits are always zero.
-					// Keep upper 416 bits (52 bytes), zero lower 96 bits (12 bytes).
-					static_assert(VMWordBits >= 416 + 96, "VMWordBits must be at least 512 for external function type");
-					size_t const padBits = VMWordBits - 416;  // 96 bits for 512-bit VM
-					bigint mask = ((bigint(1) << 416) - 1) << padBits;
+					// External function type: [addr, selector(4), zero-padding]
+					// top-aligned in the VM word. Combined via (addr << 32 | sel) << padBits
+					// so the lower padBits are zero. Cleanup keeps the upper
+					// (AddressBits + 32) bits and zeros the rest.
+					// When AddressBits == VMWordBits the FunctionType no longer
+					// fits — the splitExternalFunctionType / combineExternalFunctionType
+					// helpers guard with a hypAssert before any caller can reach
+					// this cleanup, so the path is unreachable in 64-byte-address
+					// builds.
+					hypAssert(
+						AddressBits + 32 <= VMWordBits,
+						"FunctionType cleanup is unreachable when AddressBits + 32 exceeds VMWordBits."
+					);
+					size_t const funcTypeBits = AddressBits + 32;
+					size_t const padBits = VMWordBits - funcTypeBits;
+					bigint mask = ((bigint(1) << funcTypeBits) - 1) << padBits;
 					templ("body", "cleaned := and(value, " + toCompactHexWithPrefix(u512(mask)) + ")");
 					break;
 				}

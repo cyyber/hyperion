@@ -25,6 +25,7 @@
 #include <libhyputil/Numeric.h>
 #include <libhyputil/StringUtils.h>
 #include <libhyputil/FixedHash.h>
+#include <libhyputil/VMConstants.h>
 #include <liblangutil/SourceLocation.h>
 
 #include <fstream>
@@ -134,7 +135,7 @@ size_t AssemblyItem::bytesRequired(size_t _addressLength, Precision _precision) 
 		return 1 + _addressLength;
 	case PushLibraryAddress:
 	case PushDeployTimeAddress:
-		return 1 + 48;
+		return 1 + hyperion::AddressBytes;
 	case PushImmutable:
 		return 1 + 64;
 	case AssignImmutable:

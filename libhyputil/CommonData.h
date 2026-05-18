@@ -532,7 +532,8 @@ void iterateReplacingWindow(std::vector<T>& _vector, F const& _f)
 	detail::iterateReplacingWindow(_vector, _f, std::make_index_sequence<N>{});
 }
 
-/// @returns true iff @a _str is a Q-prefixed 48-byte hex address.
+/// @returns true iff @a _str is a Q-prefixed hex address matching the
+/// current AddressBytes width.
 /// @param _strict accepted for API compatibility and ignored.
 bool passesAddressChecksum(std::string const& _str, bool _strict);
 
