@@ -28,4 +28,4 @@ contract C {
 // f(uint256): 0x01ffffffffffffffffffffffffffffffffffffffff -> 0x01ffffffffffffffffffffffffffffffffffffffff
 // g(address): 0x01ffffffffffffffffffffffffffffffffffffffff -> 0x01ffffffffffffffffffffffffffffffffffffffff
 // f(uint256): -1 -> FAILURE
-// g(address): -1 -> FAILURE
+// g(address): -1 -> 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff

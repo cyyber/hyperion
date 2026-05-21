@@ -33,7 +33,7 @@ contract D {
 }
 // ----
 // f() -> 0x1 # This should work, next should throw #
-// gas legacy: 118752
+// gas legacy: 118782
 // fview() -> FAILURE
 // gas irOptimized: 98438588
 // gas legacy: 98439033

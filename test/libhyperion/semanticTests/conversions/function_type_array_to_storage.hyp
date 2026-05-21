@@ -36,6 +36,8 @@ contract C {
         return (externalViewArray[0](), internalViewArray[0]());
     }
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // testViewToDefault() -> 12, 0x16
 // testPureToDefault() -> 13, 0x17

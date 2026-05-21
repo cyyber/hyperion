@@ -19,6 +19,8 @@ contract C {
 		assert(externalCalled == 2);
 	}
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // f() ->
 // gas irOptimized: 112969

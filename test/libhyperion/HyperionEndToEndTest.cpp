@@ -1920,6 +1920,12 @@ BOOST_AUTO_TEST_CASE(calldata_struct_short)
 
 BOOST_AUTO_TEST_CASE(calldata_struct_function_type)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	char const* sourceCode = R"(
 		pragma abicoder v2;
 		contract C {

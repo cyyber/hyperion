@@ -44,6 +44,8 @@ contract C {
 		return log;
 	}
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // test() -> 0x40, 0x14, "[a called][b called]"
 // gas irOptimized: 116645

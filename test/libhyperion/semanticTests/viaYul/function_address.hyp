@@ -9,6 +9,8 @@ contract C {
       return a.address;
     }
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // f() -> Qee3da6d6aa102f25f3c5068dd336d879697b4b247f1cbefb4b191862f0adbae8
 // g() -> true

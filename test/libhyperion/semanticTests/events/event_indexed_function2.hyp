@@ -8,6 +8,8 @@ contract C {
         emit TestB(this.f2);
     }
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // f1() ->
 // ~ emit TestA(function): #0xee3da6d6aa102f25f3c5068dd336d879

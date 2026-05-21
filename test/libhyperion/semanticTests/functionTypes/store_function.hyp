@@ -23,6 +23,8 @@ contract C {
         return ev(x);
     }
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // t() -> 9
 // gas irOptimized: 99064

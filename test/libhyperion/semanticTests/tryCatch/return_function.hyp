@@ -13,5 +13,7 @@ contract C {
     }
     function fun() public pure {}
 }
+// ====
+// QRVMVersion: >zond
 // ----
 // f() -> 0x1, 0xee3da6d6aa102f25f3c5068dd336d879697b4b247f1cbefb4b191862f0adbae8946644cd000000000000000000000000, 9

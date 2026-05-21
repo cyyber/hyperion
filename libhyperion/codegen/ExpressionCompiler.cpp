@@ -945,6 +945,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 						);
 						utils().toSizeAfterFreeMemoryPointer();
 						m_context << Instruction::KECCAK256;
+						utils().leftShiftNumberOnStack(VMWordBits - 256);
 					}
 					else
 					{

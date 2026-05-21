@@ -32,4 +32,27 @@ contract C {
     }
 }
 // ----
-// DeclarationError 7576: (298-339): Undeclared identifier.
+// TypeError 9640: (714-796): Explicit type conversion not allowed from "bytes32" to "bytes memory".
+// TypeError 1227: (714-799): Index range access is only supported for dynamic calldata arrays.
+// TypeError 1227: (881-887): Index range access is only supported for dynamic calldata arrays.
+// TypeError 8015: (133-138): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but bool provided.
+// TypeError 8015: (152-153): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const 1 provided.
+// TypeError 8015: (167-171): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const 10000000000 provided.
+// TypeError 8015: (185-190): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but rational_const 1 / 10000000000 provided.
+// TypeError 8015: (204-207): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but rational_const 1 / 10 provided.
+// TypeError 8015: (221-230): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const 19088743 provided.
+// TypeError 8015: (244-284): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const 3806...(37 digits omitted)...1680 provided.
+// TypeError 8015: (298-427): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but address provided.
+// TypeError 8015: (454-498): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const 2494...(42 digits omitted)...0497 provided.
+// TypeError 8015: (512-578): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const 3027...(66 digits omitted)...5855 provided.
+// TypeError 8015: (613-680): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but int_const -1 provided.
+// TypeError 8015: (714-799): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but bytes memory slice provided.
+// TypeError 8015: (813-814): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but function () provided.
+// TypeError 8015: (828-830): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but tuple() provided.
+// TypeError 8015: (844-850): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but tuple(int_const 0,int_const 0) provided.
+// TypeError 8015: (864-867): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but uint8[1] memory provided.
+// TypeError 8015: (881-887): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but uint8[1] memory slice provided.
+// TypeError 8015: (901-907): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but uint8 provided.
+// TypeError 8015: (921-928): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but contract C provided.
+// TypeError 8015: (942-946): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but struct C.S memory provided.
+// TypeError 8015: (960-963): Invalid type for argument in the bytes.concat function call. bytes or fixed bytes type is required, but enum C.E provided.
