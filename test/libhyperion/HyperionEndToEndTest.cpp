@@ -3189,7 +3189,7 @@ BOOST_AUTO_TEST_CASE(bare_call_return_data)
 					addr = new A();
 				}
 				function f(string memory signature) public returns (bool, bytes memory) {
-					return address(addr).)DELIMITER" + calltype + R"DELIMITER((abi.encodeWithSignature(signature));
+					return address(addr).)DELIMITER" + calltype + R"DELIMITER((abi.encodePacked(bytes4(keccak256(bytes(signature)))));
 				}
 				function check_bool() external returns (bool) {
 					(bool success, bytes memory data) = f("return_bool()");
