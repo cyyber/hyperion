@@ -16,7 +16,7 @@ contract C {
 		int256 v = int256(uint256(bytes32(uint256(2**255 + 10))));
 		assert(v == -(2**255) + 10);
 		D d;
-		int384 e = int384(uint384(address(d)));
+		int512 e = int512(uint512(address(d)));
 		assert(e == 0);
 	}
 
@@ -37,10 +37,10 @@ contract C {
 		bytes4 b = bytes4(uint32(type(uint256).max - 1));
 		assert(uint32(b) == uint32(2**32 - 2));
 		address c = address(0);
-		assert(uint384(c) == 0);
+		assert(uint512(c) == 0);
 		D d;
 		address e = address(d);
-		assert(uint384(e) == 0);
+		assert(uint512(e) == 0);
 		E f = E(1);
 		assert(uint(f) == 1);
 	}
@@ -50,7 +50,7 @@ contract C {
 		uint8 x = uint8(bytes1(uint8(100)));
 		assert(x == 100);
 		address a = address(0);
-		assert(a == address(uint384(0)));
+		assert(a == address(uint512(0)));
 		D d;
 		assert(a == address(d));
 	}

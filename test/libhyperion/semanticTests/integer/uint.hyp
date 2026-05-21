@@ -69,8 +69,8 @@ contract test {
 		uint152 uint152_min = type(uint152).min;
 		require(uint152_min == 0);
 
-		uint384 uint384_min = type(uint384).min;
-		require(uint384_min == 0);
+		uint160 uint160_min = type(uint160).min;
+		require(uint160_min == 0);
 
 		uint168 uint168_min = type(uint168).min;
 		require(uint168_min == 0);
@@ -185,8 +185,8 @@ contract test {
 		uint152 uint152_max = type(uint152).max;
 		require(uint152_max == 2**152-1);
 
-		uint384 uint384_max = type(uint384).max;
-		require(uint384_max == 2**160-1);
+		uint160 uint160_max = type(uint160).max;
+		require(uint160_max == 2**160-1);
 
 		uint168 uint168_max = type(uint168).max;
 		require(uint168_max == 2**168-1);
@@ -238,5 +238,5 @@ contract test {
 // uintMinD() -> true
 // uintMaxA() -> true
 // uintMaxB() -> true
-// uintMaxC() -> FAILURE
+// uintMaxC() -> true
 // uintMaxD() -> true

@@ -47,12 +47,12 @@ protected:
 		BOOST_CHECK(call(_name + "(string)", u256(0x40), _arg.length(), _arg).empty());
 	}
 
-	void callStringAddress(std::string const& _name, std::string const& _arg1, util::h384 const& _arg2)
+	void callStringAddress(std::string const& _name, std::string const& _arg1, util::h512 const& _arg2)
 	{
 		BOOST_CHECK(call(_name + "(string,address)", u256(0x80), _arg2, _arg1.length(), _arg1).empty());
 	}
 
-	void callStringAddressBool(std::string const& _name, std::string const& _arg1, util::h384 const& _arg2, bool _arg3)
+	void callStringAddressBool(std::string const& _name, std::string const& _arg1, util::h512 const& _arg2, bool _arg3)
 	{
 		BOOST_CHECK(call(_name + "(string,address,bool)", u256(0xc0), _arg2, _arg3, _arg1.length(), _arg1).empty());
 	}
@@ -62,16 +62,15 @@ protected:
 		BOOST_CHECK(call(_name + "(string,bytes32)", u256(0x80), _arg2, _arg1.length(), _arg1).empty());
 	}
 
-	util::h384 callStringReturnsAddress(std::string const& _name, std::string const& _arg)
+	util::h512 callStringReturnsAddress(std::string const& _name, std::string const& _arg)
 	{
 		bytes const& ret = call(_name + "(string)", u256(0x40), _arg.length(), _arg);
 		BOOST_REQUIRE(ret.size() == 0x40);
-		BOOST_CHECK(std::count(ret.begin(), ret.begin() + 16, 0) == 16);
-		bytes const addr{ret.begin() + 16, ret.end()};
-		return util::h384(addr);
+		bytes const addr{ret.begin(), ret.end()};
+		return util::h512(addr);
 	}
 
-	std::string callAddressReturnsString(std::string const& _name, util::h384 const& _arg)
+	std::string callAddressReturnsString(std::string const& _name, util::h512 const& _arg)
 	{
 		bytesConstRef const ret(&call(_name + "(address)", _arg));
 		BOOST_REQUIRE(ret.size() >= 0x80);
@@ -97,4 +96,3 @@ private:
 };
 
 } // end namespaces
-

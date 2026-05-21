@@ -563,10 +563,10 @@ Output Description
                 "linkReferences": {
                   "libraryFile.hyp": {
                     // Byte offsets into the bytecode.
-                    // Linking replaces the 48 bytes located there.
+                    // Linking replaces the 64 bytes located there.
                     "Library1": [
-                      { "start": 0, "length": 48 },
-                      { "start": 200, "length": 48 }
+                      { "start": 0, "length": 64 },
+                      { "start": 200, "length": 64 }
                     ]
                   }
                 }

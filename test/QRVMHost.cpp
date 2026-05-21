@@ -230,12 +230,12 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 
 		bytes encodedNonce = encodeRlpInteger(sender.nonce);
 
-		h384 createAddress(keccak256(
+		h512 createAddress(keccak256(
 			bytes{static_cast<uint8_t>(0xc0 + 49 + encodedNonce.size())} +
 			bytes{0xb0} +
 			bytes(begin(message.sender.bytes), end(message.sender.bytes)) +
 			encodedNonce
-		), h384::AlignRight);
+		), h512::AlignRight);
 
 		message.recipient = convertToQRVMC(createAddress);
 		assertThrow(accounts.count(message.recipient) == 0, Exception, "Account cannot exist");
@@ -244,12 +244,12 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 	}
 	else if (message.kind == QRVMC_CREATE2)
 	{
-		h384 createAddress(keccak256(
+		h512 createAddress(keccak256(
 			bytes{0xff} +
 			bytes(begin(message.sender.bytes), end(message.sender.bytes)) +
 			bytes(begin(message.create2_salt.bytes), end(message.create2_salt.bytes)) +
 			keccak256(bytes(message.input_data, message.input_data + message.input_size)).asBytes()
-		), h384::AlignRight);
+		), h512::AlignRight);
 
 		message.recipient = convertToQRVMC(createAddress);
 		if (accounts.count(message.recipient) && (
@@ -325,15 +325,15 @@ qrvmc::bytes32 QRVMHost::get_block_hash(int64_t _number) const noexcept
 	return convertToQRVMC(u256("0x3737373737373737373737373737373737373737373737373737373737373737") + _number);
 }
 
-h384 QRVMHost::convertFromQRVMC(qrvmc::address const& _addr)
+h512 QRVMHost::convertFromQRVMC(qrvmc::address const& _addr)
 {
-	return h384(bytes(begin(_addr.bytes), end(_addr.bytes)));
+	return h512(bytes(begin(_addr.bytes), end(_addr.bytes)));
 }
 
-qrvmc::address QRVMHost::convertToQRVMC(h384 const& _addr)
+qrvmc::address QRVMHost::convertToQRVMC(h512 const& _addr)
 {
 	qrvmc::address a;
-	for (unsigned i = 0; i < 48; ++i)
+	for (unsigned i = 0; i < AddressBytes; ++i)
 		a.bytes[i] = _addr[i];
 	return a;
 }

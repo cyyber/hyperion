@@ -874,7 +874,7 @@ the ``dup`` and ``swap`` instructions as well as ``jump`` instructions, labels a
 |                         |     |   | keccak256(0xff . this . s . keccak256(mem[p...(p+n)))           |
 |                         |     |   | and send v planck and return the new address, where ``0xff`` is |
 |                         |     |   | a 1 byte value, ``this`` is the current contract's address      |
-|                         |     |   | as a 48 byte value and ``s`` is a big-endian 512-bit value;     |
+|                         |     |   | as a 64 byte value and ``s`` is a big-endian 512-bit value;     |
 |                         |     |   | returns 0 on error                                              |
 +-------------------------+-----+---+-----------------------------------------------------------------+
 | call(g, a, v, in,       |     | F | call contract at address a with input mem[in...(in+insize))     |

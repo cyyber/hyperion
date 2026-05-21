@@ -4022,7 +4022,7 @@ std::string YulUtilFunctions::packedHashFunction(
 			function <functionName>(<variables>) -> hash {
 				let pos := <allocateUnbounded>()
 				let end := <packedEncode>(pos <comma> <variables>)
-				hash := keccak256(pos, sub(end, pos))
+				hash := <leftAlignHash>(keccak256(pos, sub(end, pos)))
 			}
 		)");
 		templ("functionName", functionName);
@@ -4030,6 +4030,7 @@ std::string YulUtilFunctions::packedHashFunction(
 		templ("comma", sizeOnStack > 0 ? "," : "");
 		templ("allocateUnbounded", allocateUnboundedFunction());
 		templ("packedEncode", ABIFunctions(m_qrvmVersion, m_revertStrings, m_functionCollector).tupleEncoderPacked(_givenTypes, _targetTypes));
+		templ("leftAlignHash", shiftLeftFunction(VMWordBits - 256));
 		return templ.render();
 	});
 }

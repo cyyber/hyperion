@@ -202,7 +202,7 @@ void ExecutionFramework::sendMessage(bytes const& _data, bool _isCreation, u256 
 	}
 }
 
-void ExecutionFramework::sendQuanta(h384 const& _addr, u256 const& _amount)
+void ExecutionFramework::sendQuanta(h512 const& _addr, u256 const& _amount)
 {
 	m_qrvmcHost->newBlock();
 
@@ -236,12 +236,12 @@ size_t ExecutionFramework::blockTimestamp(u256 _block)
 		return static_cast<size_t>((currentTimestamp() / blockNumber()) * _block);
 }
 
-h384 ExecutionFramework::account(size_t _idx)
+h512 ExecutionFramework::account(size_t _idx)
 {
-	return h384(h256(u256{"0x1212121212121212121212121212120000000012"} + _idx * 0x1000), h384::AlignRight);
+	return h512(h256(u256{"0x1212121212121212121212121212120000000012"} + _idx * 0x1000), h512::AlignRight);
 }
 
-bool ExecutionFramework::addressHasCode(h384 const& _addr) const
+bool ExecutionFramework::addressHasCode(h512 const& _addr) const
 {
 	return m_qrvmcHost->get_code_size(QRVMHost::convertToQRVMC(_addr)) != 0;
 }
@@ -261,7 +261,7 @@ h256 ExecutionFramework::logTopic(size_t _logIdx, size_t _topicIdx) const
 	return QRVMHost::convertFromQRVMC(m_qrvmcHost->recorded_logs.at(_logIdx).topics.at(_topicIdx));
 }
 
-h384 ExecutionFramework::logAddress(size_t _logIdx) const
+h512 ExecutionFramework::logAddress(size_t _logIdx) const
 {
 	return QRVMHost::convertFromQRVMC(m_qrvmcHost->recorded_logs.at(_logIdx).creator);
 }
@@ -274,12 +274,12 @@ bytes ExecutionFramework::logData(size_t _logIdx) const
 	return {data.begin(), data.end()};
 }
 
-u256 ExecutionFramework::balanceAt(h384 const& _addr) const
+u256 ExecutionFramework::balanceAt(h512 const& _addr) const
 {
 	return QRVMHost::convertUintFromQRVMC(m_qrvmcHost->get_balance(QRVMHost::convertToQRVMC(_addr)));
 }
 
-bool ExecutionFramework::storageEmpty(h384 const& _addr) const
+bool ExecutionFramework::storageEmpty(h512 const& _addr) const
 {
 	const auto it = m_qrvmcHost->accounts.find(QRVMHost::convertToQRVMC(_addr));
 	if (it != m_qrvmcHost->accounts.end())

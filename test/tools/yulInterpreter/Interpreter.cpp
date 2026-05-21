@@ -442,7 +442,7 @@ void ExpressionEvaluator::runExternalCall(qrvmasm::Instruction _instruction)
 		yulAssert(false);
 
 	// Don't execute external call if it isn't our own address
-	if (values()[1] != util::h384::Arith(m_state.address))
+	if (values()[1] != util::h512::Arith(m_state.address))
 		return;
 
 	Scope tmpScope;

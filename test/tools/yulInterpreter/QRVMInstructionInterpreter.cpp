@@ -40,7 +40,7 @@ using namespace hyperion::qrvmasm;
 using namespace hyperion::yul;
 using namespace hyperion::yul::test;
 
-using hyperion::util::h384;
+using hyperion::util::h512;
 using hyperion::util::h256;
 using hyperion::util::keccak256;
 
@@ -338,7 +338,7 @@ u256 QRVMInstructionInterpreter::eval(
 		// Used for fuzzing.
 		return (
 			(arg[0] > 0) &&
-			(arg[1] == util::h384::Arith(m_state.address) || (arg[1] & 1))
+			(arg[1] == util::h512::Arith(m_state.address) || (arg[1] & 1))
 		) ? 1 : 0;
 	case Instruction::DELEGATECALL:
 	case Instruction::STATICCALL:
@@ -349,7 +349,7 @@ u256 QRVMInstructionInterpreter::eval(
 		// Used for fuzzing.
 		return (
 			(arg[0] > 0) &&
-			(arg[1] == util::h384::Arith(m_state.address) || (arg[1] & 1))
+			(arg[1] == util::h512::Arith(m_state.address) || (arg[1] & 1))
 		) ? 1 : 0;
 	case Instruction::RETURN:
 	{

@@ -431,21 +431,22 @@ void CommandLineParser::parseLibraryOption(std::string const& _input)
 					"Note that the address must be prefixed with \"Q\"."
 				);
 
-			if (addrString.length() != 97)
+			if (addrString.length() != AddressBytes * 2 + 1)
 				hypThrow(
 					CommandLineValidationError,
 					"Invalid length for address for library \"" + libName + "\": " +
-					std::to_string(addrString.substr(1).length()) + " instead of 96 hex characters."
+					std::to_string(addrString.substr(1).length()) + " instead of " +
+					std::to_string(AddressBytes * 2) + " hex characters."
 				);
 			if (!util::passesAddressChecksum(addrString, false))
 				hypThrow(
 					CommandLineValidationError,
 					"Invalid address for library \"" + libName + "\": " + addrString + "\n"
-					"Expected Q followed by 96 hex characters."
+					"Expected Q followed by " + std::to_string(AddressBytes * 2) + " hex characters."
 				);
 			bytes binAddr = util::fromHex(addrString.substr(1));
-			util::h384 address(binAddr, util::h384::AlignRight);
-			if (binAddr.size() > 48 || address == util::h384())
+			util::h512 address(binAddr, util::h512::AlignRight);
+			if (binAddr.size() > AddressBytes || address == util::h512())
 				hypThrow(
 					CommandLineValidationError,
 					"Invalid address for library \"" + libName + "\": " + addrString

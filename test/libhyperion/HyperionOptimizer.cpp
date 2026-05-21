@@ -120,8 +120,8 @@ protected:
 	u256 m_gasUsedNonOptimized;
 	bytes m_nonOptimizedBytecode;
 	bytes m_optimizedBytecode;
-	h384 m_optimizedContract;
-	h384 m_nonOptimizedContract;
+	h512 m_optimizedContract;
+	h512 m_nonOptimizedContract;
 };
 
 BOOST_FIXTURE_TEST_SUITE(HyperionOptimizer, OptimizerTestFramework)

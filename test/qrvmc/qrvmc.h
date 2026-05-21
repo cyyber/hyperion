@@ -64,11 +64,11 @@ typedef struct qrvmc_bytes32
  */
 typedef struct qrvmc_bytes32 qrvmc_uint256be;
 
-/** Big-endian 384-bit hash suitable for keeping a QRL address. */
+/** Big-endian 512-bit hash suitable for keeping a QRL address. */
 typedef struct qrvmc_address
 {
-    /** The 48 bytes of the hash. */
-    uint8_t bytes[48];
+    /** The 64 bytes of the hash. */
+    uint8_t bytes[64];
 } qrvmc_address;
 
 /** The kind of call-like instruction. */
@@ -463,7 +463,7 @@ struct qrvmc_result
     /**
      * Reserved data that MAY be used by a qrvmc_result object creator.
      *
-     * This reserved 4 bytes together with 48 bytes from create_address form
+     * This reserved 4 bytes together with 64 bytes from create_address form
      * 52 bytes of memory called "optional data" within qrvmc_result struct
      * to be optionally used by the qrvmc_result object creator.
      *

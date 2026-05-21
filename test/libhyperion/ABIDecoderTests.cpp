@@ -23,6 +23,7 @@
 #include <string>
 #include <tuple>
 #include <boost/test/unit_test.hpp>
+#include <libhyputil/VMConstants.h>
 #include <liblangutil/Exceptions.h>
 #include <test/libhyperion/HyperionExecutionFramework.h>
 
@@ -89,6 +90,12 @@ BOOST_AUTO_TEST_CASE(decode_from_memory_simple)
 
 BOOST_AUTO_TEST_CASE(decode_function_type)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	std::string sourceCode = R"(
 		contract D {
 			function () external returns (uint) public _a;
@@ -123,6 +130,12 @@ BOOST_AUTO_TEST_CASE(decode_function_type)
 
 BOOST_AUTO_TEST_CASE(decode_function_type_array)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	std::string sourceCode = R"(
 		contract D {
 			function () external returns (uint)[] public _a;
@@ -314,6 +327,12 @@ BOOST_AUTO_TEST_CASE(validation_int_inside_arrays)
 
 BOOST_AUTO_TEST_CASE(validation_function_type)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	std::string sourceCode = R"(
 		contract C {
 			function f(function () external) public pure returns (uint r) { r = 1; }

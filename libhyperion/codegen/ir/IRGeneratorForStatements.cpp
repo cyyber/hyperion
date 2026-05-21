@@ -1054,7 +1054,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		TypePointers nonIndexedArgTypes;
 		TypePointers nonIndexedParamTypes;
 		if (!event.isAnonymous())
-			define(indexedArgs.emplace_back(m_context.newYulVariable(), *TypeProvider::uint256())) <<
+			define(indexedArgs.emplace_back(m_context.newYulVariable(), *TypeProvider::fixedBytes(32))) <<
 				formatNumber(u512(h256::Arith(keccak256(functionType->externalSignature()))) << (VMWordBits - 256)) << "\n";
 		for (size_t i = 0; i < event.parameters().size(); ++i)
 		{
@@ -1063,7 +1063,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			{
 				std::string value;
 				if (auto const& referenceType = dynamic_cast<ReferenceType const*>(paramTypes[i]))
-					define(indexedArgs.emplace_back(m_context.newYulVariable(), *TypeProvider::uint256())) <<
+					define(indexedArgs.emplace_back(m_context.newYulVariable(), *TypeProvider::fixedBytes(32))) <<
 						m_utils.packedHashFunction({arg.annotation().type}, {referenceType}) <<
 						"(" <<
 						IRVariable(arg).commaSeparatedList() <<

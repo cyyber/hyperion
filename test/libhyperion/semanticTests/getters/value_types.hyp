@@ -4,7 +4,7 @@ contract C {
     uint128 public c;
     uint public d;
     bytes1 public e;
-    bytes48 public f;
+    bytes64 public f;
     bytes32 public g;
     bool public h;
     address public i;
@@ -14,10 +14,10 @@ contract C {
         c = 5;
         d = 6;
         e = bytes1(uint8(0x7f));
-        f = bytes48(uint384(0x6465616462656566313564656164000000000010));
+        f = bytes64(uint512(0x6465616462656566313564656164000000000010));
         g = bytes32(uint256(0x6465616462656566313564656164000000000000000000000000000000000010));
         h = true;
-        i = address(type(uint384).max / 3);
+        i = address(type(uint512).max / 3);
     }
 }
 // ----

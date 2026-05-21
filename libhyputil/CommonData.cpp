@@ -26,6 +26,7 @@
 #include <libhyputil/FixedHash.h>
 #include <libhyputil/Keccak256.h>
 #include <libhyputil/StringUtils.h>
+#include <libhyputil/VMConstants.h>
 
 #include <boost/algorithm/string.hpp>
 
@@ -126,7 +127,7 @@ bytes hyperion::util::fromHex(std::string const& _s, WhenError _throw)
 bool hyperion::util::passesAddressChecksum(std::string const& _str, bool _strict)
 {
 	(void)_strict;
-	if (_str.length() != 97 || !boost::starts_with(_str, "Q"))
+	if (_str.length() != AddressBytes * 2 + 1 || !boost::starts_with(_str, "Q"))
 		return false;
 
 	std::string s = _str.substr(1);
@@ -135,7 +136,7 @@ bool hyperion::util::passesAddressChecksum(std::string const& _str, bool _strict
 
 std::string hyperion::util::getChecksummedAddress(std::string const& _addr)
 {
-	assertThrow(_addr.length() == 97, InvalidAddress, _addr);
+	assertThrow(_addr.length() == AddressBytes * 2 + 1, InvalidAddress, _addr);
 	assertThrow(boost::starts_with(_addr, "Q"), InvalidAddress, "");
 	std::string s = _addr.substr(1);
 	assertThrow(s.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos, InvalidAddress, "");

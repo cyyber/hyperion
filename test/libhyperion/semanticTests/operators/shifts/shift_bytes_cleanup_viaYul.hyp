@@ -1,13 +1,13 @@
 contract C {
-	function l(uint8 y) public returns (bytes48) {
-		bytes48 x;
+	function l(uint8 y) public returns (bytes64) {
+		bytes64 x;
 		assembly { x := "12345678901234567890abcde" }
 		// When compiling via IR, `x` is truncated before applying
 		// the operation.
 		return x << y;
 	}
-	function r(uint8 y) public returns (bytes48) {
-		bytes48 x;
+	function r(uint8 y) public returns (bytes64) {
+		bytes64 x;
 		assembly { x := "12345678901234567890abcde" }
 		return x >> y;
 	}

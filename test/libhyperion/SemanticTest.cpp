@@ -142,9 +142,9 @@ std::map<std::string, Builtin> SemanticTest::makeBuiltins()
 			[this](FunctionCall const& _call) -> std::optional<bytes>
 			{
 				hyptestAssert(_call.arguments.parameters.size() <= 1, "Account address expected.");
-				h384 address;
+				h512 address;
 				if (_call.arguments.parameters.size() == 1)
-					address = h384(_call.arguments.parameters.at(0).rawString);
+					address = h512(_call.arguments.parameters.at(0).rawString);
 				else
 					address = m_contractAddress;
 				return toBigEndian(u512(balanceAt(address)));

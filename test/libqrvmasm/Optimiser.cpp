@@ -1530,6 +1530,8 @@ BOOST_AUTO_TEST_CASE(cse_remove_redundant_shift_masking)
 
 BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 {
+	u512 const addressMask = ~u512(0);
+	u512 const nonAddressMask("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 	std::vector<Instruction> ops{
 		Instruction::ADDRESS,
 		Instruction::CALLER,
@@ -1539,7 +1541,7 @@ BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 	for (auto const& op: ops)
 	{
 		checkCSE({
-			u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+			addressMask,
 			op,
 			Instruction::AND
 		}, {
@@ -1548,7 +1550,7 @@ BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 
 		checkCSE({
 			op,
-			u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+			addressMask,
 			Instruction::AND
 		}, {
 			op
@@ -1578,21 +1580,21 @@ BOOST_AUTO_TEST_CASE(cse_remove_unwanted_masking_of_address)
 
 	// leave other opcodes untouched
 	checkCSE({
-		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+		nonAddressMask,
 		Instruction::CALLVALUE,
 		Instruction::AND
 	}, {
 		Instruction::CALLVALUE,
-		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+		nonAddressMask,
 		Instruction::AND
 	});
 
 	checkCSE({
 		Instruction::CALLVALUE,
-		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+		nonAddressMask,
 		Instruction::AND
 	}, {
-		u512("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
+		nonAddressMask,
 		Instruction::CALLVALUE,
 		Instruction::AND
 	});

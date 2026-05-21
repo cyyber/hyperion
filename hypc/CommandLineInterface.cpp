@@ -1082,13 +1082,13 @@ void CommandLineInterface::link()
 	hypAssert(m_options.input.mode == InputMode::Linker);
 
 	// Map from how the libraries will be named inside the bytecode to their addresses.
-	std::map<std::string, h384> librariesReplacements;
-	int const placeholderSize = 96; // 48 bytes or 96 hex characters
+	std::map<std::string, h512> librariesReplacements;
+	int const placeholderSize = 2 * AddressBytes; // AddressBytes encoded as hex characters
 	for (auto const& library: m_options.linker.libraries)
 	{
 		std::string const& name = library.first;
-		// Library placeholders are 96 hex digits (48 bytes) that start and end with '__'.
-		// This leaves 92 characters for the library identifier. The identifier used to
+		// Library placeholders are AddressBytes hex digits that start and end with '__'.
+		// This leaves placeholderSize - 4 characters for the library identifier. The identifier used to
 		// be just the cropped or '_'-padded library name, but this changed to
 		// the cropped hex representation of the hash of the library name.
 		// We support both ways of linking here.

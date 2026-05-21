@@ -29,12 +29,13 @@
 #include <liblangutil/QRVMVersion.h>
 
 #include <libhyputil/FixedHash.h>
+#include <libhyputil/VMConstants.h>
 
 #include <boost/filesystem.hpp>
 
 namespace hyperion::test
 {
-using Address = util::h384;
+using Address = util::h512;
 using StorageMap = std::map<qrvmc::bytes32, qrvmc::StorageValue>;
 
 struct QRVMPrecompileOutput {

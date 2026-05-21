@@ -161,7 +161,9 @@ inline constexpr bool operator==(const address& a, const address& b) noexcept
            load64le(&a.bytes[16]) == load64le(&b.bytes[16]) &&
            load64le(&a.bytes[24]) == load64le(&b.bytes[24]) &&
            load64le(&a.bytes[32]) == load64le(&b.bytes[32]) &&
-           load64le(&a.bytes[40]) == load64le(&b.bytes[40]);
+           load64le(&a.bytes[40]) == load64le(&b.bytes[40]) &&
+           load64le(&a.bytes[48]) == load64le(&b.bytes[48]) &&
+           load64le(&a.bytes[56]) == load64le(&b.bytes[56]);
 }
 
 /// The "not equal to" comparison operator for the qrvmc::address type.

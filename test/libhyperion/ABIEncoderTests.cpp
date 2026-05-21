@@ -23,6 +23,7 @@
 
 #include <test/libhyperion/ABITestsCommon.h>
 
+#include <libhyputil/VMConstants.h>
 #include <liblangutil/Exceptions.h>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -66,7 +67,7 @@ BOOST_AUTO_TEST_CASE(value_types)
 		compileAndRun(sourceCode);
 		callContractFunction("f()");
 		REQUIRE_LOG_DATA(encodeArgs(
-			10, u256(65534), u256(0x121212), u256(-1), std::string("\x1b\xab\xab"), true, h384("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb")
+			10, u256(65534), u256(0x121212), u256(-1), std::string("\x1b\xab\xab"), true, h512(std::string(127, 'f') + "b")
 		));
 	)
 }
@@ -264,9 +265,9 @@ BOOST_AUTO_TEST_CASE(storage_array)
 		compileAndRun(sourceCode);
 		callContractFunction("f()");
 		REQUIRE_LOG_DATA(encodeArgs(
-			h384("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"),
-			h384("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"),
-			h384("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd")
+			h512(std::string(128, 'f')),
+			h512(std::string(127, 'f') + "e"),
+			h512(std::string(127, 'f') + "d")
 		));
 	)
 }
@@ -291,9 +292,9 @@ BOOST_AUTO_TEST_CASE(storage_array_dyn)
 		REQUIRE_LOG_DATA(encodeArgs(
 			0x40,
 			3,
-			h384("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"),
-			h384("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"),
-			h384("000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003")
+			h512(std::string(127, '0') + "1"),
+			h512(std::string(127, '0') + "2"),
+			h512(std::string(127, '0') + "3")
 		));
 	)
 }
@@ -328,6 +329,12 @@ BOOST_AUTO_TEST_CASE(storage_array_compact)
 
 BOOST_AUTO_TEST_CASE(external_function)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	std::string sourceCode = R"(
 		contract C {
 			event E(function(uint) external returns (uint), function(uint) external returns (uint));
@@ -348,6 +355,12 @@ BOOST_AUTO_TEST_CASE(external_function)
 
 BOOST_AUTO_TEST_CASE(external_function_cleanup)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	std::string sourceCode = R"(
 		contract C {
 			event E(function(uint) external returns (uint), function(uint) external returns (uint));
@@ -689,6 +702,12 @@ BOOST_AUTO_TEST_CASE(bytesNN_arrays_dyn)
 
 BOOST_AUTO_TEST_CASE(packed_structs)
 {
+	if (AddressBits + 32 > VMWordBits)
+	{
+		BOOST_TEST_MESSAGE("External function pointers do not fit in a VM word with 64-byte addresses.");
+		return;
+	}
+
 	std::string sourceCode = R"(
 		contract C {
 			struct S { bool a; int8 b; function() external g; bytes3 d; int8 e; }
