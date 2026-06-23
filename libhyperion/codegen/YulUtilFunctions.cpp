@@ -1020,7 +1020,12 @@ std::string YulUtilFunctions::overflowCheckedUnsignedExpFunction()
 				case 1 { power := 1 leave }
 				case 2
 				{
-					if gt(exponent, 255) { <panic>() }
+					// For base 2, exp(2, exponent) wraps modulo the VM word, so an
+					// exponent >= VMWordBits would silently produce a truncated value
+					// that the `gt(power, max)` check below could not detect. Reject
+					// those up front; results for exponents within the word width are
+					// still bounded by the type's `max`.
+					if gt(exponent, <maxBase2Exponent>) { <panic>() }
 					power := exp(2, exponent)
 					if gt(power, max) { <panic>() }
 					leave
@@ -1043,6 +1048,7 @@ std::string YulUtilFunctions::overflowCheckedUnsignedExpFunction()
 			)")
 			("functionName", functionName)
 			("panic", panicFunction(PanicCode::UnderOverflow))
+			("maxBase2Exponent", std::to_string(VMWordBits - 1))
 			("expLoop", overflowCheckedExpLoopFunction())
 			.render();
 	});
