@@ -1,0 +1,15 @@
+contract C {
+    // Both literals are longer than 32 bytes. The via-IR pipeline used to build
+    // these through h256 (32 bytes wide) and silently dropped every byte past the
+    // 32nd. Referencing them from inline assembly must yield the full value.
+    bytes33 constant a = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456";
+    bytes40 constant b = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcd";
+    function f() public pure returns (bytes33 x, bytes40 y) {
+        assembly {
+            x := a
+            y := b
+        }
+    }
+}
+// ----
+// f() -> left(0x4142434445464748494a4b4c4d4e4f505152535455565758595a30313233343536), left(0x4142434445464748494a4b4c4d4e4f505152535455565758595a3031323334353637383961626364)

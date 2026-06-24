@@ -148,8 +148,16 @@ private:
 					auto const& stringLiteral = dynamic_cast<StringLiteralType const&>(*type);
 					hypAssert(variable->type()->category() == Type::Category::FixedBytes);
 					unsigned const numBytes = dynamic_cast<FixedBytesType const&>(*variable->type()).numBytes();
-					hypAssert(stringLiteral.value().size() <= numBytes);
-					u512 litVal = u512(h256::Arith(h256(stringLiteral.value(), h256::AlignLeft))) << (VMWordBits - 256);
+					std::string const& strValue = stringLiteral.value();
+					hypAssert(strValue.size() <= numBytes);
+					// Fold every byte into the VM word; h256 would truncate string
+					// literals longer than 32 bytes (bytes33..bytes64), so build the
+					// value byte by byte and left-align it like the legacy pipeline.
+					u512 litVal = 0;
+					for (char c: strValue)
+						litVal = (litVal << 8) | static_cast<uint8_t>(c);
+					if (strValue.size() < VMWordBytes)
+						litVal <<= (VMWordBytes - strValue.size()) * 8;
 					value = formatNumber(litVal);
 					break;
 				}
