@@ -4596,7 +4596,9 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return util::Whiskers(R"(
 			function <functionName>() -> ret {
-				if lt(returndatasize(), 0x44) { leave }
+				// A minimal Error(string) is a 4-byte selector plus an offset
+				// word and a length word, i.e. 4 + 2 * VMWordBytes bytes.
+				if lt(returndatasize(), <minReturndataSize>) { leave }
 
 				let data := <allocateUnbounded>()
 				returndatacopy(data, 4, sub(returndatasize(), 4))
@@ -4604,7 +4606,7 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 				let offset := mload(data)
 				if or(
 					gt(offset, 0xffffffffffffffff),
-					gt(add(offset, 0x24), returndatasize())
+					gt(add(offset, <lengthWordEnd>), returndatasize())
 				) {
 					leave
 				}
@@ -4624,6 +4626,8 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 		("allocateUnbounded", allocateUnboundedFunction())
 		("finalizeAllocation", finalizeAllocationFunction())
 		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
+		("minReturndataSize", toCompactHexWithPrefix(u256(4 + 2 * VMWordBytes)))
+		("lengthWordEnd", toCompactHexWithPrefix(u256(4 + VMWordBytes)))
 		.render();
 	});
 }
