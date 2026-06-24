@@ -4635,7 +4635,12 @@ std::string YulUtilFunctions::tryDecodePanicDataFunction()
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return util::Whiskers(R"(
 			function <functionName>() -> success, data {
-				if gt(returndatasize(), 0x23) {
+				// Panic data is a 4-byte selector followed by one VM word, so it
+				// occupies 4 + VMWordBytes bytes. The guard must require that many
+				// bytes; otherwise returndatacopy below would read past
+				// returndatasize() and revert instead of letting the caller fall
+				// through to the generic catch.
+				if gt(returndatasize(), <minReturndataSize>) {
 					returndatacopy(0, 4, <wordSizeHex>)
 					success := 1
 					data := mload(0)
@@ -4644,6 +4649,7 @@ std::string YulUtilFunctions::tryDecodePanicDataFunction()
 		)")
 		("functionName", functionName)
 		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
+		("minReturndataSize", toCompactHexWithPrefix(u256(4 + VMWordBytes - 1)))
 		.render();
 	});
 }
