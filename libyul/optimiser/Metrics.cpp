@@ -155,11 +155,16 @@ void CodeCost::operator()(Literal const& _literal)
 	case LiteralKind::Boolean:
 		break;
 	case LiteralKind::Number:
-		for (u256 n = u256(_literal.value.str()); n >= 0x100; n >>= 8)
+	{
+		// Use the full-width value: literals can exceed 2**256 on wide VM words,
+		// and truncating to u256 would undercount the PUSH byte cost.
+		u512 const value = valueOfLiteral(_literal);
+		for (u512 n = value; n >= 0x100; n >>= 8)
 			cost++;
-		if (valueOfLiteral(_literal) == 0)
+		if (value == 0)
 			--m_cost;
 		break;
+	}
 	case LiteralKind::String:
 		cost = _literal.value.str().size();
 		break;
