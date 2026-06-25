@@ -1632,6 +1632,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		Whiskers templ(R"(
 			let <pos> := <allocateUnbounded>()
 			let <end> := <encodeArgs>(<pos> <argumentString>)
+			mstore(0, 0)
 			let <success> := <call>(<gas>, <address>, <pos>, sub(<end>, <pos>), 0, 32)
 			if iszero(<success>) { <forwardingRevert>() }
 			let <retVars> := <shl>(mload(0))
