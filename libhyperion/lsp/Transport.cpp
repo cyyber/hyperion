@@ -27,9 +27,11 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <charconv>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 
 #if defined(_WIN32)
@@ -38,6 +40,27 @@
 #endif
 
 using namespace hyperion::lsp;
+
+namespace
+{
+
+constexpr size_t c_maxContentLength = 16 * 1024 * 1024;
+
+std::optional<size_t> parseContentLength(std::string const& _value)
+{
+	if (_value.empty())
+		return std::nullopt;
+
+	size_t length = 0;
+	char const* begin = _value.data();
+	char const* end = begin + _value.size();
+	auto const [ptr, ec] = std::from_chars(begin, end, length);
+	if (ec != std::errc{} || ptr != end)
+		return std::nullopt;
+	return length;
+}
+
+}
 
 // {{{ Transport
 std::optional<Json::Value> Transport::receive()
@@ -55,7 +78,28 @@ std::optional<Json::Value> Transport::receive()
 		return std::nullopt;
 	}
 
-	std::string const data = readBytes(stoul(headers->at("content-length")));
+	auto const contentLength = parseContentLength(headers->at("content-length"));
+	if (!contentLength)
+	{
+		error({}, ErrorCode::ParseError, "Invalid Content-Length header.");
+		return std::nullopt;
+	}
+	if (*contentLength > c_maxContentLength)
+	{
+		error(
+			{},
+			ErrorCode::ParseError,
+			fmt::format("Content-Length exceeds maximum supported size of {} bytes.", c_maxContentLength)
+		);
+		return std::nullopt;
+	}
+
+	std::string const data = readBytes(*contentLength);
+	if (data.size() != *contentLength)
+	{
+		error({}, ErrorCode::ParseError, "Unexpected end of input while reading RPC payload.");
+		return std::nullopt;
+	}
 
 	Json::Value jsonMessage;
 	std::string jsonParsingErrors;
