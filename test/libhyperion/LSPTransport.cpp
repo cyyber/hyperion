@@ -99,6 +99,47 @@ BOOST_AUTO_TEST_CASE(receive_rejects_short_body)
 	BOOST_CHECK(containsParseError(output.str(), "Unexpected end of input while reading RPC payload."));
 }
 
+BOOST_AUTO_TEST_CASE(receive_rejects_oversized_header_line)
+{
+	std::istringstream input{"X-Test: " + std::string(9000, 'a') + "\r\n\r\n"};
+	std::ostringstream output;
+	IOStreamTransport transport{input, output};
+
+	BOOST_CHECK(!transport.receive());
+	BOOST_CHECK(transport.closed());
+	BOOST_CHECK(containsParseError(output.str(), "Could not parse RPC headers."));
+}
+
+BOOST_AUTO_TEST_CASE(receive_rejects_too_many_headers)
+{
+	std::string inputString;
+	for (size_t i = 0; i < 65; ++i)
+		inputString += "X-Test-" + std::to_string(i) + ": value\r\n";
+	inputString += "\r\n";
+	std::istringstream input{inputString};
+	std::ostringstream output;
+	IOStreamTransport transport{input, output};
+
+	BOOST_CHECK(!transport.receive());
+	BOOST_CHECK(transport.closed());
+	BOOST_CHECK(containsParseError(output.str(), "Could not parse RPC headers."));
+}
+
+BOOST_AUTO_TEST_CASE(receive_rejects_oversized_header_block)
+{
+	std::string inputString;
+	for (size_t i = 0; i < 17; ++i)
+		inputString += "X-Test-" + std::to_string(i) + ": " + std::string(4090, 'a') + "\r\n";
+	inputString += "\r\n";
+	std::istringstream input{inputString};
+	std::ostringstream output;
+	IOStreamTransport transport{input, output};
+
+	BOOST_CHECK(!transport.receive());
+	BOOST_CHECK(transport.closed());
+	BOOST_CHECK(containsParseError(output.str(), "Could not parse RPC headers."));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }
