@@ -96,7 +96,7 @@ void FileRepository::setSourceByUri(std::string const& _uri, std::string _source
 	// This is needed for uris outside the base path. It can lead to collisions,
 	// but we need to mostly rewrite this in a future version anyway.
 	auto sourceUnitName = uriToSourceUnitName(_uri);
-	lspDebug(fmt::format("FileRepository.setSourceByUri({}): {}", _uri, _source));
+	lspDebug(fmt::format("FileRepository.setSourceByUri({}): {} bytes", _uri, _source.size()));
 	m_sourceUnitNamesToUri.emplace(sourceUnitName, _uri);
 	m_sourceCodes[sourceUnitName] = std::move(_source);
 }
@@ -179,4 +179,3 @@ frontend::ReadCallback::Result FileRepository::readFile(std::string const& _kind
 		return ReadCallback::Result{false, "Unknown exception in read callback: " + boost::current_exception_diagnostic_information()};
 	}
 }
-

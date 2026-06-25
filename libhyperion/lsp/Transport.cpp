@@ -292,7 +292,7 @@ std::optional<std::string> StdioTransport::readLine(size_t _maxLength)
 
 void StdioTransport::writeBytes(std::string_view _data)
 {
-	lspDebug(fmt::format("Sending: {}", _data));
+	lspDebug(fmt::format("Sending {} bytes", _data.size()));
 	auto const bytesWritten = fwrite(_data.data(), 1, _data.size(), stdout);
 	hypAssert(bytesWritten == _data.size());
 }

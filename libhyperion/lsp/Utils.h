@@ -27,9 +27,9 @@
 #include <optional>
 #include <vector>
 
-#if !defined(NDEBUG)
-#include <fstream>
-#define lspDebug(message) (std::ofstream("/tmp/hypc.log", std::ios::app) << (message) << std::endl)
+#if defined(HYPERION_LSP_DEBUG)
+#include <iostream>
+#define lspDebug(message) do { std::clog << (message) << std::endl; } while (0)
 #else
 #define lspDebug(message) do {} while (0)
 #endif
