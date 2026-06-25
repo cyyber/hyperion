@@ -401,8 +401,8 @@ void LanguageServer::handleInitialize(MessageID _id, Json::Value const& _args)
 		);
 		rootPath = stripFileUriSchemePrefix(rootPath);
 	}
-	else if (Json::Value rootPath = _args["rootPath"])
-		rootPath = rootPath.asString();
+	else if (Json::Value rootPathJson = _args["rootPath"])
+		rootPath = rootPathJson.asString();
 
 	if (_args["trace"])
 		setTrace(_args["trace"]);

@@ -16,13 +16,20 @@
 */
 // SPDX-License-Identifier: GPL-3.0
 
+#include <libhyperion/lsp/LanguageServer.h>
 #include <libhyperion/lsp/Transport.h>
 
+#include <libhyputil/JSON.h>
+#include <libhyputil/TemporaryDirectory.h>
+
+#include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <fstream>
 #include <limits>
 #include <sstream>
 #include <string>
+#include <vector>
 
 using namespace std::string_literals;
 
@@ -42,6 +49,46 @@ bool containsParseError(std::string const& _output, std::string const& _message)
 	return
 		_output.find("\"code\":-32700") != std::string::npos &&
 		_output.find(_message) != std::string::npos;
+}
+
+std::string payload(std::string const& _method, Json::Value _params = Json::objectValue, Json::Value _id = Json::nullValue)
+{
+	Json::Value message;
+	message["jsonrpc"] = "2.0";
+	message["method"] = _method;
+	message["params"] = std::move(_params);
+	if (_id != Json::nullValue)
+		message["id"] = std::move(_id);
+	return util::jsonCompactPrint(message);
+}
+
+std::string runLanguageServer(std::vector<std::string> const& _payloads)
+{
+	std::string inputString;
+	for (std::string const& message: _payloads)
+		inputString += frame(message);
+
+	std::istringstream input{inputString};
+	std::ostringstream output;
+	IOStreamTransport transport{input, output};
+	BOOST_CHECK(LanguageServer{transport}.run());
+	return output.str();
+}
+
+Json::Value initializeParams(boost::filesystem::path const& _rootPath)
+{
+	Json::Value params;
+	params["rootPath"] = _rootPath.generic_string();
+	params["initializationOptions"]["file-load-strategy"] = "directly-opened-and-on-import";
+	return params;
+}
+
+Json::Value didOpenParams(boost::filesystem::path const& _path, std::string _text)
+{
+	Json::Value params;
+	params["textDocument"]["uri"] = "file://" + _path.generic_string();
+	params["textDocument"]["text"] = std::move(_text);
+	return params;
 }
 
 }
@@ -138,6 +185,56 @@ BOOST_AUTO_TEST_CASE(receive_rejects_oversized_header_block)
 	BOOST_CHECK(!transport.receive());
 	BOOST_CHECK(transport.closed());
 	BOOST_CHECK(containsParseError(output.str(), "Could not parse RPC headers."));
+}
+
+BOOST_AUTO_TEST_CASE(language_server_uses_legacy_root_path_for_imports)
+{
+	util::TemporaryDirectory tempDir{"lsp-root-path-test"};
+	boost::filesystem::path importedFile = tempDir.path() / "Imported.hyp";
+	{
+		std::ofstream outFile(importedFile.string());
+		outFile << "contract Imported {}" << std::endl;
+	}
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload(
+			"textDocument/didOpen",
+			didOpenParams(tempDir.path() / "main.hyp", "import \"Imported.hyp\";\ncontract Main {}")
+		),
+		payload("shutdown", Json::nullValue, 2),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK_EQUAL(output.find("File not found"), std::string::npos);
+	BOOST_CHECK(output.find(importedFile.generic_string()) != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_rejects_absolute_imports_outside_workspace)
+{
+	util::TemporaryDirectory workspaceDir{"lsp-workspace-test"};
+	util::TemporaryDirectory outsideDir{"lsp-outside-test"};
+	boost::filesystem::path outsideFile = outsideDir.path() / "Outside.hyp";
+	{
+		std::ofstream outFile(outsideFile.string());
+		outFile << "contract Outside {}" << std::endl;
+	}
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(workspaceDir.path()), 1),
+		payload(
+			"textDocument/didOpen",
+			didOpenParams(
+				workspaceDir.path() / "main.hyp",
+				"import \"" + outsideFile.generic_string() + "\";\ncontract Main {}"
+			)
+		),
+		payload("shutdown", Json::nullValue, 2),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("File outside of allowed directories") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("\"uri\":\"file://" + outsideFile.generic_string() + "\""), std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -190,6 +190,38 @@ BOOST_AUTO_TEST_CASE(invalid_language)
 	BOOST_CHECK(containsError(result, "JSONError", "Only \"Hyperion\", \"Yul\" or \"HyperionAST\" is supported as a language."));
 }
 
+BOOST_AUTO_TEST_CASE(malformed_standard_json_scalars_report_json_errors)
+{
+	Json::Value result = compile(R"(
+	{
+		"language": {},
+		"sources": { "name": { "content": "abc" } }
+	}
+	)");
+	BOOST_CHECK(containsError(result, "JSONError", "\"language\" must be a string."));
+	BOOST_CHECK(!containsError(result, "InternalCompilerError", "JSON logic exception: Type is not convertible to string"));
+
+	result = compile(R"(
+	{
+		"language": "Hyperion",
+		"sources": { "name": { "content": "contract C {}" } },
+		"settings": { "metadata": { "bytecodeHash": {} } }
+	}
+	)");
+	BOOST_CHECK(containsError(result, "JSONError", "\"settings.metadata.bytecodeHash\" must be a string"));
+	BOOST_CHECK(!containsError(result, "InternalCompilerError", "JSON logic exception: Type is not convertible to string"));
+
+	result = compile(R"(
+	{
+		"language": "Hyperion",
+		"sources": { "name": { "content": "contract C {}" } },
+		"settings": { "debug": { "debugInfo": [{}] } }
+	}
+	)");
+	BOOST_CHECK(containsError(result, "JSONError", "settings.debug.debugInfo must be an array of strings."));
+	BOOST_CHECK(!containsError(result, "InternalCompilerError", "JSON logic exception: Type is not convertible to string"));
+}
+
 BOOST_AUTO_TEST_CASE(valid_language)
 {
 	char const* input = R"(

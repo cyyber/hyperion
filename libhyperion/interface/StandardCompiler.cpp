@@ -504,8 +504,13 @@ std::optional<Json::Value> checkMetadataKeys(Json::Value const& _input)
 			return formatFatalError(Error::Type::JSONError, "\"settings.metadata.useLiteralContent\" must be Boolean");
 
 		static std::set<std::string> hashes{"ipfs", "bzzr1", "none"};
-		if (_input.isMember("bytecodeHash") && !hashes.count(_input["bytecodeHash"].asString()))
-			return formatFatalError(Error::Type::JSONError, "\"settings.metadata.bytecodeHash\" must be \"ipfs\", \"bzzr1\" or \"none\"");
+		if (_input.isMember("bytecodeHash"))
+		{
+			if (!_input["bytecodeHash"].isString())
+				return formatFatalError(Error::Type::JSONError, "\"settings.metadata.bytecodeHash\" must be a string");
+			if (!hashes.count(_input["bytecodeHash"].asString()))
+				return formatFatalError(Error::Type::JSONError, "\"settings.metadata.bytecodeHash\" must be \"ipfs\", \"bzzr1\" or \"none\"");
+		}
 	}
 	static std::set<std::string> keys{"appendCBOR", "useLiteralContent", "bytecodeHash"};
 	return checkKeys(_input, keys, "settings.metadata");
@@ -639,6 +644,9 @@ std::variant<StandardCompiler::InputsAndSettings, Json::Value> StandardCompiler:
 
 	if (auto result = checkRootKeys(_input))
 		return *result;
+
+	if (_input.isMember("language") && !_input["language"].isString())
+		return formatFatalError(Error::Type::JSONError, "\"language\" must be a string.");
 
 	ret.language = _input["language"].asString();
 
@@ -828,7 +836,11 @@ std::variant<StandardCompiler::InputsAndSettings, Json::Value> StandardCompiler:
 
 			std::vector<std::string> components;
 			for (Json::Value const& arrayValue: settings["debug"]["debugInfo"])
+			{
+				if (!arrayValue.isString())
+					return formatFatalError(Error::Type::JSONError, "settings.debug.debugInfo must be an array of strings.");
 				components.push_back(arrayValue.asString());
+			}
 
 			std::optional<DebugInfoSelection> debugInfoSelection = DebugInfoSelection::fromComponents(
 				components,

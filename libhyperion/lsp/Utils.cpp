@@ -34,7 +34,11 @@ using namespace langutil;
 std::optional<LineColumn> parseLineColumn(Json::Value const& _lineColumn)
 {
 	if (_lineColumn.isObject() && _lineColumn["line"].isInt() && _lineColumn["character"].isInt())
+	{
+		if (_lineColumn["line"].asInt() < 0 || _lineColumn["character"].asInt() < 0)
+			return std::nullopt;
 		return LineColumn{_lineColumn["line"].asInt(), _lineColumn["character"].asInt()};
+	}
 	else
 		return std::nullopt;
 }
