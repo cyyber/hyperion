@@ -5,4 +5,4 @@ contract C {
     }
 }
 // ----
-// TypeError 3390: (77-82): Invalid rational number.
+// TypeError 7407: (76-86): Type tuple(int_const 1000...(104 digits omitted)...0000,int_const 1) is not implicitly convertible to expected type tuple(uint256,).
