@@ -19,7 +19,12 @@
 #include <test/libhyperion/SMTCheckerTest.h>
 #include <test/Common.h>
 
+#include <libhyperion/ast/TypeProvider.h>
+#include <libhyperion/formal/SymbolicTypes.h>
+
 #include <range/v3/action/remove_if.hpp>
+
+#include <boost/test/unit_test.hpp>
 
 using namespace hyperion;
 using namespace hyperion::langutil;
@@ -160,3 +165,21 @@ void SMTCheckerTest::printUpdatedExpectations(std::ostream &_stream, const std::
 	else
 		CommonSyntaxTest::printUpdatedExpectations(_stream, _linePrefix);
 }
+
+BOOST_AUTO_TEST_SUITE(SMTChecker)
+
+BOOST_AUTO_TEST_CASE(wide_fixed_bytes_constants_keep_high_bytes)
+{
+	bigint const highByte = bigint(0x41) << (63 * 8);
+	BOOST_CHECK_EQUAL(smtutil::Expression(highByte).name, highByte.str());
+
+	auto value = smt::symbolicTypeConversion(
+		TypeProvider::stringLiteral("A"),
+		TypeProvider::fixedBytes(64)
+	);
+	BOOST_REQUIRE(value.has_value());
+	BOOST_CHECK_EQUAL(value->name, highByte.str());
+	BOOST_CHECK_NE(value->name, "0");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
