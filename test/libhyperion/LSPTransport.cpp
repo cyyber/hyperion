@@ -321,6 +321,29 @@ BOOST_AUTO_TEST_CASE(language_server_hover_returns_null_for_out_of_range_positio
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(language_server_hover_handles_undocumented_identifier_path)
+{
+	util::TemporaryDirectory tempDir{"lsp-hover-identifier-path-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+	std::string const source =
+		"library Lib { function f(uint self) internal pure returns (uint) { return self; } } "
+		"contract C { using Lib for uint; }";
+	size_t const hoverPosition = source.rfind("Lib");
+	BOOST_REQUIRE_NE(hoverPosition, std::string::npos);
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didOpen", didOpenParams(sourceFile, source)),
+		payload("textDocument/hover", textDocumentPositionParams(sourceFile, 0, static_cast<int>(hoverPosition)), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("\"result\":null") == std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(language_server_hover_rejects_malformed_position)
 {
 	util::TemporaryDirectory tempDir{"lsp-hover-malformed-position-test"};
