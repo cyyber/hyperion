@@ -51,6 +51,13 @@ bool containsParseError(std::string const& _output, std::string const& _message)
 		_output.find(_message) != std::string::npos;
 }
 
+bool containsError(std::string const& _output, ErrorCode _code, std::string const& _message)
+{
+	return
+		_output.find("\"code\":" + std::to_string(static_cast<int>(_code))) != std::string::npos &&
+		_output.find(_message) != std::string::npos;
+}
+
 std::string payload(std::string const& _method, Json::Value _params = Json::objectValue, Json::Value _id = Json::nullValue)
 {
 	Json::Value message;
@@ -88,6 +95,22 @@ Json::Value didOpenParams(boost::filesystem::path const& _path, std::string _tex
 	Json::Value params;
 	params["textDocument"]["uri"] = "file://" + _path.generic_string();
 	params["textDocument"]["text"] = std::move(_text);
+	return params;
+}
+
+Json::Value textDocumentPositionParams(boost::filesystem::path const& _path, int _line, int _character)
+{
+	Json::Value params;
+	params["textDocument"]["uri"] = "file://" + _path.generic_string();
+	params["position"]["line"] = _line;
+	params["position"]["character"] = _character;
+	return params;
+}
+
+Json::Value renameParams(boost::filesystem::path const& _path, int _line, int _character, std::string const& _newName)
+{
+	Json::Value params = textDocumentPositionParams(_path, _line, _character);
+	params["newName"] = _newName;
 	return params;
 }
 
@@ -235,6 +258,86 @@ BOOST_AUTO_TEST_CASE(language_server_rejects_absolute_imports_outside_workspace)
 
 	BOOST_CHECK(output.find("File outside of allowed directories") != std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("\"uri\":\"file://" + outsideFile.generic_string() + "\""), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_hover_returns_null_for_out_of_range_position)
+{
+	util::TemporaryDirectory tempDir{"lsp-hover-position-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload(
+			"textDocument/didOpen",
+			didOpenParams(sourceFile, "contract C { function f() public pure returns (uint) { return 1; } }")
+		),
+		payload("textDocument/hover", textDocumentPositionParams(sourceFile, 100, 0), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("\"result\":null") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_hover_rejects_malformed_position)
+{
+	util::TemporaryDirectory tempDir{"lsp-hover-malformed-position-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+
+	Json::Value hoverParams;
+	hoverParams["textDocument"]["uri"] = "file://" + sourceFile.generic_string();
+	hoverParams["position"]["line"] = 0;
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didOpen", didOpenParams(sourceFile, "contract C {}")),
+		payload("textDocument/hover", hoverParams, 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "Invalid position parameter."));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_rename_rejects_out_of_range_position)
+{
+	util::TemporaryDirectory tempDir{"lsp-rename-position-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didOpen", didOpenParams(sourceFile, "contract C {}")),
+		payload("textDocument/rename", renameParams(sourceFile, 100, 0, "D"), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "No symbol at requested position."));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_rename_rejects_non_renameable_position)
+{
+	util::TemporaryDirectory tempDir{"lsp-rename-literal-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+	std::string const source = "contract C { function f() public pure returns (uint) { return 1; } }";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didOpen", didOpenParams(sourceFile, source)),
+		payload("textDocument/rename", renameParams(sourceFile, 0, static_cast<int>(source.find('1')), "x"), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "No renameable symbol at requested position."));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

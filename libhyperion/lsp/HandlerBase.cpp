@@ -64,13 +64,8 @@ std::pair<std::string, LineColumn> HandlerBase::extractSourceUnitNameAndLineColu
 	auto const lineColumn = parseLineColumn(_args["position"]);
 	if (!lineColumn)
 		BOOST_THROW_EXCEPTION(
-			RequestError(ErrorCode::RequestFailed) <<
-			errinfo_comment(fmt::format(
-				"Unknown position {line}:{column} in file: {file}",
-				fmt::arg("line", lineColumn.value().line),
-				fmt::arg("column", lineColumn.value().column),
-				fmt::arg("file", sourceUnitName)
-			))
+			RequestError(ErrorCode::InvalidParams) <<
+			errinfo_comment("Invalid position parameter.")
 		);
 
 	return {sourceUnitName, *lineColumn};
