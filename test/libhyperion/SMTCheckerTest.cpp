@@ -26,6 +26,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <memory>
+
 using namespace hyperion;
 using namespace hyperion::langutil;
 using namespace hyperion::frontend;
@@ -180,6 +182,19 @@ BOOST_AUTO_TEST_CASE(wide_fixed_bytes_constants_keep_high_bytes)
 	BOOST_REQUIRE(value.has_value());
 	BOOST_CHECK_EQUAL(value->name, highByte.str());
 	BOOST_CHECK_NE(value->name, "0");
+}
+
+BOOST_AUTO_TEST_CASE(wide_bitvector_conversions_accept_512_bits)
+{
+	auto bv = smtutil::Expression::int2bv(smtutil::Expression(bigint(1)), 512);
+	BOOST_CHECK_EQUAL(static_cast<int>(bv.sort->kind), static_cast<int>(smtutil::Kind::BitVector));
+
+	auto bvSort = std::dynamic_pointer_cast<smtutil::BitVectorSort>(bv.sort);
+	BOOST_REQUIRE(bvSort);
+	BOOST_CHECK_EQUAL(bvSort->size, 512);
+
+	auto value = smtutil::Expression::bv2int(std::move(bv));
+	BOOST_CHECK_EQUAL(static_cast<int>(value.sort->kind), static_cast<int>(smtutil::Kind::Int));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
