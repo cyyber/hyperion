@@ -137,6 +137,16 @@ do \
 
 BOOST_AUTO_TEST_SUITE(YulParser)
 
+BOOST_AUTO_TEST_CASE(wide_number_literals_are_valid)
+{
+	std::string const wideLiteral =
+		"115792089237316195423570985008687907853269984665640564039457584007913129639936";
+	QRVMDialectTyped const& dialect = QRVMDialectTyped::instance(QRVMVersion{});
+
+	BOOST_CHECK(successParse("{ let x := " + wideLiteral + " }", dialect));
+	BOOST_CHECK(successParse("{ switch " + wideLiteral + " case " + wideLiteral + " {} default {} }", dialect));
+}
+
 BOOST_AUTO_TEST_CASE(builtins_analysis)
 {
 	struct SimpleDialect: public Dialect

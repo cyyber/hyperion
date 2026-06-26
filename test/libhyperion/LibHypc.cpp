@@ -88,6 +88,19 @@ BOOST_AUTO_TEST_CASE(read_license)
 	BOOST_CHECK(output.find("GNU GENERAL PUBLIC LICENSE") != std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(null_input_returns_json_error)
+{
+	char* outputPtr = hyperion_compile(nullptr, nullptr, nullptr);
+	BOOST_REQUIRE(outputPtr != nullptr);
+	std::string output(outputPtr);
+	hyperion_free(outputPtr);
+	hyperion_reset();
+
+	Json::Value result;
+	BOOST_REQUIRE(util::jsonParseStrict(output, result));
+	BOOST_CHECK(containsError(result, "JSONError", "Invalid input: null pointer."));
+}
+
 BOOST_AUTO_TEST_CASE(standard_compilation)
 {
 	char const* input = R"(

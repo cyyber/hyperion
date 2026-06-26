@@ -45,6 +45,11 @@ CallableDeclaration const* extractCallableDeclaration(FunctionCall const& _funct
 	return nullptr;
 }
 
+bool isRenameableSourceDeclaration(Declaration const& _declaration)
+{
+	return _declaration.nameLocation().sourceName && _declaration.scope();
+}
+
 }
 
 void RenameSymbol::operator()(MessageID _id, Json::Value const& _args)
@@ -68,6 +73,11 @@ void RenameSymbol::operator()(MessageID _id, Json::Value const& _args)
 
 	extractNameAndDeclaration(*sourceNode, *cursorBytePosition);
 	lspRequire(m_declarationToRename, ErrorCode::InvalidParams, "No renameable symbol at requested position.");
+	lspRequire(
+		isRenameableSourceDeclaration(*m_declarationToRename),
+		ErrorCode::InvalidParams,
+		"No renameable symbol at requested position."
+	);
 
 	// Find all source units using this symbol
 	m_sourceUnits = { &m_server.compilerStack().ast(sourceUnitName) };

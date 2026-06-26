@@ -399,6 +399,25 @@ BOOST_AUTO_TEST_CASE(language_server_rename_rejects_builtin_member_position)
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(language_server_rename_rejects_magic_variable_position)
+{
+	util::TemporaryDirectory tempDir{"lsp-rename-magic-variable-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+	std::string const source = "contract C { function f() public view returns (uint) { return block.number; } }";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didOpen", didOpenParams(sourceFile, source)),
+		payload("textDocument/rename", renameParams(sourceFile, 0, static_cast<int>(source.find("block")), "chain"), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "No renameable symbol at requested position."));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }
