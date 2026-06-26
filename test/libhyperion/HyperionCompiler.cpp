@@ -22,6 +22,10 @@
 #include <test/Metadata.h>
 #include <test/Common.h>
 
+#include <libhyperion/ast/TypeProvider.h>
+#include <libhyperion/codegen/MultiUseYulFunctionCollector.h>
+#include <libhyperion/codegen/YulUtilFunctions.h>
+
 #include <boost/test/unit_test.hpp>
 
 
@@ -65,6 +69,22 @@ BOOST_AUTO_TEST_CASE(does_not_include_creation_time_only_internal_functions)
 	unsigned threshold = 9;
 	BOOST_CHECK(runtimeBytecode.size() >= threshold);
 	BOOST_CHECK(runtimeBytecode.size() <= 30);
+}
+
+BOOST_AUTO_TEST_CASE(literal_exp_bound_uses_common_type_width)
+{
+	MultiUseYulFunctionCollector collector;
+	YulUtilFunctions utils(langutil::QRVMVersion::zond(), RevertStrings::Default, collector);
+
+	utils.overflowCheckedIntLiteralExpFunction(
+		*TypeProvider::rationalNumber(rational(2, 1)),
+		*TypeProvider::uint(16),
+		*TypeProvider::uint(512)
+	);
+
+	std::string const generatedFunctions = collector.requestedFunctions();
+	BOOST_CHECK(generatedFunctions.find("if gt(exponent, 511)") != std::string::npos);
+	BOOST_CHECK(generatedFunctions.find("if gt(exponent, 255)") == std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

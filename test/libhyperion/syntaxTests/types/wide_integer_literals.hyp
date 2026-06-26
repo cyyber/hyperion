@@ -1,0 +1,10 @@
+contract C {
+    function wideLiteralBinaryOp(uint512 x) public pure returns (uint512) {
+        return 0x010000000000000000000000000000000000000000000000000000000000000000 + x;
+    }
+
+    function wideLiteralToAddress() public pure returns (address) {
+        return address(0x010000000000000000000000000000000000000000000000000000000000000000);
+    }
+}
+// ----

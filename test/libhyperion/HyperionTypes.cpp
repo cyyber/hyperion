@@ -49,6 +49,27 @@ BOOST_AUTO_TEST_CASE(uint_types)
 		BOOST_CHECK(*TypeProvider::fromElementaryTypeName(ElementaryTypeNameToken(Token::UIntM, i, 0)) == *TypeProvider::integer(i, IntegerType::Modifier::Unsigned));
 }
 
+BOOST_AUTO_TEST_CASE(wide_rational_integer_type)
+{
+	RationalNumberType const uint264Literal(rational(bigint(1) << 256, 1));
+	BOOST_REQUIRE(uint264Literal.integerType());
+	BOOST_CHECK(*uint264Literal.integerType() == *TypeProvider::uint(264));
+
+	RationalNumberType const maxUint512Literal(rational((bigint(1) << 512) - 1, 1));
+	BOOST_REQUIRE(maxUint512Literal.integerType());
+	BOOST_CHECK(*maxUint512Literal.integerType() == *TypeProvider::uint(512));
+
+	RationalNumberType const tooLargeLiteral(rational(bigint(1) << 512, 1));
+	BOOST_CHECK(tooLargeLiteral.integerType() == nullptr);
+
+	RationalNumberType const minInt512Literal(rational(-(bigint(1) << 511), 1));
+	BOOST_REQUIRE(minInt512Literal.integerType());
+	BOOST_CHECK(*minInt512Literal.integerType() == *TypeProvider::integer(512, IntegerType::Modifier::Signed));
+
+	RationalNumberType const tooSmallLiteral(rational(-(bigint(1) << 511) - 1, 1));
+	BOOST_CHECK(tooSmallLiteral.integerType() == nullptr);
+}
+
 BOOST_AUTO_TEST_CASE(byte_types)
 {
 	for (unsigned i = 1; i <= AddressBytes; i++)

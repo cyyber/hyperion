@@ -799,9 +799,9 @@ void ArrayUtils::incrementDynamicArraySize(ArrayType const& _type) const
 		// We almost always just add 2 (length of byte arrays is shifted left by one)
 		// except for the case where we transition from a short byte array
 		// to a long byte array, there we have to copy.
-		// This happens if the length is exactly 31, which means that the
+		// This happens if the length is exactly 63, which means that the
 		// lowest-order byte (we actually use a mask with fewer bits) must
-		// be (31*2+0) = 62
+		// be (63*2+1) = 127
 
 		m_context << Instruction::DUP1 << Instruction::SLOAD << Instruction::DUP1;
 		m_context.callYulFunction(m_context.utilFunctions().extractByteArrayLengthFunction(), 1, 1);

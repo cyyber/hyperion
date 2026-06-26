@@ -909,7 +909,7 @@ std::string YulUtilFunctions::overflowCheckedIntLiteralExpFunction(
 				return 0;
 
 			unsigned first = 0;
-			unsigned last = 255;
+			unsigned last = static_cast<unsigned>(boost::multiprecision::msb(_maxValue));
 			unsigned middle;
 
 			while (first < last)
@@ -4400,7 +4400,11 @@ std::string YulUtilFunctions::conversionFunctionSpecial(Type const& _from, Type 
 			templ("functionName", functionName);
 			{
 				// Left-align the literal data in a 512-bit word
-				u512 val = u512(h256::Arith(h256(data, h256::AlignLeft))) << 256;
+				u512 val = 0;
+				for (char c: data)
+					val = (val << 8) | static_cast<uint8_t>(c);
+				if (data.size() < VMWordBytes)
+					val <<= (VMWordBytes - data.size()) * 8;
 				u512 mask = ~(u512(-1) >> (8 * numBytes));
 				templ("data", formatNumber(val & mask));
 			}

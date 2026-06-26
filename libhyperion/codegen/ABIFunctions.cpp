@@ -491,7 +491,7 @@ std::string ABIFunctions::abiEncodingFunctionCalldataArrayWithoutCleanup(
 						length := mul(length, <stride>)
 					)")
 					("stride", toCompactHexWithPrefix(fromArrayType.calldataStride()))
-					("maxLength", toCompactHexWithPrefix(u256(-1) / fromArrayType.calldataStride()))
+					("maxLength", toCompactHexWithPrefix(u512(-1) / fromArrayType.calldataStride()))
 					("revertString", revertReasonIfDebugFunction("ABI encoding: array data too long"))
 					.render()
 					// TODO add revert test

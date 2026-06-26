@@ -1,10 +1,10 @@
 contract test {
-    // Runtime base-2 exponentiation routes through the checked exponentiation
+    // Typed base-2 exponentiation routes through the checked exponentiation
     // helper (overflowCheckedUnsignedExpFunction). On a 512-bit VM word the
     // helper must accept every exponent whose result fits in the result type
     // and only overflow-revert once 2 ** exponent no longer fits.
     function pow2(uint16 e) public pure returns (uint512) {
-        return 2 ** e;
+        return uint512(2) ** e;
     }
 
     // Independent cross-check: `1 << e` computes 2 ** e via SHL, bypassing the
@@ -12,7 +12,7 @@ contract test {
     // correct value rather than spuriously reverting (the stale `exponent > 255`
     // guard used to panic for any exponent in [256, 511]).
     function matchesShift(uint16 e) public pure returns (bool) {
-        uint512 a = 2 ** e;
+        uint512 a = uint512(2) ** e;
         uint512 b = uint512(1) << e;
         return a == b;
     }

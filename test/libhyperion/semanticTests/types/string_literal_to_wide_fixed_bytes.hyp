@@ -1,0 +1,7 @@
+contract C {
+    function f() public pure returns (bytes40) {
+        return "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcd";
+    }
+}
+// ----
+// f() -> left(0x4142434445464748494a4b4c4d4e4f505152535455565758595a3031323334353637383961626364)

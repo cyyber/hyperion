@@ -1222,7 +1222,7 @@ IntegerType const* RationalNumberType::integerType() const
 	bool negative = (value < 0);
 	if (negative) // convert to positive number of same bit requirements
 		value = ((0 - value) - 1) << 1;
-	if (value > u256(-1))
+	if (value > u512(-1))
 		return nullptr;
 	else
 		return TypeProvider::integer(
