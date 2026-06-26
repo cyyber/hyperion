@@ -435,11 +435,24 @@ void LanguageServer::handleInitialized(MessageID, Json::Value const&)
 
 void LanguageServer::semanticTokensFull(MessageID _id, Json::Value const& _args)
 {
-	auto uri = _args["textDocument"]["uri"];
+	requireServerInitialized();
+
+	lspRequire(
+		_args["textDocument"],
+		ErrorCode::RequestFailed,
+		"Text document parameter missing."
+	);
+
+	std::string const uri = _args["textDocument"]["uri"].asString();
+	std::string const sourceName = m_fileRepository.uriToSourceUnitName(uri);
+	lspRequire(
+		m_fileRepository.sourceUnits().count(sourceName),
+		ErrorCode::RequestFailed,
+		"Unknown file: " + uri
+	);
 
 	compile();
 
-	auto const sourceName = m_fileRepository.uriToSourceUnitName(uri.as<std::string>());
 	SourceUnit const& ast = m_compilerStack.ast(sourceName);
 	m_compilerStack.charStream(sourceName);
 	Json::Value data = SemanticTokensBuilder().build(ast, m_compilerStack.charStream(sourceName));

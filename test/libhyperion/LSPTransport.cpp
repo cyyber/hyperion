@@ -98,10 +98,16 @@ Json::Value didOpenParams(boost::filesystem::path const& _path, std::string _tex
 	return params;
 }
 
-Json::Value textDocumentPositionParams(boost::filesystem::path const& _path, int _line, int _character)
+Json::Value textDocumentParams(boost::filesystem::path const& _path)
 {
 	Json::Value params;
 	params["textDocument"]["uri"] = "file://" + _path.generic_string();
+	return params;
+}
+
+Json::Value textDocumentPositionParams(boost::filesystem::path const& _path, int _line, int _character)
+{
+	Json::Value params = textDocumentParams(_path);
 	params["position"]["line"] = _line;
 	params["position"]["character"] = _character;
 	return params;
@@ -260,6 +266,40 @@ BOOST_AUTO_TEST_CASE(language_server_rejects_absolute_imports_outside_workspace)
 	BOOST_CHECK_EQUAL(output.find("\"uri\":\"file://" + outsideFile.generic_string() + "\""), std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_requires_initialization)
+{
+	util::TemporaryDirectory tempDir{"lsp-semantic-tokens-pre-init-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+
+	std::string output = runLanguageServer({
+		payload("textDocument/semanticTokens/full", textDocumentParams(sourceFile), 1),
+		payload("initialize", initializeParams(tempDir.path()), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::ServerNotInitialized, "Server is not properly initialized."));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_rejects_unknown_uri)
+{
+	util::TemporaryDirectory tempDir{"lsp-semantic-tokens-unknown-uri-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "missing.hyp";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/semanticTokens/full", textDocumentParams(sourceFile), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::RequestFailed, "Unknown file: file://" + sourceFile.generic_string()));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(language_server_hover_returns_null_for_out_of_range_position)
 {
 	util::TemporaryDirectory tempDir{"lsp-hover-position-test"};
@@ -331,6 +371,25 @@ BOOST_AUTO_TEST_CASE(language_server_rename_rejects_non_renameable_position)
 		payload("initialize", initializeParams(tempDir.path()), 1),
 		payload("textDocument/didOpen", didOpenParams(sourceFile, source)),
 		payload("textDocument/rename", renameParams(sourceFile, 0, static_cast<int>(source.find('1')), "x"), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "No renameable symbol at requested position."));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_rename_rejects_builtin_member_position)
+{
+	util::TemporaryDirectory tempDir{"lsp-rename-builtin-member-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+	std::string const source = "contract C { function f(bytes memory b) public pure returns (uint) { return b.length; } }";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didOpen", didOpenParams(sourceFile, source)),
+		payload("textDocument/rename", renameParams(sourceFile, 0, static_cast<int>(source.find("length")), "size"), 2),
 		payload("shutdown", Json::nullValue, 3),
 		payload("exit", Json::nullValue)
 	});
