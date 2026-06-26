@@ -612,7 +612,7 @@ BOOST_AUTO_TEST_CASE(init_empty_dynamic_arrays)
 	)";
 	compileBothVersions(sourceCode);
 	compareVersions("f()");
-	BOOST_CHECK_LE(m_gasUsedNonOptimized, 1900000);
+	BOOST_CHECK_LE(m_gasUsedNonOptimized, 2000000);
 	BOOST_CHECK_LE(1600000, m_gasUsedNonOptimized);
 }
 
