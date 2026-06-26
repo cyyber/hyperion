@@ -112,12 +112,7 @@ void RenameSymbol::operator()(MessageID _id, Json::Value const& _args)
 	{
 		hypAssert(i->isValid());
 
-		// Replace in our file repository
 		std::string const uri = fileRepository().sourceUnitNameToUri(*i->sourceName);
-		std::string buffer = fileRepository().sourceUnits().at(*i->sourceName);
-		buffer.replace((size_t)i->start, (size_t)(i->end - i->start), newName);
-		fileRepository().setSourceByUri(uri, std::move(buffer));
-
 		Json::Value edit = Json::objectValue;
 		edit["range"] = toRange(*i);
 		edit["newText"] = newName;

@@ -64,7 +64,8 @@ bool resolvesToRegularFile(boost::filesystem::path _path, int maxRecursionDepth 
 
 	while (fileStatus.type() == fs::file_type::symlink_file && maxRecursionDepth > 0)
 	{
-		_path = boost::filesystem::read_symlink(_path);
+		fs::path const target = fs::read_symlink(_path);
+		_path = target.is_absolute() ? target : _path.parent_path() / target;
 		fileStatus = fs::status(_path);
 		maxRecursionDepth--;
 	}
@@ -167,10 +168,12 @@ Json::Value LanguageServer::toJson(SourceLocation const& _location)
 
 void LanguageServer::changeConfiguration(Json::Value const& _settings)
 {
-	// The settings item: "file-load-strategy" (enum) defaults to "project-directory" if not (or not correctly) set.
+	// The settings item: "file-load-strategy" (enum) defaults to "project-directory"
+	// when a project root exists and to "directly-opened-and-on-import" for rootless sessions.
 	// It can be overridden during client's handshake or at runtime, as usual.
 	//
-	// If this value is set to "project-directory" (default), all .hyp files located inside the project directory or reachable through symbolic links will be subject to operations.
+	// If this value is set to "project-directory" (default), all .hyp files located inside the project directory will be subject to operations.
+	// Directory symbolic links are not recursed into.
 	//
 	// Operations include compiler analysis, but also finding all symbolic references or symbolic renaming.
 	//
@@ -180,7 +183,14 @@ void LanguageServer::changeConfiguration(Json::Value const& _settings)
 	{
 		auto const text = _settings["file-load-strategy"].asString();
 		if (text == "project-directory")
+		{
+			lspRequire(
+				m_hasProjectRoot,
+				ErrorCode::InvalidParams,
+				"file-load-strategy \"project-directory\" requires rootUri or rootPath."
+			);
 			m_fileLoadStrategy = FileLoadStrategy::ProjectDirectory;
+		}
 		else if (text == "directly-opened-and-on-import")
 			m_fileLoadStrategy = FileLoadStrategy::DirectlyOpenedAndOnImported;
 		else
@@ -219,12 +229,7 @@ std::vector<boost::filesystem::path> LanguageServer::allHyperionFilesFromProject
 
 	// We explicitly decided against including all files from include paths but leave the possibility
 	// open for a future PR to enable such a feature to be optionally enabled (default disabled).
-	// Note: Newer versions of boost have deprecated symlink_option::recurse
-#if (BOOST_VERSION < 107200)
-	auto directoryIterator = fs::recursive_directory_iterator(m_fileRepository.basePath(), fs::symlink_option::recurse);
-#else
-	auto directoryIterator = fs::recursive_directory_iterator(m_fileRepository.basePath(), fs::directory_options::follow_directory_symlink);
-#endif
+	auto directoryIterator = fs::recursive_directory_iterator(m_fileRepository.basePath());
 	for (fs::directory_entry const& dirEntry: directoryIterator)
 		if (
 			dirEntry.path().extension() == ".hyp" &&
@@ -389,25 +394,33 @@ void LanguageServer::handleInitialize(MessageID _id, Json::Value const& _args)
 	m_state = State::Initialized;
 
 	// The default of FileReader is to use `.`, but the path from where the LSP was started
-	// should not matter.
+	// should not matter. A rootless LSP session is therefore opened-file-only.
 	std::string rootPath("/");
-	if (Json::Value uri = _args["rootUri"])
+	m_hasProjectRoot = false;
+	if (_args.isMember("rootUri") && !_args["rootUri"].isNull())
 	{
-		rootPath = uri.asString();
+		lspRequire(_args["rootUri"].isString(), ErrorCode::InvalidParams, "rootUri must be a string or null.");
+		rootPath = _args["rootUri"].asString();
 		lspRequire(
 			boost::starts_with(rootPath, "file://"),
 			ErrorCode::InvalidParams,
 			"rootUri only supports file URI scheme."
 		);
 		rootPath = stripFileUriSchemePrefix(rootPath);
+		m_hasProjectRoot = true;
 	}
-	else if (Json::Value rootPathJson = _args["rootPath"])
-		rootPath = rootPathJson.asString();
+	else if (_args.isMember("rootPath") && !_args["rootPath"].isNull())
+	{
+		lspRequire(_args["rootPath"].isString(), ErrorCode::InvalidParams, "rootPath must be a string or null.");
+		rootPath = _args["rootPath"].asString();
+		m_hasProjectRoot = true;
+	}
 
 	if (_args["trace"])
 		setTrace(_args["trace"]);
 
 	m_fileRepository = FileRepository(rootPath, {});
+	m_fileLoadStrategy = m_hasProjectRoot ? FileLoadStrategy::ProjectDirectory : FileLoadStrategy::DirectlyOpenedAndOnImported;
 	if (_args["initializationOptions"].isObject())
 		changeConfiguration(_args["initializationOptions"]);
 

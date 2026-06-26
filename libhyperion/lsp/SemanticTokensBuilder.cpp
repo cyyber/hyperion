@@ -115,8 +115,11 @@ void SemanticTokensBuilder::encode(
 	if (!_sourceLocation.isValid())
 		return;
 
-	auto const [line, startChar] = m_charStream->translatePositionToLineColumn(_sourceLocation.start);
-	auto const length = _sourceLocation.end - _sourceLocation.start;
+	auto const [line, startChar] = byteOffsetToLSPLineColumn(m_charStream->source(), _sourceLocation.start);
+	auto const [endLine, endChar] = byteOffsetToLSPLineColumn(m_charStream->source(), _sourceLocation.end);
+	if (line != endLine)
+		return;
+	auto const length = endChar - startChar;
 
 	lspDebug(fmt::format("encode [{}:{}..{}] {}", line, startChar, length, static_cast<int>(_tokenType)));
 

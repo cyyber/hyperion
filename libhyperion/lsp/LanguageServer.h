@@ -46,8 +46,7 @@ enum class FileLoadStrategy
 	DirectlyOpenedAndOnImported = 0,
 
 	/// Takes all Hyperion (.hyp) files within the project root into account.
-	/// Symbolic links will be followed, even if they lead outside of the project directory
-	/// (`--allowed-paths` is currently ignored by the LSP).
+	/// Symbolic links to files are accepted, but directory symbolic links are not recursed into.
 	///
 	/// This resembles the closest what other LSPs should be doing already.
 	ProjectDirectory = 1,
@@ -123,6 +122,7 @@ private:
 	std::set<std::string> m_nonemptyDiagnostics;
 	FileRepository m_fileRepository;
 	FileLoadStrategy m_fileLoadStrategy = FileLoadStrategy::ProjectDirectory;
+	bool m_hasProjectRoot = false;
 
 	frontend::CompilerStack m_compilerStack;
 

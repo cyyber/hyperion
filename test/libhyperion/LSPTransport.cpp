@@ -18,6 +18,9 @@
 
 #include <libhyperion/lsp/LanguageServer.h>
 #include <libhyperion/lsp/Transport.h>
+#include <libhyperion/lsp/Utils.h>
+
+#include <test/FilesystemUtils.h>
 
 #include <libhyputil/JSON.h>
 #include <libhyputil/TemporaryDirectory.h>
@@ -239,6 +242,35 @@ BOOST_AUTO_TEST_CASE(language_server_uses_legacy_root_path_for_imports)
 	BOOST_CHECK(output.find(importedFile.generic_string()) != std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(language_server_without_root_uses_opened_files_only)
+{
+	std::string output = runLanguageServer({
+		payload("initialize", Json::objectValue, 1),
+		payload("initialized"),
+		payload("shutdown", Json::nullValue, 2),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("\"id\":1") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("textDocument/publishDiagnostics"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_rejects_project_directory_without_root)
+{
+	Json::Value params;
+	params["initializationOptions"]["file-load-strategy"] = "project-directory";
+
+	std::string output = runLanguageServer({
+		payload("initialize", params, 1),
+		payload("shutdown", Json::nullValue, 2),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "requires rootUri or rootPath"));
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(language_server_rejects_absolute_imports_outside_workspace)
 {
 	util::TemporaryDirectory workspaceDir{"lsp-workspace-test"};
@@ -264,6 +296,42 @@ BOOST_AUTO_TEST_CASE(language_server_rejects_absolute_imports_outside_workspace)
 
 	BOOST_CHECK(output.find("File outside of allowed directories") != std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("\"uri\":\"file://" + outsideFile.generic_string() + "\""), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_project_directory_does_not_follow_directory_symlinks_outside_workspace)
+{
+	util::TemporaryDirectory workspaceDir{"lsp-project-symlink-workspace-test"};
+	util::TemporaryDirectory outsideDir{"lsp-project-symlink-outside-test"};
+
+	boost::filesystem::path insideFile = workspaceDir.path() / "Inside.hyp";
+	{
+		std::ofstream outFile(insideFile.string());
+		outFile << "contract Inside {}" << std::endl;
+	}
+
+	boost::filesystem::path outsideFile = outsideDir.path() / "Outside.hyp";
+	{
+		std::ofstream outFile(outsideFile.string());
+		outFile << "contract Outside {}" << std::endl;
+	}
+
+	if (!hyperion::test::createSymlinkIfSupportedByFilesystem(outsideDir.path(), workspaceDir.path() / "linked", true))
+		return;
+
+	Json::Value params;
+	params["rootPath"] = workspaceDir.path().generic_string();
+	params["initializationOptions"]["file-load-strategy"] = "project-directory";
+
+	std::string output = runLanguageServer({
+		payload("initialize", params, 1),
+		payload("initialized"),
+		payload("shutdown", Json::nullValue, 2),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("\"uri\":\"file://" + insideFile.generic_string() + "\"") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("\"uri\":\"file://" + outsideFile.generic_string() + "\""), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_requires_initialization)
@@ -342,6 +410,40 @@ BOOST_AUTO_TEST_CASE(language_server_hover_handles_undocumented_identifier_path)
 	BOOST_CHECK(output.find("\"result\":null") == std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_positions_use_lsp_utf16_columns)
+{
+	util::TemporaryDirectory tempDir{"lsp-utf16-position-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+	std::string const source = "contract C { string s = unicode\"" "\xf0\x9f\x98\x83" "\"; uint x; }";
+	std::string const sourceUnitName = sourceFile.generic_string();
+
+	FileRepository repository(tempDir.path(), {});
+	repository.setSourceByUri("file://" + sourceUnitName, source);
+
+	size_t const uintByteOffset = source.find("uint");
+	BOOST_REQUIRE_NE(uintByteOffset, std::string::npos);
+	BOOST_CHECK_EQUAL(static_cast<int>(uintByteOffset), 39);
+	BOOST_CHECK_EQUAL(byteOffsetToLSPLineColumn(source, static_cast<int>(uintByteOffset)).column, 37);
+
+	Json::Value position;
+	position["line"] = 0;
+	position["character"] = 37;
+	std::optional<langutil::SourceLocation> const location = parsePosition(repository, sourceUnitName, position);
+	BOOST_REQUIRE(location);
+	BOOST_CHECK_EQUAL(location->start, static_cast<int>(uintByteOffset));
+
+	Json::Value range = sourceLocationToJsonRange(
+		source,
+		langutil::SourceLocation{
+			static_cast<int>(uintByteOffset),
+			static_cast<int>(uintByteOffset + 4),
+			std::make_shared<std::string const>(sourceUnitName)
+		}
+	);
+	BOOST_CHECK_EQUAL(range["start"]["character"].asInt(), 37);
+	BOOST_CHECK_EQUAL(range["end"]["character"].asInt(), 41);
 }
 
 BOOST_AUTO_TEST_CASE(language_server_hover_rejects_malformed_position)

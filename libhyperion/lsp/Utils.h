@@ -48,6 +48,16 @@ std::optional<langutil::LineColumn> parseLineColumn(Json::Value const& _lineColu
 Json::Value toJson(langutil::LineColumn const& _pos);
 Json::Value toJsonRange(langutil::LineColumn const& _start, langutil::LineColumn const& _end);
 
+/// Converts an internal byte offset to the compiler's line/byte-column representation.
+langutil::LineColumn byteOffsetToByteLineColumn(std::string const& _source, int _position);
+
+/// Converts an internal byte offset to an LSP line/character pair.
+/// LSP defaults to UTF-16 code unit columns.
+langutil::LineColumn byteOffsetToLSPLineColumn(std::string const& _source, int _position);
+
+/// Converts an internal byte-offset source location to an LSP range.
+Json::Value sourceLocationToJsonRange(std::string const& _source, langutil::SourceLocation const& _location);
+
 /// @returns the source location given a source unit name and an LSP Range object,
 /// or nullopt on failure.
 std::optional<langutil::SourceLocation> parsePosition(

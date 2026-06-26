@@ -26,6 +26,8 @@
 
 #include <fmt/format.h>
 
+#include <limits>
+
 using namespace hyperion::langutil;
 using namespace hyperion::lsp;
 using namespace hyperion::util;
@@ -37,9 +39,7 @@ Json::Value HandlerBase::toRange(SourceLocation const& _location) const
 
 	hypAssert(_location.sourceName, "");
 	langutil::CharStream const& stream = charStreamProvider().charStream(*_location.sourceName);
-	LineColumn start = stream.translatePositionToLineColumn(_location.start);
-	LineColumn end = stream.translatePositionToLineColumn(_location.end);
-	return toJsonRange(start, end);
+	return sourceLocationToJsonRange(stream.source(), _location);
 }
 
 Json::Value HandlerBase::toJson(SourceLocation const& _location) const
@@ -68,5 +68,10 @@ std::pair<std::string, LineColumn> HandlerBase::extractSourceUnitNameAndLineColu
 			errinfo_comment("Invalid position parameter.")
 		);
 
-	return {sourceUnitName, *lineColumn};
+	if (std::optional<SourceLocation> const position = parsePosition(fileRepository(), sourceUnitName, _args["position"]))
+		return {
+			sourceUnitName,
+			byteOffsetToByteLineColumn(fileRepository().sourceUnits().at(sourceUnitName), position->start)
+		};
+	return {sourceUnitName, LineColumn{lineColumn->line, std::numeric_limits<int>::max()}};
 }

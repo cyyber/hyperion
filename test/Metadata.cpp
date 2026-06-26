@@ -131,6 +131,12 @@ private:
 			return length;
 		if (length == 24)
 			return m_metadata.at(m_pos++);
+		if (length == 25)
+		{
+			unsigned const high = m_metadata.at(m_pos++);
+			unsigned const low = m_metadata.at(m_pos++);
+			return (high << 8) | low;
+		}
 		// Unsupported length kind. (Only by this parser.)
 		assertThrow(false, CBORException, string("Unsupported length ") + to_string(length));
 	}
