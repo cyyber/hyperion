@@ -107,13 +107,15 @@ u512 hyperion::yul::valueOfNumberLiteral(Literal const& _literal)
 u512 hyperion::yul::valueOfStringLiteral(Literal const& _literal)
 {
 	yulAssert(_literal.kind == LiteralKind::String, "Expected string literal!");
-	yulAssert(_literal.value.str().size() <= VMWordBytes, "Literal string too long!");
+	std::string const& literalString = _literal.value.str();
+	yulAssert(literalString.size() <= VMWordBytes, "Literal string too long!");
 
-	// String literals on the VM stack are right-aligned integers,
-	// same as PUSH data. Left-alignment is done explicitly by shl in generated code.
+	// String literals on the VM stack are left-aligned fixed bytes values.
 	u512 value = 0;
-	for (char c: _literal.value.str())
+	for (char c: literalString)
 		value = (value << 8) | uint8_t(c);
+	if (!literalString.empty())
+		value <<= 8 * (VMWordBytes - literalString.size());
 	return value;
 }
 
