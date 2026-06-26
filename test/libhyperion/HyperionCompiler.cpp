@@ -87,6 +87,23 @@ BOOST_AUTO_TEST_CASE(literal_exp_bound_uses_common_type_width)
 	BOOST_CHECK(generatedFunctions.find("if gt(exponent, 255)") == std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(literal_exp_base_uses_common_type_width)
+{
+	MultiUseYulFunctionCollector collector;
+	YulUtilFunctions utils(langutil::QRVMVersion::zond(), RevertStrings::Default, collector);
+
+	bigint const wideBase = bigint(1) << 256;
+	utils.overflowCheckedIntLiteralExpFunction(
+		*TypeProvider::rationalNumber(rational(wideBase, 1)),
+		*TypeProvider::uint(16),
+		*TypeProvider::uint(512)
+	);
+
+	std::string const generatedFunctions = collector.requestedFunctions();
+	BOOST_CHECK(generatedFunctions.find("power := exp(" + wideBase.str() + ", exponent)") != std::string::npos);
+	BOOST_CHECK(generatedFunctions.find("power := exp(0, exponent)") == std::string::npos);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }

@@ -70,6 +70,28 @@ BOOST_AUTO_TEST_CASE(wide_rational_integer_type)
 	BOOST_CHECK(tooSmallLiteral.integerType() == nullptr);
 }
 
+BOOST_AUTO_TEST_CASE(wide_rational_shift_and_exp_result_type)
+{
+	RationalNumberType const smallLiteral(rational(1, 1));
+	TypeResult smallShift = smallLiteral.binaryOperatorResult(Token::SHL, TypeProvider::uint(16));
+	BOOST_REQUIRE(smallShift.get());
+	BOOST_CHECK(*smallShift.get() == *TypeProvider::uint256());
+
+	RationalNumberType const uint264Literal(rational(bigint(1) << 256, 1));
+	TypeResult wideShift = uint264Literal.binaryOperatorResult(Token::SHL, TypeProvider::uint(16));
+	BOOST_REQUIRE(wideShift.get());
+	BOOST_CHECK(*wideShift.get() == *TypeProvider::uint(264));
+
+	TypeResult wideExp = uint264Literal.binaryOperatorResult(Token::Exp, TypeProvider::uint(16));
+	BOOST_REQUIRE(wideExp.get());
+	BOOST_CHECK(*wideExp.get() == *TypeProvider::uint(264));
+
+	RationalNumberType const int264Literal(rational(-(bigint(1) << 256), 1));
+	TypeResult wideSignedShift = int264Literal.binaryOperatorResult(Token::SHL, TypeProvider::uint(16));
+	BOOST_REQUIRE(wideSignedShift.get());
+	BOOST_CHECK(*wideSignedShift.get() == *TypeProvider::integer(264, IntegerType::Modifier::Signed));
+}
+
 BOOST_AUTO_TEST_CASE(byte_types)
 {
 	for (unsigned i = 1; i <= AddressBytes; i++)

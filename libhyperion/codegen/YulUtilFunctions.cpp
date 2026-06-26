@@ -891,13 +891,12 @@ std::string YulUtilFunctions::overflowCheckedIntLiteralExpFunction(
 
 	return m_functionCollector.createFunction(functionName, [&]()
 	{
-		// Converts a bigint number into u256 (negative numbers represented in two's complement form.)
-		// We assume that `_v` fits in 256 bits.
-		auto bigint2u = [&](bigint const& _v) -> u256
+		// Converts a bigint number into a VM word (negative numbers represented in two's complement form.)
+		auto bigint2u = [&](bigint const& _v) -> u512
 		{
 			if (_v < 0)
-				return s2u(s256(_v));
-			return u256(_v);
+				return s2u(s512(_v));
+			return u512(_v);
 		};
 
 		// Calculates the upperbound for exponentiation, that is, calculate `b`, such that

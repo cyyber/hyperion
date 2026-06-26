@@ -1880,7 +1880,7 @@ void TypeChecker::endVisit(BinaryOperation const& _operation)
 		{
 			// These rules are enforced by the binary operator, but assert them here too.
 			if (auto type = dynamic_cast<IntegerType const*>(commonType))
-				hypAssert(type->numBits() == 256, "");
+				hypAssert(type->numBits() >= 256 && type->numBits() <= VMWordBits, "");
 			if (auto type = dynamic_cast<FixedPointType const*>(commonType))
 				hypAssert(type->numBits() == 256, "");
 		}

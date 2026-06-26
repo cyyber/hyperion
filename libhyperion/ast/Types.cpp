@@ -1074,16 +1074,25 @@ TypeResult RationalNumberType::binaryOperatorResult(Token _operator, Type const*
 	{
 		if (isFractional())
 			return TypeResult::err("Fractional literals not supported.");
-		else if (!integerType())
+
+		IntegerType const* literalIntegerType = integerType();
+		if (!literalIntegerType)
 			return TypeResult::err("Literal too large.");
 
 		// Shift and exp are not symmetric, so it does not make sense to swap
-		// the types as below. As an exception, we always use uint here.
+		// the types as below. Use at least the default integer width, but keep
+		// wider literals wide enough to hold their value.
+		auto shiftOrExpType = [&]() {
+			return TypeProvider::integer(
+				std::max(256u, literalIntegerType->numBits()),
+				literalIntegerType->isSigned() ? IntegerType::Modifier::Signed : IntegerType::Modifier::Unsigned
+			);
+		};
 		if (TokenTraits::isShiftOp(_operator))
 		{
 			if (!isValidShiftAndAmountType(_operator, *_other))
 				return nullptr;
-			return isNegative() ? TypeProvider::int256() : TypeProvider::uint256();
+			return shiftOrExpType();
 		}
 		else if (Token::Exp == _operator)
 		{
@@ -1095,7 +1104,7 @@ TypeResult RationalNumberType::binaryOperatorResult(Token _operator, Type const*
 			else if (dynamic_cast<FixedPointType const*>(_other))
 				return TypeResult::err("Exponent is fractional.");
 
-			return isNegative() ? TypeProvider::int256() : TypeProvider::uint256();
+			return shiftOrExpType();
 		}
 		else
 		{
