@@ -1743,7 +1743,7 @@ public:
 	{
 		size_t size = m_data.size() + 1;
 		hypAssert(size <= 0xffff, "Metadata too large.");
-		hypAssert(m_entryCount <= 0x1f, "Too many map entries.");
+		hypAssert(m_entryCount <= 23, "Too many map entries.");
 
 		// CBOR fixed-length map
 		bytes ret{static_cast<unsigned char>(0xa0 + m_entryCount)};

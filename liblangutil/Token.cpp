@@ -174,9 +174,8 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 				return -1;
 			ret *= 10;
 			ret += *it - '0';
-			// Overflow guard. Callers reject values above the relevant word or address bound.
-			unsigned constexpr maxTypeBits = VMWordBits > AddressBits ? VMWordBits : AddressBits;
-			if (ret > static_cast<int>(maxTypeBits))
+			// Overflow guard. Callers reject values above the relevant value-type bound.
+			if (ret > static_cast<int>(VMWordBits))
 				return -1;
 		}
 		return ret;

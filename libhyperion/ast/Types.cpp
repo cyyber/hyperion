@@ -755,7 +755,7 @@ FixedPointType::FixedPointType(unsigned _totalBits, unsigned _fractionalDigits, 
 	m_totalBits(_totalBits), m_fractionalDigits(_fractionalDigits), m_modifier(_modifier)
 {
 	hypAssert(
-		8 <= m_totalBits && m_totalBits <= 256 && m_totalBits % 8 == 0 && m_fractionalDigits <= 80,
+		8 <= m_totalBits && m_totalBits <= VMWordBits && m_totalBits % 8 == 0 && m_fractionalDigits <= 80,
 		"Invalid bit number(s) for fixed type: " +
 		util::toString(_totalBits) + "x" + util::toString(_fractionalDigits)
 	);
@@ -1246,8 +1246,8 @@ FixedPointType const* RationalNumberType::fixedPointType() const
 	unsigned fractionalDigits = 0;
 	rational value = abs(m_value); // We care about the sign later.
 	rational maxValue = negative ?
-		rational(bigint(1) << 255, 1):
-		rational((bigint(1) << 256) - 1, 1);
+		rational(bigint(1) << (VMWordBits - 1), 1):
+		rational((bigint(1) << VMWordBits) - 1, 1);
 
 	while (value * 10 <= maxValue && value.denominator() != 1 && fractionalDigits < 80)
 	{
@@ -1266,11 +1266,11 @@ FixedPointType const* RationalNumberType::fixedPointType() const
 		// add one bit for sign and decrement because negative numbers can be larger
 		v = (v - 1) << 1;
 
-	if (v > u256(-1))
+	if (v > (bigint(1) << VMWordBits) - 1)
 		return nullptr;
 
 	unsigned totalBits = std::max(numberEncodingSize(v), 1u) * 8;
-	hypAssert(totalBits <= 256, "");
+	hypAssert(totalBits <= VMWordBits, "");
 
 	return TypeProvider::fixedPoint(
 		totalBits, fractionalDigits,
