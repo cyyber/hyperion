@@ -203,7 +203,7 @@ AssemblyItems ComputeMethod::findRepresentation(u512 const& _value)
 		// Is not always better, try literal and decomposition method.
 		AssemblyItems routine{AssemblyItem(_value)};
 		bigint bestGas = gasNeeded(routine);
-		for (unsigned bits = 511; bits > 8 && m_maxSteps > 0; --bits)
+		for (unsigned bits = VMWordBits - 1; bits > 8 && m_maxSteps > 0; --bits)
 		{
 			unsigned gapDetector = unsigned((_value >> (bits - 8)) & 0x1ff);
 			if (gapDetector != 0xff && gapDetector != 0x100)
@@ -279,11 +279,11 @@ bool ComputeMethod::checkRepresentation(u512 const& _value, AssemblyItems const&
 				sp[0] = sp[0] ^ mask;
 				break;
 			case Instruction::SHL:
-				assertThrow(sp[0] <= u512(511), OptimizerException, "Invalid shift generated.");
+				assertThrow(sp[0] < u512(VMWordBits), OptimizerException, "Invalid shift generated.");
 				sp[-1] = u512((bigint(sp[-1]) << unsigned(sp[0])) & bigint(mask));
 				break;
 			case Instruction::SHR:
-				assertThrow(sp[0] <= u512(511), OptimizerException, "Invalid shift generated.");
+				assertThrow(sp[0] < u512(VMWordBits), OptimizerException, "Invalid shift generated.");
 				sp[-1] = sp[-1] >> unsigned(sp[0]);
 				break;
 			default:

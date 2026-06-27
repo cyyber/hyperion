@@ -1202,15 +1202,14 @@ u512 RationalNumberType::literalValue(Literal const*) const
 
 	// we ignore the literal and hope that the type was correctly determined
 	hypAssert(shiftedValue <= u512(-1), "Number constant too large.");
-	hypAssert(shiftedValue >= -(bigint(1) << 511), "Number constant too small.");
+	hypAssert(shiftedValue >= -(bigint(1) << (VMWordBits - 1)), "Number constant too small.");
 
 	if (m_value >= rational(0))
 		value = u512(shiftedValue);
 	else
 	{
-		// Sign-extend to full VM word width (512 bits = 64 bytes) using two's complement
-		// 2^512 + shiftedValue = proper u512 two's complement for negative
-		bigint twoPow = bigint(1) << 512;
+		// Sign-extend to full VM word width using two's complement.
+		bigint twoPow = bigint(1) << VMWordBits;
 		value = u512(twoPow + shiftedValue);
 	}
 	return value;

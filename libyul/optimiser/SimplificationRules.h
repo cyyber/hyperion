@@ -28,6 +28,7 @@
 
 #include <libhyputil/CommonData.h>
 #include <libhyputil/Numeric.h>
+#include <libhyputil/VMConstants.h>
 
 #include <liblangutil/QRVMVersion.h>
 #include <liblangutil/SourceLocation.h>
@@ -98,7 +99,7 @@ class Pattern
 {
 public:
 	using Builtins = qrvmasm::QRVMBuiltins<Pattern>;
-	static constexpr size_t WordSize = 512;
+	static constexpr size_t WordSize = VMWordBits;
 	using Word = u512;
 
 	/// Matches any expression.

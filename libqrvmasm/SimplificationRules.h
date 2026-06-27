@@ -28,6 +28,7 @@
 #include <libqrvmasm/SimplificationRule.h>
 
 #include <libhyputil/CommonData.h>
+#include <libhyputil/VMConstants.h>
 
 #include <functional>
 #include <vector>
@@ -91,7 +92,7 @@ public:
 	using Id = ExpressionClasses::Id;
 
 	using Builtins = qrvmasm::QRVMBuiltins<Pattern>;
-	static constexpr size_t WordSize = 512;
+	static constexpr size_t WordSize = VMWordBits;
 	using Word = u512;
 
 	// Matches a specific constant value.

@@ -258,7 +258,7 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 			if iszero(eq(<pushOpcode>, byte(0, mload(codepos)))) {
 				mstore(0, <panicSelector>)
 				mstore(4, <panicCode>)
-				revert(0, 0x44)
+				revert(0, <panicReturndataSize>)
 			}
 			mstore(<addressMstoreOffset>, address())
 			mstore8(codepos, <pushOpcode>)
@@ -271,9 +271,10 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 		("addressMstoreOffset", std::to_string(addressMstoreOffset))
 		("panicSelector", (u512(util::selectorFromSignatureU256("Panic(uint256)")) << (VMWordBits - 256)).str())
 		("panicCode", "0")
+		("panicReturndataSize", toCompactHexWithPrefix(u256(4 + VMWordBytes)))
 		.render(),
 		{"subSize", "subOffset"}
-	);
+		);
 
 	return m_context.runtimeSub();
 }

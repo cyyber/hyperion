@@ -25,11 +25,13 @@
 #include <test/libyul/Common.h>
 
 #include <libyul/AST.h>
+#include <libyul/AsmJsonImporter.h>
 #include <libyul/AsmParser.h>
 #include <libyul/AsmPrinter.h>
 #include <libyul/AsmAnalysis.h>
 #include <libyul/AsmAnalysisInfo.h>
 #include <libyul/Dialect.h>
+#include <libyul/Exceptions.h>
 #include <liblangutil/ErrorReporter.h>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -145,6 +147,32 @@ BOOST_AUTO_TEST_CASE(wide_number_literals_are_valid)
 
 	BOOST_CHECK(successParse("{ let x := " + wideLiteral + " }", dialect));
 	BOOST_CHECK(successParse("{ switch " + wideLiteral + " case " + wideLiteral + " {} default {} }", dialect));
+}
+
+BOOST_AUTO_TEST_CASE(imported_literal_hex_value_requires_string)
+{
+	Json::Value literal(Json::objectValue);
+	literal["nodeType"] = "YulLiteral";
+	literal["src"] = "0:1:0";
+	literal["kind"] = "string";
+	literal["type"] = "";
+	literal["hexValue"] = Json::Value(Json::arrayValue);
+
+	Json::Value statement(Json::objectValue);
+	statement["nodeType"] = "YulExpressionStatement";
+	statement["src"] = "0:1:0";
+	statement["expression"] = literal;
+
+	Json::Value block(Json::objectValue);
+	block["nodeType"] = "YulBlock";
+	block["src"] = "0:1:0";
+	block["statements"] = Json::Value(Json::arrayValue);
+	block["statements"].append(statement);
+
+	std::vector<std::shared_ptr<std::string const>> sourceNames{
+		std::make_shared<std::string const>("source")
+	};
+	BOOST_CHECK_THROW(AsmJsonImporter(sourceNames).createBlock(block), YulAssertion);
 }
 
 BOOST_AUTO_TEST_CASE(builtins_analysis)

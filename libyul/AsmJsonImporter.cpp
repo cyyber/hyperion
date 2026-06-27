@@ -165,16 +165,13 @@ Literal AsmJsonImporter::createLiteral(Json::Value const& _node)
 	auto lit = createAsmNode<Literal>(_node);
 	std::string kind = member(_node, "kind").asString();
 
-	if (_node.isMember("hexValue"))
-	{
-		hypAssert(member(_node, "hexValue").isString(), "");
-		lit.value = YulString{util::asString(util::fromHex(member(_node, "hexValue").asString()))};
-	}
+	Json::Value const hexValue = member(_node, "hexValue");
+	Json::Value const value = member(_node, "value");
+	yulAssert(hexValue.isString() || value.isString(), "Literal-value is unset.");
+	if (hexValue.isString())
+		lit.value = YulString{util::asString(util::fromHex(hexValue.asString()))};
 	else
-	{
-		hypAssert(member(_node, "value").isString(), "");
-		lit.value = YulString{member(_node, "value").asString()};
-	}
+		lit.value = YulString{value.asString()};
 
 	lit.type= YulString{member(_node, "type").asString()};
 

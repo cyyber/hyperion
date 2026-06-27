@@ -27,6 +27,7 @@
 #include <libyul/Utilities.h>
 
 #include <libhyputil/CommonData.h>
+#include <libhyputil/VMConstants.h>
 
 #include <variant>
 
@@ -52,7 +53,7 @@ struct MiniQRVMInterpreter
 		std::vector<u512> args;
 		for (auto const& arg: _arguments)
 			args.emplace_back(eval(arg));
-		bigint const mask = (bigint(1) << 512) - 1;
+		bigint const mask = (bigint(1) << VMWordBits) - 1;
 		switch (_instr)
 		{
 		case qrvmasm::Instruction::ADD:
@@ -64,7 +65,7 @@ struct MiniQRVMInterpreter
 		case qrvmasm::Instruction::EXP:
 			return u512(boost::multiprecision::pow(bigint(args.at(0)), unsigned(args.at(1))) & mask);
 		case qrvmasm::Instruction::SHL:
-			return args.at(0) > 511 ? u512(0) : u512((bigint(args.at(1)) << unsigned(args.at(0))) & mask);
+			return args.at(0) >= u512(VMWordBits) ? u512(0) : u512((bigint(args.at(1)) << unsigned(args.at(0))) & mask);
 		case qrvmasm::Instruction::NOT:
 			return u512(~bigint(args.at(0)) & mask);
 		default:
@@ -128,13 +129,13 @@ Representation const& RepresentationFinder::findRepresentation(u512 const& _valu
 
 	Representation routine = represent(_value);
 
-	u512 const notValue = u512(~bigint(_value) & ((bigint(1) << 512) - 1));
+	u512 const notValue = u512(~bigint(_value) & ((bigint(1) << VMWordBits) - 1));
 	if (numberEncodingSize(notValue) < numberEncodingSize(_value))
 		// Negated is shorter to represent
 		routine = min(std::move(routine), represent("not"_yulstring, findRepresentation(notValue)));
 
 	// Decompose value into a * 2**k + b where abs(b) << 2**k
-	for (unsigned bits = 511; bits > 8 && m_maxSteps > 0; --bits)
+	for (unsigned bits = VMWordBits - 1; bits > 8 && m_maxSteps > 0; --bits)
 	{
 		unsigned gapDetector = unsigned((_value >> (bits - 8)) & 0x1ff);
 		if (gapDetector != 0xff && gapDetector != 0x100)
