@@ -49,6 +49,13 @@ namespace
 		BOOST_CHECK(output.bytecode.size() > 0);
 		BOOST_CHECK(output.toHex().length() > 0);
 	}
+
+	void checkImportFails(std::string const& _json)
+	{
+		Json::Value jsonValue;
+		BOOST_REQUIRE(util::jsonParseStrict(_json, jsonValue));
+		BOOST_CHECK_THROW(Assembly::fromJSON(jsonValue), AssemblyImportException);
+	}
 }
 
 BOOST_AUTO_TEST_SUITE(Assembler)
@@ -231,6 +238,16 @@ BOOST_AUTO_TEST_CASE(imported_push_preserves_512_bit_value)
 	BOOST_REQUIRE(assembly);
 	BOOST_CHECK(sourceList.empty());
 	BOOST_CHECK_EQUAL(assembly->assemble().toHex(), "9f" + value);
+}
+
+BOOST_AUTO_TEST_CASE(imported_assembly_rejects_malformed_json_values)
+{
+	checkImportFails("{\".code\":[{\"name\":\"PUSH\",\"value\":\"zz\"}]}");
+	checkImportFails("{\".code\":[{\"name\":\"VERBATIM\",\"value\":\"zz\"}]}");
+	checkImportFails("{\".code\":[{\"name\":\"INVALID_OPCODE\"}]}");
+	checkImportFails("{\".code\":[{\"name\":\"STOP\",\"modifierDepth\":-1}]}");
+	checkImportFails("{\".code\":[{\"name\":\"STOP\"}],\".data\":{\"gg\":\"0102\"}}");
+	checkImportFails("{\".code\":[{\"name\":\"STOP\"}],\".data\":{\"00\":\"0102\"}}");
 }
 
 BOOST_AUTO_TEST_CASE(immutables_and_its_source_maps)

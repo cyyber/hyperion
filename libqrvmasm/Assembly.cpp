@@ -56,6 +56,61 @@ using namespace hyperion::util;
 
 std::map<std::string, std::shared_ptr<std::string const>> Assembly::s_sharedSourceNames;
 
+namespace
+{
+
+template <class Integer>
+Integer parseAssemblyInteger(std::string const& _value, std::string const& _field)
+{
+	try
+	{
+		return Integer(_value);
+	}
+	catch (std::exception const&)
+	{
+		hypThrow(AssemblyImportException, _field + " is not a valid integer.");
+	}
+	return Integer();
+}
+
+template <class Integer>
+Integer parseAssemblyHexInteger(std::string const& _value, std::string const& _field)
+{
+	try
+	{
+		return Integer("0x" + _value);
+	}
+	catch (std::exception const&)
+	{
+		hypThrow(AssemblyImportException, _field + " is not a valid hexadecimal integer.");
+	}
+	return Integer();
+}
+
+bytes parseAssemblyHexBytes(std::string const& _value, std::string const& _field, bool _allowEmpty)
+{
+	bytes decoded = fromHex(_value);
+	solRequire(
+		(_allowEmpty && _value.empty()) || !decoded.empty(),
+		AssemblyImportException,
+		_field + " is not a valid hexadecimal string."
+	);
+	return decoded;
+}
+
+h256 parseAssemblyDataHash(std::string const& _value)
+{
+	bytes decoded = parseAssemblyHexBytes(_value, "The key '" + _value + "' inside '.data'", false);
+	solRequire(
+		decoded.size() == h256::size,
+		AssemblyImportException,
+		"The key '" + _value + "' inside '.data' is not a 32-byte hexadecimal string."
+	);
+	return h256(decoded);
+}
+
+}
+
 AssemblyItem const& Assembly::append(AssemblyItem _i)
 {
 	assertThrow(m_deposit >= 0, AssemblyException, "Stack underflow.");
@@ -129,12 +184,15 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 	location.start = get<int>(_json["begin"]);
 	location.end = get<int>(_json["end"]);
 	int srcIndex = getOrDefault<int>(_json["source"], -1);
-	size_t modifierDepth = static_cast<size_t>(getOrDefault<int>(_json["modifierDepth"], 0));
+	int modifierDepthValue = getOrDefault<int>(_json["modifierDepth"], 0);
+	solRequire(modifierDepthValue >= 0, AssemblyImportException, "Optional member 'modifierDepth' must be non-negative.");
+	size_t modifierDepth = static_cast<size_t>(modifierDepthValue);
 	std::string value = getOrDefault<std::string>(_json["value"], "");
 	std::string jumpType = getOrDefault<std::string>(_json["jumpType"], "");
 
 	auto updateUsedTags = [&](u256 const& data)
 	{
+		solRequire(data < std::numeric_limits<unsigned>::max(), AssemblyImportException, "Tag value out of bounds.");
 		m_usedTags = std::max(m_usedTags, static_cast<unsigned>(data) + 1);
 		return data;
 	};
@@ -210,7 +268,7 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		if (name == "PUSH")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::Push, u512("0x" + value)};
+			result = {AssemblyItemType::Push, parseAssemblyHexInteger<u512>(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSH [ErrorTag]")
 		{
@@ -220,17 +278,17 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		else if (name == "PUSH [tag]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushTag, updateUsedTags(u256(value))};
+			result = {AssemblyItemType::PushTag, updateUsedTags(parseAssemblyInteger<u256>(value, "Member 'value' for instruction '" + name + "'"))};
 		}
 		else if (name == "PUSH [$]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushSub, u256("0x" + value)};
+			result = {AssemblyItemType::PushSub, parseAssemblyHexInteger<u256>(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSH #[$]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushSubSize, u256("0x" + value)};
+			result = {AssemblyItemType::PushSubSize, parseAssemblyHexInteger<u256>(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSHSIZE")
 		{
@@ -260,21 +318,21 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		else if (name == "tag")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::Tag, u512(updateUsedTags(u256(value)))};
+			result = {AssemblyItemType::Tag, u512(updateUsedTags(parseAssemblyInteger<u256>(value, "Member 'value' for instruction '" + name + "'")))};
 		}
 		else if (name == "PUSH data")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushData, u512("0x" + value)};
+			result = {AssemblyItemType::PushData, parseAssemblyHexInteger<u512>(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "VERBATIM")
 		{
 			requireValueDefinedForInstruction(name, value);
-			AssemblyItem item(fromHex(value), 0, 0);
+			AssemblyItem item(parseAssemblyHexBytes(value, "Member 'value' for instruction '" + name + "'", false), 0, 0);
 			result = item;
 		}
 		else
-			hypThrow(InvalidOpcode, "Invalid opcode: " + name);
+			hypThrow(AssemblyImportException, "Invalid opcode: " + name);
 	}
 	result.setLocation(location);
 	result.m_modifierDepth = modifierDepth;
@@ -559,8 +617,7 @@ std::pair<std::shared_ptr<Assembly>, std::vector<std::string>> Assembly::fromJSO
 	if (_json[".auxdata"])
 	{
 		solRequire(_json[".auxdata"].isString(), AssemblyImportException, "Optional member '.auxdata' is not a string.");
-		result->m_auxiliaryData = fromHex(_json[".auxdata"].asString());
-		solRequire(!result->m_auxiliaryData.empty(), AssemblyImportException, "Optional member '.auxdata' is not a valid hexadecimal string.");
+		result->m_auxiliaryData = parseAssemblyHexBytes(_json[".auxdata"].asString(), "Optional member '.auxdata'", false);
 	}
 
 	if (_json.isMember(".data"))
@@ -575,12 +632,11 @@ std::pair<std::shared_ptr<Assembly>, std::vector<std::string>> Assembly::fromJSO
 			Json::Value const& dataItem = data[dataItemID];
 			if (dataItem.isString())
 			{
-				solRequire(
-					dataItem.asString().empty() || !fromHex(dataItem.asString()).empty(),
-					AssemblyImportException,
-					"The value for key '" + dataItemID + "' inside '.data' is not a valid hexadecimal string."
+				result->m_data[parseAssemblyDataHash(dataItemID)] = parseAssemblyHexBytes(
+					dataItem.asString(),
+					"The value for key '" + dataItemID + "' inside '.data'",
+					true
 				);
-				result->m_data[h256(fromHex(dataItemID))] = fromHex(dataItem.asString());
 			}
 			else if (dataItem.isObject())
 			{
