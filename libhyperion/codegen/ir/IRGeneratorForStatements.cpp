@@ -1286,13 +1286,13 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 
 		Whiskers templ(R"(
 			let <data> := <allocateUnbounded>()
-			let <memPtr> := add(<data>, 0x40)
+			let <memPtr> := add(<data>, <wordSize>)
 			<?+selector>
 				mstore(<memPtr>, <selector>)
 				<memPtr> := add(<memPtr>, 4)
 			</+selector>
 			let <mend> := <encode>(<memPtr><arguments>)
-			mstore(<data>, sub(<mend>, add(<data>, 0x40)))
+			mstore(<data>, sub(<mend>, add(<data>, <wordSize>)))
 			<finalizeAllocation>(<data>, sub(<mend>, <data>))
 		)");
 		templ("data", IRVariable(_functionCall).part("mpos").name());
@@ -1307,6 +1307,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		);
 		templ("arguments", joinHumanReadablePrefixed(argumentVars));
 		templ("finalizeAllocation", m_utils.finalizeAllocationFunction());
+		templ("wordSize", std::to_string(VMWordBytes));
 
 		appendCode() << templ.render();
 		break;
@@ -1340,7 +1341,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		{
 			IRVariable var = convert(*arguments[0], *TypeProvider::bytesMemory());
 			templ("abiDecode", m_context.abiFunctions().tupleDecoder(targetTypes, true));
-			templ("offset", "add(" + var.part("mpos").name() + ", 64)");
+			templ("offset", "add(" + var.part("mpos").name() + ", " + std::to_string(VMWordBytes) + ")");
 			templ("length",
 				m_utils.arrayLengthFunction(*TypeProvider::bytesMemory()) + "(" + var.part("mpos").name() + ")"
 			);
@@ -1391,9 +1392,9 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		if (auto const* stringLiteral = dynamic_cast<StringLiteralType const*>(arguments.front()->annotation().type))
 		{
 			// Optimization: Compute keccak256 on string literals at compile-time.
-			// keccak256 result is bytes32, must be left-aligned in 512-bit word.
+			// keccak256 result is bytes32, must be left-aligned in the VM word.
 			define(_functionCall) <<
-				("0x" + keccak256(stringLiteral->value()).hex() + std::string(64, '0')) <<
+				("0x" + keccak256(stringLiteral->value()).hex() + std::string((VMWordBytes - 32) * 2, '0')) <<
 				"\n";
 		}
 		else
@@ -1837,7 +1838,7 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 				hypAssert(
 					!(dynamic_cast<EventDefinition const&>(functionType.declaration()).isAnonymous())
 				);
-				// Event signature hash is bytes32 — left-align in the 64-byte VM word.
+				// Event signature hash is bytes32, left-align in the VM word.
 				define(IRVariable{_memberAccess}) << formatNumber(
 					u512(h256::Arith(util::keccak256(functionType.externalSignature()))) << (VMWordBits - 256)
 				) << "\n";
@@ -1907,13 +1908,14 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 			m_context.subObjectsCreated().insert(&contract);
 			appendCode() << Whiskers(R"(
 				let <size> := datasize("<objectName>")
-				let <result> := <allocationFunction>(add(<size>, 64))
+				let <result> := <allocationFunction>(add(<size>, <wordSize>))
 				mstore(<result>, <size>)
-				datacopy(add(<result>, 64), dataoffset("<objectName>"), <size>)
+				datacopy(add(<result>, <wordSize>), dataoffset("<objectName>"), <size>)
 			)")
 			("allocationFunction", m_utils.allocationFunction())
 			("size", m_context.newYulVariable())
 			("objectName", IRNames::creationObject(contract) + (member == "runtimeCode" ? "." + IRNames::deployedObject(contract) : ""))
+			("wordSize", std::to_string(VMWordBytes))
 			("result", IRVariable(_memberAccess).commaSeparatedList()).render();
 		}
 		else if (member == "name")
@@ -2686,7 +2688,7 @@ void IRGeneratorForStatements::appendBareCall(
 			let <pos> := <allocateUnbounded>()
 			let <length> := sub(<encode>(<pos> <?+arg>,</+arg> <arg>), <pos>)
 		<!needsEncoding>
-			let <pos> := add(<arg>, 0x40)
+			let <pos> := add(<arg>, <wordSize>)
 			let <length> := mload(<arg>)
 		</needsEncoding>
 
@@ -2697,6 +2699,7 @@ void IRGeneratorForStatements::appendBareCall(
 	templ("allocateUnbounded", m_utils.allocateUnboundedFunction());
 	templ("pos", m_context.newYulVariable());
 	templ("length", m_context.newYulVariable());
+	templ("wordSize", std::to_string(VMWordBytes));
 
 	templ("arg", IRVariable(*_arguments.front()).commaSeparatedList());
 	Type const& argType = type(*_arguments.front());

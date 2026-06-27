@@ -1043,8 +1043,7 @@ std::string IRGenerator::dispatchRoutine(ContractDefinition const& _contract)
 		{
 			hypAssert(fallback->parameters().size() == 1 && fallback->returnParameters().size() == 1, "");
 			fallbackCode += "let retval := " + m_context.enqueueFunctionForCodeGeneration(*fallback) + "(0, calldatasize())\n";
-			fallbackCode += "return(add(retval, 0x40), mload(retval))\n";
-
+			fallbackCode += "return(add(retval, " + std::to_string(VMWordBytes) + "), mload(retval))\n";
 		}
 
 		t("fallback", fallbackCode);

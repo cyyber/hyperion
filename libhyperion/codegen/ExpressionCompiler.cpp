@@ -162,17 +162,19 @@ void ExpressionCompiler::appendStateVariableAccessor(VariableDeclaration const& 
 				// copy key[i] to top.
 				utils().copyToStackTop(static_cast<unsigned>(paramTypes.size() - i + 1), 1);
 
-				m_context.appendInlineAssembly(R"({
+				m_context.appendInlineAssembly(Whiskers(R"({
 					let key_len := mload(key_ptr)
 					// Temp. use the memory after the array data for the slot
 					// position
-					let post_data_ptr := add(key_ptr, add(key_len, 0x40))
+					let post_data_ptr := add(key_ptr, add(key_len, <wordSize>))
 					let orig_data := mload(post_data_ptr)
 					mstore(post_data_ptr, slot_pos)
-					let hash := keccak256(add(key_ptr, 0x40), add(key_len, 0x40))
+					let hash := keccak256(add(key_ptr, <wordSize>), add(key_len, <wordSize>))
 					mstore(post_data_ptr, orig_data)
 					slot_pos := hash
-				})", {"slot_pos", "key_ptr"});
+				})")
+				("wordSize", std::to_string(VMWordBytes))
+				.render(), {"slot_pos", "key_ptr"});
 
 				m_context << Instruction::POP;
 			}
@@ -522,7 +524,7 @@ bool ExpressionCompiler::visit(UnaryOperation const& _unaryOperation)
 		else
 		{
 			m_context << u256(0) << Instruction::SUB;
-			// In 512-bit VM, need to cleanup/truncate to the target type's bit width
+			// In a word-sized VM, cleanup/truncate to the target type's bit width.
 			if (auto const* intType = dynamic_cast<IntegerType const*>(&type))
 			{
 				if (intType->isSigned())
@@ -903,7 +905,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			arguments.front()->accept(*this);
 			if (auto const* stringLiteral = dynamic_cast<StringLiteralType const*>(argType))
 				// Optimization: Compute keccak256 on string literals at compile-time.
-				// keccak256 result is bytes32, must be left-aligned in 512-bit word.
+				// keccak256 result is bytes32, must be left-aligned in the VM word.
 				m_context << (u512(h256::Arith(keccak256(stringLiteral->value()))) << (VMWordBits - 256));
 			else if (*argType == *TypeProvider::bytesMemory() || *argType == *TypeProvider::stringMemory())
 			{
@@ -981,7 +983,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				}
 			if (!event.isAnonymous())
 			{
-				// Event signature hash is bytes32 — left-align in the 64-byte VM word.
+				// Event signature hash is bytes32, left-align in the VM word.
 				m_context << (u512(h256::Arith(keccak256(function.externalSignature()))) << (VMWordBits - 256));
 				++numIndexed;
 			}
@@ -1198,9 +1200,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			m_context << u256(VMWordBytes) << Instruction::ADD;
 			utils().packedEncode(argumentTypes, targetTypes);
 			utils().fetchFreeMemoryPointer();
-			m_context.appendInlineAssembly(R"({
-				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), 0x40))
-			})", {"mem_end", "mem_ptr"});
+			m_context.appendInlineAssembly(Whiskers(R"({
+				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), <wordSize>))
+			})")
+			("wordSize", std::to_string(VMWordBytes))
+			.render(), {"mem_end", "mem_ptr"});
 			m_context << Instruction::SWAP1;
 			utils().storeFreeMemoryPointer();
 
@@ -1366,9 +1370,11 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 			// stack: [<selector/functionPointer/signature>] <data_encoding_area_end> <bytes_memory_ptr>
 
 			// size is end minus start minus length slot
-			m_context.appendInlineAssembly(R"({
-				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), 0x40))
-			})", {"mem_end", "mem_ptr"});
+			m_context.appendInlineAssembly(Whiskers(R"({
+				mstore(mem_ptr, sub(sub(mem_end, mem_ptr), <wordSize>))
+			})")
+			("wordSize", std::to_string(VMWordBytes))
+			.render(), {"mem_end", "mem_ptr"});
 			m_context << Instruction::SWAP1;
 			utils().storeFreeMemoryPointer();
 			// stack: [<selector/functionPointer/signature>] <memory ptr>
@@ -1430,12 +1436,15 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 
 				// load current memory, mask and combine the selector
 				std::string mask = formatNumber((u512(-1) >> 32));
-				m_context.appendInlineAssembly(R"({
-					let data_start := add(mem_ptr, 0x40)
+				m_context.appendInlineAssembly(Whiskers(R"({
+					let data_start := add(mem_ptr, <wordSize>)
 					let data := mload(data_start)
-					let mask := )" + mask + R"(
+					let mask := <mask>
 					mstore(data_start, or(and(data, mask), selector))
-				})", {"mem_ptr", "selector"});
+				})")
+				("wordSize", std::to_string(VMWordBytes))
+				("mask", mask)
+				.render(), {"mem_ptr", "selector"});
 				m_context << Instruction::POP;
 			}
 
@@ -1918,9 +1927,13 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 			// Stack: start end
 			m_context.appendInlineAssembly(
 				Whiskers(R"({
-					mstore(start, sub(end, add(start, 0x40)))
-					mstore(<free>, and(add(end, 63), not(63)))
-				})")("free", std::to_string(CompilerUtils::freeMemoryPointer)).render(),
+					mstore(start, sub(end, add(start, <wordSize>)))
+					mstore(<free>, and(add(end, <alignmentMask>), not(<alignmentMask>)))
+				})")
+				("free", std::to_string(CompilerUtils::freeMemoryPointer))
+				("wordSize", std::to_string(VMWordBytes))
+				("alignmentMask", std::to_string(VMWordAlignmentMask))
+				.render(),
 				{"start", "end"}
 			);
 			m_context << Instruction::POP;
@@ -2800,7 +2813,7 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		// Always use the actual return length, and not our calculated expected length, if returndatacopy is supported.
 		// This ensures it can catch badly formatted input from external calls. Round the size up to the
 		// next VM word boundary so abi_decode_tuple_* (which expects whole-word padded slots) sees a complete
-		// word — precompiles like SHA-256 return the raw 32 bytes in a 64-byte-word VM, so without this the
+		// word. Precompiles like SHA-256 return the raw digest bytes, so without this the
 		// decoder's `slt(sub(end, start), <minimumSize>)` check trips.
 		// We also zero-fill the bytes between returndatasize and the rounded size: STATICCALL only writes
 		// returndatasize bytes into the output memory window, so the trailing bytes of the rounded slot

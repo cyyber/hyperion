@@ -105,7 +105,7 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 	if (_sourceType.location() == DataLocation::Memory && _sourceType.isDynamicallySized())
 	{
 		// increment source pointer to point to data
-		m_context << Instruction::SWAP1 << u256(0x40);
+		m_context << Instruction::SWAP1 << u256(VMWordBytes);
 		m_context << Instruction::ADD << Instruction::SWAP1;
 	}
 
@@ -316,11 +316,13 @@ void ArrayUtils::copyArrayToMemory(ArrayType const& _sourceType, bool _padToWord
 
 		std::string routine = "calldatacopy(target, source, len)\n";
 		if (_padToWordBoundaries)
-			routine += R"(
+			routine += util::Whiskers(R"(
 				// Set padding suffix to zero
 				mstore(add(target, len), 0)
-				len := and(add(len, 0x3f), not(0x3f))
-			)";
+				len := and(add(len, <alignmentMask>), not(<alignmentMask>))
+			)")
+			("alignmentMask", std::to_string(VMWordAlignmentMask))
+			.render();
 		routine += "target := add(target, len)\n";
 		m_context.appendInlineAssembly("{" + routine + "}", {"target", "source", "len"});
 		m_context << Instruction::POP << Instruction::POP;
@@ -678,11 +680,11 @@ void ArrayUtils::resizeDynamicArray(ArrayType const& _typeIn) const
 
 				// Here: short -> short
 
-				// Compute 1 << (512 - 8 * new_size)
+				// Compute 1 << (VMWordBits - 8 * new_size)
 				qrvmasm::AssemblyItem shortToShort = _context.newTag();
 				_context << shortToShort;
 				_context << Instruction::DUP3 << u256(8) << Instruction::MUL;
-				_context << u256(0x200) << Instruction::SUB;
+				_context << u256(VMWordBits) << Instruction::SUB;
 				_context << u256(2) << Instruction::EXP;
 				// Divide and multiply by that value, clearing bits.
 				_context << Instruction::DUP1 << Instruction::SWAP2;
@@ -799,28 +801,32 @@ void ArrayUtils::incrementDynamicArraySize(ArrayType const& _type) const
 		// We almost always just add 2 (length of byte arrays is shifted left by one)
 		// except for the case where we transition from a short byte array
 		// to a long byte array, there we have to copy.
-		// This happens if the length is exactly 63, which means that the
+		// This happens if the length is exactly VMWordBytes - 1, which means that the
 		// lowest-order byte (we actually use a mask with fewer bits) must
-		// be (63*2+1) = 127
+		// be (VMWordBytes - 1) * 2 + 1
 
 		m_context << Instruction::DUP1 << Instruction::SLOAD << Instruction::DUP1;
 		m_context.callYulFunction(m_context.utilFunctions().extractByteArrayLengthFunction(), 1, 1);
-		m_context.appendInlineAssembly(R"({
-			// We have to copy if length is exactly 63, because that marks
+		m_context.appendInlineAssembly(util::Whiskers(R"({
+			// We have to copy if length is exactly VMWordBytes - 1, because that marks
 			// the transition between in-place and out-of-place storage.
 			switch length
-			case 63
+			case <maxShortLength>
 			{
 				mstore(0, ref)
-				let data_area := keccak256(0, 0x40)
+				let data_area := keccak256(0, <wordSize>)
 				sstore(data_area, and(data, not(0xff)))
-				// Set old length in new format (63 * 2 + 1)
-				data := 127
+				// Set old length in new format ((VMWordBytes - 1) * 2 + 1)
+				data := <maxShortLengthLongEncoding>
 			}
 			sstore(ref, add(data, 2))
 			// return new length in ref
 			ref := add(length, 1)
-		})", {"ref", "data", "length"});
+		})")
+		("maxShortLength", std::to_string(VMWordAlignmentMask))
+		("wordSize", std::to_string(VMWordBytes))
+		("maxShortLengthLongEncoding", std::to_string(VMWordAlignmentMask * 2 + 1))
+		.render(), {"ref", "data", "length"});
 		m_context << Instruction::POP << Instruction::POP;
 	}
 	else
@@ -846,37 +852,37 @@ void ArrayUtils::popStorageArrayElement(ArrayType const& _type) const
 			if iszero(length) {
 				mstore(0, <panicSelector>)
 				mstore(4, <emptyArrayPop>)
-				revert(0, 0x44)
+				revert(0, <panicReturndataSize>)
 			}
-			switch gt(length, 63)
+			switch gt(length, <maxShortLength>)
 			case 0 {
 				// short byte array
 				// Zero-out the suffix including the least significant byte.
-				let mask := sub(exp(0x100, sub(65, length)), 1)
+				let mask := sub(exp(0x100, sub(<shortMaskLength>, length)), 1)
 				length := sub(length, 1)
 				slot_value := or(and(not(mask), slot_value), mul(length, 2))
 			}
 			case 1 {
 				// long byte array
 				mstore(0, ref)
-				let slot := keccak256(0, 0x40)
+				let slot := keccak256(0, <wordSize>)
 				switch length
-				case 64
+				case <wordSize>
 				{
 					let data := sload(slot)
 					sstore(slot, 0)
 					data := and(data, not(0xff))
-					slot_value := or(data, 126)
+					slot_value := or(data, <maxShortLengthEncoded>)
 				}
 				default
 				{
-					let offset_inside_slot := and(sub(length, 1), 0x3f)
-					slot := add(slot, div(sub(length, 1), 64))
+					let offset_inside_slot := and(sub(length, 1), <alignmentMask>)
+					slot := add(slot, div(sub(length, 1), <wordSize>))
 					let data := sload(slot)
 
 					// Zero-out the suffix of the byte array by masking it.
-					// ((1<<(8 * (64 - offset))) - 1)
-					let mask := sub(exp(0x100, sub(64, offset_inside_slot)), 1)
+					// ((1<<(8 * (VMWordBytes - offset))) - 1)
+					let mask := sub(exp(0x100, sub(<wordSize>, offset_inside_slot)), 1)
 					data := and(not(mask), data)
 					sstore(slot, data)
 
@@ -888,6 +894,12 @@ void ArrayUtils::popStorageArrayElement(ArrayType const& _type) const
 		})");
 		code("panicSelector", (u512(util::selectorFromSignatureU256("Panic(uint256)")) << (VMWordBits - 256)).str());
 		code("emptyArrayPop", std::to_string(unsigned(util::PanicCode::EmptyArrayPop)));
+		code("panicReturndataSize", std::to_string(4 + VMWordBytes));
+		code("maxShortLength", std::to_string(VMWordAlignmentMask));
+		code("shortMaskLength", std::to_string(VMWordBytes + 1));
+		code("wordSize", std::to_string(VMWordBytes));
+		code("maxShortLengthEncoded", std::to_string(VMWordAlignmentMask * 2));
+		code("alignmentMask", std::to_string(VMWordAlignmentMask));
 		m_context.appendInlineAssembly(code.render(), {"ref", "slot_value", "length"});
 		m_context << Instruction::POP << Instruction::POP << Instruction::POP;
 	}
@@ -946,7 +958,7 @@ void ArrayUtils::clearStorageLoop(Type const* _type) const
 				Instruction::ISZERO;
 			qrvmasm::AssemblyItem zeroLoopEnd = _context.newTag();
 			_context.appendConditionalJumpTo(zeroLoopEnd);
-			// delete - always clear full slot (64 bytes) regardless of type size
+			// delete - always clear a full VM word regardless of type size
 			if (_type->storageBytes() < VMWordBytes)
 			{
 				// For types smaller than a word, clear the entire slot with sstore(pos, 0)
