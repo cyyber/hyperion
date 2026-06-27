@@ -1296,7 +1296,7 @@ void CompilerUtils::convertType(
 
 		if (_cleanupNeeded && _targetType.canBeStored() && _targetType.storageBytes() < VMWordBytes)
 			m_context
-				<< u256((bigint(1) << (8 * _targetType.storageBytes())) - 1)
+				<< u512((bigint(1) << (8 * _targetType.storageBytes())) - 1)
 				<< Instruction::AND;
 		break;
 	}
