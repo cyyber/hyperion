@@ -118,6 +118,21 @@ bool ImmutableValidator::visit(IfStatement const& _ifStatement)
 	return false;
 }
 
+bool ImmutableValidator::visit(Conditional const& _conditional)
+{
+	bool previousInBranch = m_inBranch;
+
+	_conditional.condition().accept(*this);
+
+	m_inBranch = true;
+	_conditional.trueExpression().accept(*this);
+	_conditional.falseExpression().accept(*this);
+
+	m_inBranch = previousInBranch;
+
+	return false;
+}
+
 bool ImmutableValidator::visit(WhileStatement const& _whileStatement)
 {
 	bool previousInLoop = m_inLoop;

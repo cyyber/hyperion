@@ -257,10 +257,21 @@ TestTool::Request TestTool::handleResponse(bool _exception)
 			cout << endl << endl;
 			try
 			{
-				boost::process::child editor(m_options.editor, m_path.string());
-				editor.wait();
-				if (editor.exit_code() != 0)
-					cerr << "Error running editor command." << endl << endl;
+				if (m_options.editor.empty())
+					cerr << "No editor configured." << endl << endl;
+				else
+				{
+					boost::process::child editor(
+						"/bin/sh",
+						"-c",
+						m_options.editor + " \"$1\"",
+						"ihyptest-editor",
+						m_path.string()
+					);
+					editor.wait();
+					if (editor.exit_code() != 0)
+						cerr << "Error running editor command." << endl << endl;
+				}
 			}
 			catch (boost::process::process_error const& _exception)
 			{

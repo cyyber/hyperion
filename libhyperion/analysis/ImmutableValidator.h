@@ -54,6 +54,7 @@ private:
 	bool visit(ModifierDefinition const& _modifierDefinition) override;
 	bool visit(MemberAccess const& _memberAccess) override;
 	bool visit(IfStatement const& _ifStatement) override;
+	bool visit(Conditional const& _conditional) override;
 	bool visit(WhileStatement const& _whileStatement) override;
 	bool visit(ForStatement const& _forStatement) override;
 	bool visit(TryStatement const& _tryStatement) override;
