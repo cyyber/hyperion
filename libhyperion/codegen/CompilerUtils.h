@@ -207,7 +207,7 @@ public:
 	/// Length can be zero, in this case, it copies nothing.
 	/// Stack pre: <size> <target> <source>
 	/// Stack post:
-	void memoryCopy32();
+	void memoryCopyWord();
 	/// Copies data in memory (regions cannot overlap).
 	/// Length can be zero, in this case, it copies nothing.
 	/// Stack pre: <size> <target> <source>

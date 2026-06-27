@@ -49,7 +49,7 @@ std::string::const_iterator firstNonIdentifier(
 )
 {
 	auto currPos = _pos;
-	if (currPos == _pos && isIdentifierStart(*currPos))
+	if (currPos != _end && isIdentifierStart(*currPos))
 	{
 		currPos++;
 		currPos = ranges::find_if_not(ranges::make_subrange(currPos, _end), isIdentifierPart);

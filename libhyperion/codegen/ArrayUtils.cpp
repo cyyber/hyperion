@@ -371,7 +371,7 @@ void ArrayUtils::copyArrayToMemory(ArrayType const& _sourceType, bool _padToWord
 		// - the length is known to be a multiple of the VM word size or
 		// - we will pad to full VM words later anyway.
 		if (!_sourceType.isByteArrayOrString() || _padToWordBoundaries)
-			utils.memoryCopy32();
+			utils.memoryCopyWord();
 		else
 			utils.memoryCopy();
 
