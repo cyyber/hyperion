@@ -55,6 +55,7 @@ private:
 	bool visit(MemberAccess const& _memberAccess) override;
 	bool visit(IfStatement const& _ifStatement) override;
 	bool visit(WhileStatement const& _whileStatement) override;
+	bool visit(ForStatement const& _forStatement) override;
 	bool visit(TryStatement const& _tryStatement) override;
 	void endVisit(IdentifierPath const& _identifierPath) override;
 	void endVisit(Identifier const& _identifier) override;

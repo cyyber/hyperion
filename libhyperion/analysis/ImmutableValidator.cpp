@@ -131,6 +131,24 @@ bool ImmutableValidator::visit(WhileStatement const& _whileStatement)
 	return false;
 }
 
+bool ImmutableValidator::visit(ForStatement const& _forStatement)
+{
+	bool previousInLoop = m_inLoop;
+	m_inLoop = true;
+
+	if (_forStatement.initializationExpression())
+		_forStatement.initializationExpression()->accept(*this);
+	if (_forStatement.condition())
+		_forStatement.condition()->accept(*this);
+	if (_forStatement.loopExpression())
+		_forStatement.loopExpression()->accept(*this);
+	_forStatement.body().accept(*this);
+
+	m_inLoop = previousInLoop;
+
+	return false;
+}
+
 bool ImmutableValidator::visit(TryStatement const& _tryStatement)
 {
 	ScopedSaveAndRestore tryStatementGuard{m_inTryStatement, true};
