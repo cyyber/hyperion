@@ -10,7 +10,7 @@ Bugs in third-party dependencies e.g., jsoncpp, boost etc. are not in scope unle
 
 Only bugs that have a demonstrable security impact on smart contracts are in scope.
 For example, a Hyperion program whose optimization is incorrect (e.g., leads to an incorrect output) qualifies as a security bug.
-Please note that the [rules][2] of the [Ethereum bounty program][1] have precedence over this security policy.
+Please note that the repository's GitHub security advisory process has precedence over this security policy.
 
 ## Supported Versions
 
@@ -24,7 +24,7 @@ Example 2: Assuming the current release is `0.6.25` and a security bug has been 
 
 ## Reporting a Vulnerability
 
-To report a vulnerability, please follow the instructions stated in the [Ethereum bounty program][1].
+To report a vulnerability, please open a private security advisory for this repository.
 
 In the bug report, please include all details necessary to reproduce the vulnerability such as:
 
@@ -46,7 +46,5 @@ The Hyperion team maintains the following JSON-formatted lists of patched securi
 - [List of security vulnerabilities affecting a specific version of the compiler][4].
 
 
-[1]: https://bounty.ethereum.org/
-[2]: https://bounty.ethereum.org/#rules
-[3]: https://docs.soliditylang.org/en/develop/bugs.html
+[3]: docs/bugs.rst
 [4]: https://github.com/theQRL/hyperion/blob/develop/docs/bugs_by_version.json

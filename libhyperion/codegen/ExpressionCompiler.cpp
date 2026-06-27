@@ -1175,7 +1175,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 					targetTypes.emplace_back(argument->annotation().type);
 				else if (
 					auto const* literalType = dynamic_cast<StringLiteralType const*>(argument->annotation().type);
-					literalType && !literalType->value().empty() && literalType->value().size() <= AddressBytes
+					literalType && !literalType->value().empty() && literalType->value().size() <= VMWordBytes
 				)
 					targetTypes.emplace_back(TypeProvider::fixedBytes(static_cast<unsigned>(literalType->value().size())));
 				else

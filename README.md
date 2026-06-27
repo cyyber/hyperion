@@ -2,7 +2,7 @@
 
 Hyperion is a statically typed, contract-oriented, high-level language for implementing smart contracts on the QRL platform.
 
-For a good overview and starting point, please check out the official [Hyperion Language Portal](https://soliditylang.org).
+For a good overview and starting point, please check out the [Hyperion documentation](docs/index.rst).
 
 ## Table of Contents
 
@@ -30,7 +30,7 @@ number [to indicate this fast pace of change](https://semver.org/#spec-item-4).
 ## Build and Install
 
 Instructions about how to build and install the Hyperion compiler can be
-found in the [Hyperion documentation](https://docs.soliditylang.org/en/latest/installing-hyperion.html#building-from-source).
+found in the [Hyperion documentation](docs/installing-hyperion.rst).
 
 
 ## Example
@@ -48,22 +48,21 @@ contract HelloWorld {
 }
 ```
 
-To get started with Hyperion, you can use [Remix](https://remix.ethereum.org/), which is a
-browser-based IDE. Here are some example contracts:
+Here are some example contracts:
 
-1. [Voting](https://docs.soliditylang.org/en/latest/solidity-by-example.html#voting)
-2. [Blind Auction](https://docs.soliditylang.org/en/latest/solidity-by-example.html#blind-auction)
-3. [Safe remote purchase](https://docs.soliditylang.org/en/latest/solidity-by-example.html#safe-remote-purchase)
+1. [Voting](docs/examples/voting.rst)
+2. [Blind Auction](docs/examples/blind-auction.rst)
+3. [Safe remote purchase](docs/examples/safe-remote.rst)
 
 ## Documentation
 
-The Hyperion documentation is hosted using [Read the Docs](https://docs.soliditylang.org).
+The Hyperion documentation lives in the [docs](docs) directory.
 
 ## Development
 
 Hyperion is still under development. Contributions are always welcome!
 Please follow the
-[Developers Guide](https://docs.soliditylang.org/en/latest/contributing.html)
+[Developers Guide](docs/contributing.rst)
 if you want to help.
 
 You can find our current feature and bug priorities for forthcoming
@@ -71,7 +70,6 @@ releases in the [projects section](https://github.com/theQRL/hyperion/projects).
 
 ## Maintainers
 The Hyperion programming language and compiler are open-source community projects governed by a core team.
-The core team is sponsored by the [Ethereum Foundation](https://ethereum.foundation/).
 
 ## License
 Hyperion is licensed under [GNU General Public License v3.0](LICENSE.txt).

@@ -27,7 +27,7 @@ done
 HYPERION_REPO_URL="https://github.com/theQRL/hyperion"
 HYPC_JS_REPO_URL="https://github.com/theQRL/hypc-js"
 HYPC_JS_BRANCH=wasmRebuildTests
-RELEASE_URL="https://binaries.soliditylang.org/bin"
+RELEASE_URL="https://raw.githubusercontent.com/theQRL/hypc-bin/gh-pages/bin"
 RELEASE_COMMIT_LIST_URL="$RELEASE_URL/list.txt"
 
 SCRIPTDIR=$(dirname "$0")

@@ -19,7 +19,7 @@
  * @author Lefteris <lefteris@ethdev.com>
  * @date 2014
  * Takes the parsed AST and produces the Natspec documentation:
- * https://docs.soliditylang.org/en/develop/natspec-format.html
+ * See docs/natspec-format.rst.
  *
  * Can generally deal with JSON files
  */

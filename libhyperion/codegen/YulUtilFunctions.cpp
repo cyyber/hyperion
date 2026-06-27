@@ -2608,14 +2608,14 @@ std::string YulUtilFunctions::bytesOrStringConcatFunction(
 		else if (_functionTypeKind == FunctionType::Kind::BytesConcat)
 			hypAssert(
 				argumentType->isImplicitlyConvertibleTo(*TypeProvider::bytesMemory()) ||
-				argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(AddressBytes))
+				argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(VMWordBytes))
 			);
 
 		if (argumentType->category() == Type::Category::FixedBytes)
 			targetTypes.emplace_back(argumentType);
 		else if (
 			auto const* literalType = dynamic_cast<StringLiteralType const*>(argumentType);
-			literalType && !literalType->value().empty() && literalType->value().size() <= AddressBytes
+			literalType && !literalType->value().empty() && literalType->value().size() <= VMWordBytes
 		)
 			targetTypes.emplace_back(TypeProvider::fixedBytes(static_cast<unsigned>(literalType->value().size())));
 		else

@@ -53,7 +53,7 @@ explanatory purposes.
       "output": {
         // Required: ABI definition of the contract. See "Contract ABI Specification"
         "abi": [/* ... */],
-        // Required: NatSpec developer documentation of the contract. See https://docs.soliditylang.org/en/latest/natspec-format.html for details.
+        // Required: NatSpec developer documentation of the contract. See "NatSpec Format" in the Hyperion docs for details.
         "devdoc": {
           // Contents of the @author NatSpec field of the contract
           "author": "John Doe",

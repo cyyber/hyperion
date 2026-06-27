@@ -593,9 +593,9 @@ void StorageByteArrayElement::setToZero(SourceLocation const&, bool _removeRefer
 	// stack: ref byte_number
 	hypAssert(_removeReference, "");
 	m_context << u256(VMWordBytes - 1) << Instruction::SUB << u256(0x100) << Instruction::EXP;
-	// stack: ref (1<<(8*(31-byte_number)))
+	// stack: ref (1<<(8*((VMWordBytes - 1)-byte_number)))
 	m_context << Instruction::DUP2 << Instruction::SLOAD;
-	// stack: ref (1<<(8*(31-byte_number))) old_full_value
+	// stack: ref (1<<(8*((VMWordBytes - 1)-byte_number))) old_full_value
 	// clear byte in old value
 	m_context << Instruction::SWAP1 << u256(0xff) << Instruction::MUL;
 	m_context << Instruction::NOT << Instruction::AND;

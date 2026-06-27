@@ -1,8 +1,8 @@
 // Site URL
-const SITE_URL = "https://docs.soliditylang.org"
+const SITE_URL = ""
 const { origin, pathname } = location;
 const pathSplit = pathname.split("/");
-const rootPath = origin.includes(SITE_URL) && pathSplit.length > 3 ? pathSplit.splice(1, 2).join("/") : ''
+const rootPath = SITE_URL && origin.includes(SITE_URL) && pathSplit.length > 3 ? pathSplit.splice(1, 2).join("/") : ''
 const ROOT_URL = `${origin}/${rootPath}`;
 
 // Color mode constants
@@ -18,20 +18,17 @@ const HYPERION_LOGO_CLASS = "hyperion-logo";
 const LS_COLOR_SCHEME = "color-scheme";
 
 // Hyperion navigation constants
-const HYPERION_HOME_URL = "https://soliditylang.org";
-const BLOG_URL = `${HYPERION_HOME_URL}/blog`;
+const HYPERION_HOME_URL = "https://github.com/theQRL/hyperion";
 const DOCS_URL = "/";
-const USE_CASES_PATH = `${HYPERION_HOME_URL}/use-cases`;
+const EXAMPLES_PATH = `/en/latest/hyperion-by-example.html`;
 const CONTRIBUTE_PATH = `/en/latest/contributing.html`;
-const ABOUT_PATH = `${HYPERION_HOME_URL}/about`;
-const FORUM_URL = "https://forum.soliditylang.org/";
+const QRL_DEVELOPERS_PATH = "https://theqrl.org/en/developers/";
 const NAV_LINKS = [
-  { name: "Blog", href: BLOG_URL },
+  { name: "Source", href: HYPERION_HOME_URL },
   { name: "Documentation", href: DOCS_URL },
-  { name: "Use cases", href: USE_CASES_PATH },
+  { name: "Examples", href: EXAMPLES_PATH },
   { name: "Contribute", href: CONTRIBUTE_PATH },
-  { name: "About", href: ABOUT_PATH },
-  { name: "Forum", href: FORUM_URL },
+  { name: "QRL Developers", href: QRL_DEVELOPERS_PATH },
 ];
 
 const MOBILE_MENU_TOGGLE_CLASS = "shift";

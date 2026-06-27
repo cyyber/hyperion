@@ -6,7 +6,7 @@
 #
 # The documentation for hyperion is hosted at:
 #
-#     https://docs.soliditylang.org
+#     https://github.com/theQRL/hyperion/tree/develop/docs
 #
 # ------------------------------------------------------------------------------
 # This file is part of hyperion.

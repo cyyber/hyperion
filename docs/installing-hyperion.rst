@@ -72,7 +72,7 @@ Please refer to the hypc-js repository for instructions.
 Docker
 ======
 
-Docker images of Hyperion builds are available using the ``hypc`` image from the ``ethereum`` organization.
+Docker images of Hyperion builds are available using the ``hypc`` image from the ``theQRL`` organization.
 Use the ``stable`` tag for the latest released version, and ``nightly`` for potentially unstable changes in the develop branch.
 
 The Docker image runs the compiler executable so that you can pass all compiler arguments to it.
@@ -120,20 +120,14 @@ version using the following commands:
     sudo apt-get update
     sudo apt-get install hypc
 
-The nightly version can be installed using these commands:
-
-.. code-block:: bash
-
-    sudo add-apt-repository ppa:ethereum/ethereum
-    sudo add-apt-repository ppa:ethereum/ethereum-dev
-    sudo apt-get update
-    sudo apt-get install hypc
+Nightly PPA packages are only available when the QRL packaging team publishes a development archive.
+Check the current release notes or project channels before installing pre-release packages.
 
 Furthermore, some Linux distributions provide their own packages. These packages are not directly
 maintained by us but usually kept up-to-date by the respective package maintainers.
 
-For example, Arch Linux has packages for the latest development version as AUR packages: `solidity <https://aur.archlinux.org/packages/solidity>`_
-and `solidity-bin <https://aur.archlinux.org/packages/solidity-bin>`_.
+If your distribution provides Hyperion packages, verify that they are maintained for the QRL toolchain
+before using them for production builds.
 
 .. note::
 
@@ -210,8 +204,8 @@ supported platforms at `hypc-bin`_. This is also the location where you can find
 The repository is not only a quick and easy way for end users to get binaries ready to be used
 out-of-the-box but it is also meant to be friendly to third-party tools:
 
-- The content is mirrored to https://binaries.soliditylang.org where it can be easily downloaded over
-  HTTPS without any authentication, rate limiting or the need to use git.
+- The content can be downloaded over HTTPS from the `hypc-bin`_ repository
+  without using git.
 - Content is served with correct `Content-Type` headers and lenient CORS configuration so that it
   can be directly loaded by tools running in the browser.
 - Binaries do not require installation or unpacking (exception for older Windows builds
@@ -254,9 +248,9 @@ This means that:
   `hypc-emscripten-wasm32-v0.7.4+commit.3f05b770.js <https://github.com/theQRL/hypc-bin/blob/gh-pages/emscripten-wasm32/hypc-emscripten-wasm32-v0.7.4+commit.3f05b770.js>`_.
   Note that the file might be a symlink, and you will need to resolve it yourself if you are not using
   git to download it or your file system does not support symlinks.
-- The binary is also mirrored at https://binaries.soliditylang.org/emscripten-wasm32/hypc-emscripten-wasm32-v0.7.4+commit.3f05b770.js.
-  In this case git is not necessary and symlinks are resolved transparently, either by serving a copy
-  of the file or returning a HTTP redirect.
+- The binary can also be downloaded from the corresponding path in the
+  `hypc-bin`_ repository. Resolve symlinks yourself if you are not using git
+  or your file system does not support symlinks.
 - The file is also available on IPFS at `QmTLs5MuLEWXQkths41HiACoXDiH8zxyqBHGFDRSzVE5CS`_.
 - The file might in future be available on Swarm at `16c5f09109c793db99fe35f037c6092b061bd39260ee7a677c8a97f18c955ab1`_.
 - You can verify the integrity of the binary by comparing its keccak256 hash to
@@ -280,23 +274,14 @@ This means that:
      if you want to be sure whether you are downloading a wasm or an asm.js binary.
    - Use ``list.json`` instead of ``list.js`` and ``list.txt``. The JSON list format contains all
      the information from the old ones and more.
-   - Use https://binaries.soliditylang.org instead of https://hypc-bin.ethereum.org. To keep things
-     simple we moved almost everything related to the compiler under the new ``soliditylang.org``
-     domain and this applies to ``hypc-bin`` too. While the new domain is recommended, the old one
-     is still fully supported and guaranteed to point at the same location.
+   - Use the `hypc-bin`_ repository instead of legacy Ethereum/Solidity binary
+     mirrors when writing new tooling.
 
 .. warning::
 
-    The binaries are also available at https://ethereum.github.io/hypc-bin/ but this page
-    stopped being updated just after the release of version 0.7.2, will not receive any new releases
-    or nightly builds for any platform and does not serve the new directory structure, including
-    non-emscripten builds.
-
-    If you are using it, please switch to https://binaries.soliditylang.org, which is a drop-in
-    replacement. This allows us to make changes to the underlying hosting in a transparent way and
-    minimize disruption. Unlike the ``ethereum.github.io`` domain, which we do not have any control
-    over, ``binaries.soliditylang.org`` is guaranteed to work and maintain the same URL structure
-    in the long-term.
+    Legacy Ethereum/Solidity binary mirrors are not authoritative for Hyperion
+    releases. Use the `hypc-bin`_ repository or the `Hyperion release page on
+    github`_ instead.
 
 .. _IPFS: https://ipfs.io
 .. _Swarm: https://swarm-gateways.net/bzz:/swarm.eth

@@ -15,7 +15,7 @@
 At least a day before the release:
  - [ ] Run ``make linkcheck`` from within ``docs/`` and fix any broken links it finds.
        Ignore false positives caused by ``href`` anchors and dummy links not meant to work.
- - [ ] Double-check that [the most recent docs builds at readthedocs](https://readthedocs.org/projects/solidity/builds/) succeeded.
+ - [ ] Double-check that the most recent Hyperion documentation builds succeeded.
  - [ ] Make sure that all merged PRs that should have changelog entries do have them.
  - [ ] Rerun CI on the top commits of main branches in all repositories that do not have daily activity by creating a test branch or PR:
       - [ ] ``hypc-js``
@@ -30,7 +30,7 @@ At least a day before the release:
  - [ ] Create a draft PR to sort the changelog.
  - [ ] Create draft PRs to bump version in ``hyperion`` and ``hypc-js``.
  - [ ] Create a draft of the release on github.
- - [ ] Create a draft PR to update soliditylang.org.
+ - [ ] Create a draft PR to update ``hyperion-website``.
  - [ ] Create drafts of blog posts.
  - [ ] Prepare drafts of Twitter, Reddit and Hyperion Forum announcements.
 
@@ -79,16 +79,16 @@ At least a day before the release:
 ### PPA
  - [ ] Create ``.release_ppa_auth`` at the root of your local Hyperion checkout and set ``LAUNCHPAD_EMAIL`` and ``LAUNCHPAD_KEYID`` to your key's email and key id.
  - [ ] Double-check that the ``DISTRIBUTIONS`` list in ``scripts/release_ppa.sh`` and ``scripts/deps-ppa/static_z3.sh`` contains the most recent versions of Ubuntu.
- - [ ] Make sure the [``~theqrl/cpp-build-deps`` PPA repository](https://launchpad.net/~ethereum/+archive/ubuntu/cpp-build-deps) contains ``libz3-static-dev builds`` for all current versions of Ubuntu.
+ - [ ] Make sure the QRL ``cpp-build-deps`` PPA repository contains ``libz3-static-dev builds`` for all current versions of Ubuntu.
        Note that it may be included in the ``z3-static`` multipackage (follow the ``View package details`` link to check).
        If not present, run ``scripts/deps-ppa/static_z3.sh`` and wait for the builds to succeed before continuing.
  - [ ] Run ``scripts/release_ppa.sh v$VERSION`` to create the PPA release.
-       This will create a single package containing static binary for older Ubuntu versions in the [``~ethereum/ethereum-static`` PPA](https://launchpad.net/~ethereum/+archive/ubuntu/ethereum-static)
-       and separate packages with dynamically-linked binaries for recent versions (those listed in ``DISTRIBUTIONS``) in the [``~ethereum/ethereum`` PPA](https://launchpad.net/~ethereum/+archive/ubuntu/ethereum).
+       This will create a single package containing static binary for older Ubuntu versions in the QRL static PPA
+       and separate packages with dynamically-linked binaries for recent versions (those listed in ``DISTRIBUTIONS``) in the QRL release PPA.
  - [ ] Wait for the build to be finished and published for *all architectures* (currently we only build for ``amd64``, but we may add ``arm`` in the future).
        **SERIOUSLY: DO NOT PROCEED EARLIER!!!**
  - [ ] *After* the package with the static build is *published*, use it to create packages for older Ubuntu versions.
-       Copy the static package to the [``~ethereum/ethereum`` PPA](https://launchpad.net/~ethereum/+archive/ubuntu/ethereum)
+       Copy the static package to the QRL release PPA
        for the destination series ``Trusty``, ``Xenial`` and ``Bionic`` while selecting ``Copy existing binaries``.
 
 ### Release hypc-js
@@ -100,16 +100,16 @@ At least a day before the release:
 
 ### Post-release
  - [ ] Make sure the documentation for the new release has been published successfully.
-       Go to the [documentation status page at ReadTheDocs](https://readthedocs.org/projects/solidity/) and verify that the new version is listed, works and is marked as default.
+       Verify that the new documentation version is listed, works and is marked as default.
  - [ ] Remove "still in progress" warning from the [release notes](https://github.com/theQRL/hyperion/releases).
  - [ ] Merge the [blog posts](https://github.com/theQRL/hyperion-website/pulls) related to the release.
  - [ ] Create a commit to increase the version number on ``develop`` in ``CMakeLists.txt`` and add a new skeleton changelog entry.
- - [ ] Update the release information section [in the source of soliditylang.org](https://github.com/theQRL/hyperion-website/blob/main/src/pages/index.tsx).
- - [ ] Announce on [Twitter](https://twitter.com/solidity_lang), including links to the release and the blog post.
- - [ ] Announce on [Fosstodon](https://fosstodon.org/@solidity/), including links to the release and the blog post.
- - [ ] Share the announcement on Reddit in [``/r/ethdev``](https://reddit.com/r/ethdev/), cross-posted to [``/r/ethereum``](https://reddit.com/r/QRL/).
- - [ ] Share the announcement on the [Solidity forum](https://forum.soliditylang.org) in the ``Announcements`` category.
+ - [ ] Update the release information section [in the hyperion-website source](https://github.com/theQRL/hyperion-website/blob/main/src/pages/index.tsx).
+ - [ ] Announce on [Twitter](https://twitter.com/hyperion_lang), including links to the release and the blog post.
+ - [ ] Announce on QRL project channels, including links to the release and the blog post.
+ - [ ] Share the announcement on Reddit in [``/r/QRL``](https://reddit.com/r/QRL/).
+ - [ ] Share the announcement in Hyperion project channels.
  - [ ] Share the announcement on [Project Updates](https://discord.com/channels/420394352083337236/798974456704925696)
- - [ ] Share the announcement on [`#solidity` channel on Matrix](https://matrix.to/#/#ethereum_solidity:gitter.im)
+ - [ ] Share the announcement on [`#theqrl_hyperion` channel on Matrix](https://matrix.to/#/#theqrl_hyperion:gitter.im)
  - [ ] Share the announcement on [`#hypc-tooling`](https://matrix.to/#/#hypc-tooling:matrix.org)
  - [ ] Lean back, wait for bug reports and repeat from step 1 :).
