@@ -53,6 +53,7 @@ private:
 	bool visit(FunctionDefinition const& _functionDefinition) override;
 	bool visit(ModifierDefinition const& _modifierDefinition) override;
 	bool visit(MemberAccess const& _memberAccess) override;
+	bool visit(BinaryOperation const& _binaryOperation) override;
 	bool visit(IfStatement const& _ifStatement) override;
 	bool visit(Conditional const& _conditional) override;
 	bool visit(WhileStatement const& _whileStatement) override;

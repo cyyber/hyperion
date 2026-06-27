@@ -101,6 +101,24 @@ bool ImmutableValidator::visit(MemberAccess const& _memberAccess)
 	return false;
 }
 
+bool ImmutableValidator::visit(BinaryOperation const& _binaryOperation)
+{
+	Token const op = _binaryOperation.getOperator();
+	if (op != Token::And && op != Token::Or)
+		return true;
+
+	bool previousInBranch = m_inBranch;
+
+	_binaryOperation.leftExpression().accept(*this);
+
+	m_inBranch = true;
+	_binaryOperation.rightExpression().accept(*this);
+
+	m_inBranch = previousInBranch;
+
+	return false;
+}
+
 bool ImmutableValidator::visit(IfStatement const& _ifStatement)
 {
 	bool previousInBranch = m_inBranch;
