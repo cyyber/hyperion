@@ -8,4 +8,5 @@ contract C is B {
     }
 }
 // ----
+// TypeError 2658: (0-36): Construction control flow ends without initializing all immutable state variables.
 // TypeError 1581: (90-93): Cannot write to immutable here: Immutable variables can only be initialized inline or assigned directly in the constructor.

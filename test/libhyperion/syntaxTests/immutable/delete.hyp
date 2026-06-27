@@ -10,6 +10,5 @@ contract C {
     }
 }
 // ----
-// a() -> 0
-// b() -> 0
-// c() -> 0
+// TypeError 3969: (135-136): Immutable variables must be initialized using an assignment.
+// TypeError 2718: (153-154): Immutable variables cannot be modified after initialization.
