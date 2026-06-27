@@ -1505,7 +1505,7 @@ bool ExpressionCompiler::visit(FunctionCallOptions const& _functionCallOptions)
 		if (name == "salt")
 		{
 			newOption = Salt;
-			requiredType = TypeProvider::fixedBytes(32);
+			requiredType = TypeProvider::fixedBytes(VMWordBytes);
 		}
 		else if (name == "gas")
 			newOption = Gas;

@@ -3321,7 +3321,7 @@ std::vector<std::tuple<std::string, Type const*>> FunctionType::makeStackItems()
 	if (valueSet())
 		slots.emplace_back("value", TypeProvider::uint256());
 	if (saltSet())
-		slots.emplace_back("salt", TypeProvider::fixedBytes(32));
+		slots.emplace_back("salt", TypeProvider::fixedBytes(VMWordBytes));
 	if (hasBoundFirstArgument())
 		slots.emplace_back("self", m_parameterTypes.front());
 	return slots;

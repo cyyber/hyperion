@@ -2972,7 +2972,7 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 			if (kind == FunctionType::Kind::Creation)
 			{
 				setCheckOption(setSalt, "salt");
-				expectType(*_functionCallOptions.options()[i], *TypeProvider::fixedBytes(32));
+				expectType(*_functionCallOptions.options()[i], *TypeProvider::fixedBytes(VMWordBytes));
 			}
 			else
 				m_errorReporter.typeError(
