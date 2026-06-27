@@ -131,10 +131,8 @@ void LoadResolver::tryEvaluateKeccak(
 		}
 	);
 
-	// We skip if there are no net gas savings.
-	// Note that for default `m_runs = 200`, the values are
-	// `costOfLiteral = 7200` and `costOfKeccak = 9000` for runtime context.
-	// For creation context: `costOfLiteral = 531` and `costOfKeccak = 90`.
+	// We skip if there are no net gas savings. The concrete costs depend on
+	// the active QRVM dialect and its word-size-aware GasMeter schedule.
 	if (costOfLiteral > costOfKeccak)
 		return;
 

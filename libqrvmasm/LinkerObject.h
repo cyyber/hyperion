@@ -67,9 +67,11 @@ struct LinkerObject
 	/// addresses by placeholders. This output is lowercase.
 	std::string toHex() const;
 
-	/// @returns a hash string used inside the library-address placeholder.
-	/// The bytecode placeholder spans 2 * AddressBytes hex characters once
-	/// enclosed by `__` on both sides.
+	/// @returns the `$...$` hash marker used inside a library-address placeholder.
+	/// The full bytecode placeholder is 2 * AddressBytes hex characters (128
+	/// with the current 64-byte address width): `__` + marker + `__`.
+	/// The marker is built from keccak256(_libraryName), extended by hashing
+	/// and concatenating more material until it fills the placeholder.
 	static std::string libraryPlaceholder(std::string const& _libraryName);
 
 	bool operator<(LinkerObject const& _other) const;

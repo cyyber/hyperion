@@ -332,7 +332,7 @@ void ContractCompiler::appendConstructor(FunctionDefinition const& _constructor)
 void ContractCompiler::appendDelegatecallCheck()
 {
 	// Special constant that will be replaced by the address at deploy time.
-	// At compilation time, this is just "PUSH<AddressBytes> 00...000".
+	// At compilation time, this is a PUSH<AddressBytes> instruction with an AddressBytes-wide zero placeholder.
 	m_context.appendDeployTimeAddress();
 	m_context << Instruction::ADDRESS << Instruction::EQ;
 	// The result on the stack is

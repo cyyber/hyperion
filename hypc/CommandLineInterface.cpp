@@ -1084,11 +1084,11 @@ void CommandLineInterface::link()
 
 	// Map from how the libraries will be named inside the bytecode to their addresses.
 	std::map<std::string, h512> librariesReplacements;
-	int const placeholderSize = 2 * AddressBytes; // AddressBytes encoded as hex characters
+	int const placeholderSize = 2 * AddressBytes; // AddressBytes-wide address encoded as hex characters.
 	for (auto const& library: m_options.linker.libraries)
 	{
 		std::string const& name = library.first;
-		// Library placeholders are AddressBytes hex digits that start and end with '__'.
+		// Library placeholders are 2 * AddressBytes hex characters that start and end with '__'.
 		// This leaves placeholderSize - 4 characters for the library identifier. The identifier used to
 		// be just the cropped or '_'-padded library name, but this changed to
 		// the cropped hex representation of the hash of the library name.
