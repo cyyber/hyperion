@@ -694,26 +694,28 @@ void CompilerUtils::memoryCopy()
 {
 	// Stack here: size target source
 
-	m_context.appendInlineAssembly(R"(
+	m_context.appendInlineAssembly(Whiskers(R"(
 		{
-			// copy 64 bytes at once
+			// copy one VM word at once
 			for
 				{}
-				iszero(lt(len, 64))
+				iszero(lt(len, <wordSize>))
 				{
-					dst := add(dst, 64)
-					src := add(src, 64)
-					len := sub(len, 64)
+					dst := add(dst, <wordSize>)
+					src := add(src, <wordSize>)
+					len := sub(len, <wordSize>)
 				}
 				{ mstore(dst, mload(src)) }
 
-			// copy the remainder (0 < len < 64), preserving bytes beyond len in dst
-			let mask := sub(shl(mul(8, sub(64, len)), 1), 1)
+			// copy the remainder (0 < len < VMWordBytes), preserving bytes beyond len in dst
+			let mask := sub(shl(mul(8, sub(<wordSize>, len)), 1), 1)
 			let srcpart := and(mload(src), not(mask))
 			let dstpart := and(mload(dst), mask)
 			mstore(dst, or(srcpart, dstpart))
 		}
-	)",
+	)")
+		("wordSize", std::to_string(VMWordBytes))
+		.render(),
 		{ "len", "dst", "src" }
 	);
 	m_context << Instruction::POP << Instruction::POP << Instruction::POP;
@@ -1520,7 +1522,7 @@ void CompilerUtils::storeStringData(bytesConstRef _data)
 	if (_data.size() <= VMWordBytes)
 	{
 		// stack: mempos
-		// Convert data to u512, left-aligned in the 64-byte word.
+		// Convert data to u512, left-aligned in the VM word.
 		u512 value = 0;
 		for (uint8_t b: _data)
 			value = (value << 8) | b;
