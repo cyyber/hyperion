@@ -286,6 +286,7 @@ ASTPointer<PragmaDirective> ASTJsonImporter::createPragmaDirective(Json::Value c
 	std::vector<ASTString> literals;
 	for (auto const& lit: member(_node, "literals"))
 	{
+		astAssert(lit.isString(), "Pragma literal must be a string.");
 		std::string l = lit.asString();
 		literals.push_back(l);
 		tokens.push_back(scanSingleToken(l));
@@ -1042,7 +1043,7 @@ ASTPointer<ASTNode> ASTJsonImporter::createLiteral(Json::Value const&  _node)
 
 	astAssert(member(_node, valStr).isString() || member(_node, hexValStr).isString(), "Literal-value is unset.");
 
-	ASTPointer<ASTString> value = _node.isMember(hexValStr) ?
+	ASTPointer<ASTString> value = member(_node, hexValStr).isString() ?
 		std::make_shared<ASTString>(util::asString(util::fromHex(_node[hexValStr].asString()))) :
 		std::make_shared<ASTString>(_node[valStr].asString());
 

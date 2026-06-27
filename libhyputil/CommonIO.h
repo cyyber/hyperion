@@ -40,7 +40,8 @@ inline std::ostream& operator<<(std::ostream& os, bytes const& _bytes)
 	ss << std::hex;
 	std::copy(_bytes.begin(), _bytes.end(), std::ostream_iterator<int>(ss, ","));
 	std::string result = ss.str();
-	result.pop_back();
+	if (!result.empty())
+		result.pop_back();
 	os << "[" + result + "]";
 	return os;
 }

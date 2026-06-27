@@ -287,7 +287,8 @@ void RenameSymbol::extractNameAndDeclaration(InlineAssembly const& _inlineAssemb
 	for (auto&& [identifier, externalReference]: _inlineAssembly.annotation().externalReferences)
 	{
 		SourceLocation location = yul::nativeLocationOf(*identifier);
-		location.end -= static_cast<int>(externalReference.suffix.size() + 1);
+		if (!externalReference.suffix.empty())
+			location.end -= static_cast<int>(externalReference.suffix.size() + 1);
 
 		if (location.containsOffset(_cursorBytePosition))
 		{
@@ -315,7 +316,8 @@ void RenameSymbol::Visitor::endVisit(InlineAssembly const& _node)
 		)
 		{
 			SourceLocation location = yul::nativeLocationOf(*identifier);
-			location.end -= static_cast<int>(externalReference.suffix.size() + 1);
+			if (!externalReference.suffix.empty())
+				location.end -= static_cast<int>(externalReference.suffix.size() + 1);
 
 			m_outer.m_locations.emplace_back(location);
 		}

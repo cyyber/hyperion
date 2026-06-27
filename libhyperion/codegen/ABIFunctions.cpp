@@ -556,7 +556,7 @@ std::string ABIFunctions::abiEncodingFunctionSimpleArray(
 					<declareLength>
 					pos := <storeLength>(pos, length)
 					let headStart := pos
-					let tail := add(pos, mul(length, 0x40))
+					let tail := add(pos, mul(length, <wordSize>))
 					let baseRef := <dataAreaFun>(value)
 					let srcPtr := baseRef
 					for { let i := 0 } lt(i, length) { i := add(i, 1) }
@@ -565,7 +565,7 @@ std::string ABIFunctions::abiEncodingFunctionSimpleArray(
 						let <elementValues> := <arrayElementAccess>
 						tail := <encodeToMemoryFun>(<elementValues>, tail)
 						srcPtr := <nextArrayElement>(srcPtr)
-						pos := add(pos, 0x40)
+						pos := add(pos, <wordSize>)
 					}
 					pos := tail
 					<assignEnd>
@@ -589,6 +589,8 @@ std::string ABIFunctions::abiEncodingFunctionSimpleArray(
 			)"
 		);
 		templ("functionName", functionName);
+		if (usesTail)
+			templ("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)));
 		templ("elementValues", elementValues);
 		bool lengthAsArgument = _from.dataStoredIn(DataLocation::CallData) && _from.isDynamicallySized();
 		if (lengthAsArgument)
@@ -661,11 +663,12 @@ std::string ABIFunctions::abiEncodingFunctionMemoryByteArray(
 			function <functionName>(value, pos) -> end {
 				let length := <lengthFun>(value)
 				pos := <storeLength>(pos, length)
-				<copyFun>(add(value, 0x40), pos, length)
+				<copyFun>(add(value, <wordSize>), pos, length)
 				end := add(pos, <lengthPadded>)
 			}
 		)");
 		templ("functionName", functionName);
+		templ("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)));
 		templ("lengthFun", m_utils.arrayLengthFunction(_from));
 		templ("storeLength", arrayStoreLengthForEncodingFunction(_to, _options));
 		templ("copyFun", m_utils.copyToMemoryFunction(false, /*cleanup*/true));
@@ -694,6 +697,7 @@ std::string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 	return createFunction(functionName, [&]() {
 		if (_from.isByteArrayOrString())
 		{
+			std::string const wordSize = toCompactHexWithPrefix(u256(VMWordBytes));
 			hypAssert(_to.isByteArrayOrString(), "");
 			Whiskers templ(R"(
 				// <readableTypeNameFrom> -> <readableTypeNameTo>
@@ -711,7 +715,7 @@ std::string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 						// long byte array
 						let dataPos := <arrayDataSlot>(value)
 						let i := 0
-						for { } lt(i, length) { i := add(i, 0x40) } {
+						for { } lt(i, length) { i := add(i, <wordSize>) } {
 							mstore(add(pos, i), sload(dataPos))
 							dataPos := add(dataPos, 1)
 						}
@@ -722,9 +726,10 @@ std::string ABIFunctions::abiEncodingFunctionCompactStorageArray(
 			templ("functionName", functionName);
 			templ("readableTypeNameFrom", _from.toString(true));
 			templ("readableTypeNameTo", _to.toString(true));
+			templ("wordSize", wordSize);
 			templ("byteArrayLengthFunction", m_utils.extractByteArrayLengthFunction());
 			templ("storeLength", arrayStoreLengthForEncodingFunction(_to, _options));
-			templ("lengthPaddedShort", _options.padded ? "0x40" : "length");
+			templ("lengthPaddedShort", _options.padded ? wordSize : "length");
 			templ("lengthPaddedLong", _options.padded ? "i" : "length");
 			templ("arrayDataSlot", m_utils.arrayDataAreaFunction(_from));
 			return templ.render();
@@ -1171,18 +1176,20 @@ std::string ABIFunctions::abiDecodingFunctionArray(ArrayType const& _type, bool 
 			R"(
 				// <readableTypeName>
 				function <functionName>(offset, end) -> array {
-					if iszero(slt(add(offset, 0x3f), end)) { <revertString>() }
+					if iszero(slt(add(offset, <alignmentMask>), end)) { <revertString>() }
 					let length := <retrieveLength>
 					array := <abiDecodeAvailableLen>(<offset>, length, end)
 				}
 			)"
 		);
+		std::string const wordSize = toCompactHexWithPrefix(u256(VMWordBytes));
 		// TODO add test
 		templ("revertString", revertReasonIfDebugFunction("ABI decoding: invalid calldata array offset"));
 		templ("functionName", functionName);
+		templ("alignmentMask", toCompactHexWithPrefix(u256(VMWordAlignmentMask)));
 		templ("readableTypeName", _type.toString(true));
 		templ("retrieveLength", _type.isDynamicallySized() ? (load + "(offset)") : toCompactHexWithPrefix(_type.length()));
-		templ("offset", _type.isDynamicallySized() ? "add(offset, 0x40)" : "offset");
+		templ("offset", _type.isDynamicallySized() ? "add(offset, " + wordSize + ")" : "offset");
 		templ("abiDecodeAvailableLen", abiDecodingFunctionArrayAvailableLength(_type, _fromMemory));
 		return templ.render();
 	});
@@ -1208,7 +1215,7 @@ std::string ABIFunctions::abiDecodingFunctionArrayAvailableLength(ArrayType cons
 				let dst := array
 				<?dynamic>
 					mstore(array, length)
-					dst := add(array, 0x40)
+					dst := add(array, <wordSize>)
 				</dynamic>
 				let srcEnd := add(offset, mul(length, <stride>))
 				if gt(srcEnd, end) {
@@ -1230,6 +1237,7 @@ std::string ABIFunctions::abiDecodingFunctionArrayAvailableLength(ArrayType cons
 			}
 		)");
 		templ("functionName", functionName);
+		templ("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)));
 		templ("readableTypeName", _type.toString(true));
 		templ("allocate", m_utils.allocationFunction());
 		templ("allocationSize", m_utils.arrayAllocationSizeFunction(_type));
@@ -1268,15 +1276,17 @@ std::string ABIFunctions::abiDecodingFunctionCalldataArray(ArrayType const& _typ
 			w = Whiskers(R"(
 				// <readableTypeName>
 				function <functionName>(offset, end) -> arrayPos, length {
-					if iszero(slt(add(offset, 0x3f), end)) { <revertStringOffset>() }
+					if iszero(slt(add(offset, <alignmentMask>), end)) { <revertStringOffset>() }
 					length := calldataload(offset)
 					if gt(length, 0xffffffffffffffff) { <revertStringLength>() }
-					arrayPos := add(offset, 0x40)
+					arrayPos := add(offset, <wordSize>)
 					if gt(add(arrayPos, mul(length, <stride>)), end) { <revertStringPos>() }
 				}
 			)");
 			w("revertStringOffset", revertReasonIfDebugFunction("ABI decoding: invalid calldata array offset"));
 			w("revertStringLength", revertReasonIfDebugFunction("ABI decoding: invalid calldata array length"));
+			w("alignmentMask", toCompactHexWithPrefix(u256(VMWordAlignmentMask)));
+			w("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)));
 		}
 		else
 		{
@@ -1314,13 +1324,14 @@ std::string ABIFunctions::abiDecodingFunctionByteArrayAvailableLength(ArrayType 
 			function <functionName>(src, length, end) -> array {
 				array := <allocate>(<allocationSize>(length))
 				mstore(array, length)
-				let dst := add(array, 0x40)
+				let dst := add(array, <wordSize>)
 				if gt(add(src, length), end) { <revertStringLength>() }
 				<copyToMemFun>(src, dst, length)
 			}
 		)");
 		templ("revertStringLength", revertReasonIfDebugFunction("ABI decoding: invalid byte array length"));
 		templ("functionName", functionName);
+		templ("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)));
 		templ("allocate", m_utils.allocationFunction());
 		templ("allocationSize", m_utils.arrayAllocationSizeFunction(_type));
 		templ("copyToMemFun", m_utils.copyToMemoryFunction(!_fromMemory, /*cleanup*/true));
@@ -1482,10 +1493,11 @@ std::string ABIFunctions::calldataAccessFunction(Type const& _type)
 				hypAssert(!!arrayType, "");
 				w("handleLength", Whiskers(R"(
 					length := calldataload(value)
-					value := add(value, 0x40)
+					value := add(value, <wordSize>)
 					if gt(length, 0xffffffffffffffff) { <revertStringLength>() }
 					if sgt(value, sub(calldatasize(), mul(length, <calldataStride>))) { <revertStringStride>() }
 				)")
+				("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)))
 				("calldataStride", toCompactHexWithPrefix(arrayType->calldataStride()))
 				// TODO add test
 				("revertStringLength", revertReasonIfDebugFunction("Invalid calldata access length"))
@@ -1550,10 +1562,11 @@ std::string ABIFunctions::arrayStoreLengthForEncodingFunction(ArrayType const& _
 			return Whiskers(R"(
 				function <functionName>(pos, length) -> updated_pos {
 					mstore(pos, length)
-					updated_pos := add(pos, 0x40)
+					updated_pos := add(pos, <wordSize>)
 				}
 			)")
 			("functionName", functionName)
+			("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)))
 			.render();
 		else
 			return Whiskers(R"(

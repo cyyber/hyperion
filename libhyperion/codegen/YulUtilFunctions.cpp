@@ -4582,12 +4582,12 @@ std::string YulUtilFunctions::returnDataSelectorFunction()
 			function <functionName>() -> sig {
 				if gt(returndatasize(), 3) {
 					returndatacopy(0, 0, 4)
-					sig := <shr224>(mload(0))
+					sig := <selectorShiftRight>(mload(0))
 				}
 			}
 		)")
 		("functionName", functionName)
-		("shr224", shiftRightFunction(VMWordBits - 32))
+		("selectorShiftRight", shiftRightFunction(VMWordBits - 32))
 		.render();
 	});
 }

@@ -63,6 +63,7 @@ public:
 	{
 		this->m_value.swap(_other.m_value);
 		_other.m_value.reset();
+		return *this;
 	}
 
 	template<typename F>

@@ -211,7 +211,7 @@ bool hyperion::util::isValidDecimal(std::string const& _string)
 
 std::string hyperion::util::formatAsStringOrNumber(std::string const& _value)
 {
-	assertThrow(_value.length() <= 64, StringTooLong, "String to be formatted longer than 64 bytes.");
+	assertThrow(_value.length() <= VMWordBytes, StringTooLong, "String to be formatted longer than a VM word.");
 
 	for (auto const& c: _value)
 		if (c <= 0x1f || c >= 0x7f || c == '"')
@@ -224,7 +224,7 @@ std::string hyperion::util::formatAsStringOrNumber(std::string const& _value)
 				hex += "0123456789abcdef"[b >> 4];
 				hex += "0123456789abcdef"[b & 0xf];
 			}
-			hex.resize(128, '0'); // pad to 64 bytes = 128 hex chars
+			hex.resize(VMWordBytes * 2, '0');
 			return "0x" + hex;
 		}
 

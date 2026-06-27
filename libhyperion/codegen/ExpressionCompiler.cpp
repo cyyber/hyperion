@@ -2819,11 +2819,16 @@ void ExpressionCompiler::appendExternalFunctionCall(
 			}
 		})", {"start", "paddedSize"});
 		if (needToUpdateFreeMemoryPtr)
-			m_context.appendInlineAssembly(R"({
-				// size is already rounded to the next multiple of 64
+			m_context.appendInlineAssembly(
+				Whiskers(R"({
+				// size is already rounded to the next multiple of VM word size
 				let newMem := add(start, size)
-				mstore(0x80, newMem)
-			})", {"start", "size"});
+				mstore(<freeMemoryPointer>, newMem)
+			})")
+				("freeMemoryPointer", std::to_string(CompilerUtils::freeMemoryPointer))
+				.render(),
+				{"start", "size"}
+			);
 
 		utils().abiDecode(returnTypes, true);
 	}

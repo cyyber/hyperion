@@ -199,6 +199,7 @@ pair<string, string> ProtoConverter::varDecl(
 	string typeStr = tVisitor.visit(_type);
 	if (typeStr.empty())
 		return make_pair("", "");
+	m_isabelleCompatible = m_isabelleCompatible && IsabelleCompatibilityVisitor().visit(_type);
 
 	// Append struct defs
 	global << tVisitor.structDef();
@@ -738,6 +739,8 @@ pragma experimental ABIEncoderV2;)";
 
 string ProtoConverter::isabelleTypeString() const
 {
+	if (!m_isabelleCompatible)
+		return "";
 	string typeString = m_isabelleTypeString.str();
 	if (!typeString.empty())
 		return "(" + typeString + ")";
@@ -747,6 +750,8 @@ string ProtoConverter::isabelleTypeString() const
 
 string ProtoConverter::isabelleValueString() const
 {
+	if (!m_isabelleCompatible)
+		return "";
 	string valueString = m_isabelleValueString.str();
 	if (!valueString.empty())
 		return "(" + valueString + ")";

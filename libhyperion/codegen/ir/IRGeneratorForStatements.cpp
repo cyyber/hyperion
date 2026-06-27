@@ -2333,13 +2333,13 @@ void IRGeneratorForStatements::endVisit(IndexAccess const& _indexAccess)
 		define(index, *_indexAccess.indexExpression());
 		appendCode() << Whiskers(R"(
 			if iszero(lt(<index>, <length>)) { <panic>() }
-			let <result> := <shl248>(byte(<index>, <array>))
+			let <result> := <shlTopByte>(byte(<index>, <array>))
 		)")
 		("index", index.name())
 		("length", std::to_string(fixedBytesType.numBytes()))
 		("panic", m_utils.panicFunction(PanicCode::ArrayOutOfBounds))
 		("array", IRVariable(_indexAccess.baseExpression()).name())
-		("shl248", m_utils.shiftLeftFunction(VMWordBits - 8))
+		("shlTopByte", m_utils.shiftLeftFunction(VMWordBits - 8))
 		("result", IRVariable(_indexAccess).name())
 		.render();
 	}
@@ -2564,7 +2564,7 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 		</checkExtcodesize>
 		// storage for arguments and returned data
 		let <pos> := <allocateUnbounded>()
-		mstore(<pos>, <shl28>(<funSel>))
+		mstore(<pos>, <selectorShiftLeft>(<funSel>))
 		let <end> := <encodeArgs>(add(<pos>, 4) <argumentString>)
 
 		let <success> := <call>(<gas>, <address>, <?hasValue> <value>, </hasValue> <pos>, sub(<end>, <pos>), <pos>, <staticReturndataSize>)
@@ -2611,7 +2611,7 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 	templ("allocateUnbounded", m_utils.allocateUnboundedFunction());
 	templ("finalizeAllocation", m_utils.finalizeAllocationFunction());
 	// Shift selector to the top of the VM word so dispatcher (shr(VMWordBits-32, calldataload(0))) picks it up.
-	templ("shl28", m_utils.shiftLeftFunction(VMWordBits - 32));
+	templ("selectorShiftLeft", m_utils.shiftLeftFunction(VMWordBits - 32));
 
 	templ("funSel", IRVariable(_functionCall.expression()).part("functionSelector").name());
 	templ("address", IRVariable(_functionCall.expression()).part("address").name());

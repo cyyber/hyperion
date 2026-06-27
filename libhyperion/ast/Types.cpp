@@ -589,7 +589,7 @@ IntegerType::IntegerType(unsigned _bits, IntegerType::Modifier _modifier):
 	m_bits(_bits), m_modifier(_modifier)
 {
 	hypAssert(
-		m_bits > 0 && m_bits <= AddressBits && m_bits % 8 == 0,
+		m_bits > 0 && m_bits <= VMWordBits && m_bits % 8 == 0,
 		"Invalid bit number for integer type: " + util::toString(m_bits)
 	);
 }
@@ -1353,7 +1353,7 @@ Type const* StringLiteralType::mobileType() const
 FixedBytesType::FixedBytesType(unsigned _bytes): m_bytes(_bytes)
 {
 	hypAssert(
-		m_bytes > 0 && m_bytes <= AddressBytes,
+		m_bytes > 0 && m_bytes <= VMWordBytes,
 		"Invalid byte number for fixed bytes type: " + util::toString(m_bytes)
 	);
 }

@@ -32,8 +32,6 @@ namespace hyperion
 static constexpr unsigned VMWordBytes = 64;
 /// VM word size in bits.
 static constexpr unsigned VMWordBits = VMWordBytes * 8;
-/// Hex representation of VM word size (used in Yul templates as 0x20 or 0x40).
-static constexpr unsigned VMWordHex = VMWordBytes;
 /// Alignment mask for rounding up to VM word boundary: (value + VMWordAlignmentMask) & ~VMWordAlignmentMask
 static constexpr unsigned VMWordAlignmentMask = VMWordBytes - 1;
 

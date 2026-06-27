@@ -27,6 +27,7 @@
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/process.hpp>
 
 #include <cstdlib>
 #include <iostream>
@@ -254,8 +255,17 @@ TestTool::Request TestTool::handleResponse(bool _exception)
 			}
 		case 'e':
 			cout << endl << endl;
-			if (system((m_options.editor + " \"" + m_path.string() + "\"").c_str()))
-				cerr << "Error running editor command." << endl << endl;
+			try
+			{
+				boost::process::child editor(m_options.editor, m_path.string());
+				editor.wait();
+				if (editor.exit_code() != 0)
+					cerr << "Error running editor command." << endl << endl;
+			}
+			catch (boost::process::process_error const& _exception)
+			{
+				cerr << "Error running editor command: " << _exception.what() << endl << endl;
+			}
 			return Request::Rerun;
 		case 'q':
 			cout << endl;

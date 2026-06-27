@@ -76,6 +76,7 @@
 #include <liblangutil/SourceReferenceFormatter.h>
 
 
+#include <libhyputil/CommonData.h>
 #include <libhyputil/SwarmHash.h>
 #include <libhyputil/IpfsHash.h>
 #include <libhyputil/JSON.h>
@@ -1705,7 +1706,7 @@ std::string CompilerStack::createMetadata(Contract const& _contract, bool _forIR
 
 	meta["settings"]["libraries"] = Json::objectValue;
 	for (auto const& library: m_libraries)
-		meta["settings"]["libraries"][library.first] = "0x" + util::toHex(library.second.asBytes());
+		meta["settings"]["libraries"][library.first] = util::getChecksummedAddress("Q" + util::toHex(library.second.asBytes()));
 
 	meta["output"]["abi"] = contractABI(_contract);
 	meta["output"]["userdoc"] = natspecUser(_contract);

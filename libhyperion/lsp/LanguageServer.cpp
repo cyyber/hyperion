@@ -109,7 +109,7 @@ Json::Value semanticTokensLegend()
 	tokenTypes.append("operator");
 	tokenTypes.append("parameter");
 	tokenTypes.append("property");
-	tokenTypes.append("std::string");
+	tokenTypes.append("string");
 	tokenTypes.append("struct");
 	tokenTypes.append("type");
 	tokenTypes.append("typeParameter");

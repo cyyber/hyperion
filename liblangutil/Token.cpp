@@ -74,20 +74,20 @@ void ElementaryTypeNameToken::assertDetails(Token _baseType, unsigned const& _fi
 	if (_baseType == Token::BytesM)
 	{
 		hypAssert(_second == 0, "There should not be a second size argument to type bytesM.");
-		hypAssert(_first <= hyperion::AddressBytes, "No elementary type bytes" + std::to_string(_first) + ".");
+		hypAssert(_first <= hyperion::VMWordBytes, "No elementary type bytes" + std::to_string(_first) + ".");
 	}
 	else if (_baseType == Token::UIntM || _baseType == Token::IntM)
 	{
 		hypAssert(_second == 0, "There should not be a second size argument to type " + std::string(TokenTraits::toString(_baseType)) + ".");
 		hypAssert(
-			_first <= hyperion::AddressBits && _first % 8 == 0,
+			_first <= hyperion::VMWordBits && _first % 8 == 0,
 			"No elementary type " + std::string(TokenTraits::toString(_baseType)) + std::to_string(_first) + "."
 		);
 	}
 	else if (_baseType == Token::UFixedMxN || _baseType == Token::FixedMxN)
 	{
 		hypAssert(
-			_first >= 8 && _first <= 256 && _first % 8 == 0 && _second <= 80,
+			_first >= 8 && _first <= hyperion::VMWordBits && _first % 8 == 0 && _second <= 80,
 			"No elementary type " + std::string(TokenTraits::toString(_baseType)) + std::to_string(_first) + "x" + std::to_string(_second) + "."
 		);
 	}
@@ -174,8 +174,9 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 				return -1;
 			ret *= 10;
 			ret += *it - '0';
-			// Overflow guard. Callers reject values above AddressBits.
-			if (ret > static_cast<int>(AddressBits))
+			// Overflow guard. Callers reject values above the relevant word or address bound.
+			unsigned constexpr maxTypeBits = VMWordBits > AddressBits ? VMWordBits : AddressBits;
+			if (ret > static_cast<int>(maxTypeBits))
 				return -1;
 		}
 		return ret;
@@ -190,12 +191,12 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 		Token keyword = keywordByName(baseType);
 		if (keyword == Token::Bytes)
 		{
-			if (0 < m && static_cast<unsigned>(m) <= hyperion::AddressBytes && positionX == _literal.end())
+			if (0 < m && static_cast<unsigned>(m) <= hyperion::VMWordBytes && positionX == _literal.end())
 				return std::make_tuple(Token::BytesM, m, 0);
 		}
 		else if (keyword == Token::UInt || keyword == Token::Int)
 		{
-			if (0 < m && static_cast<unsigned>(m) <= hyperion::AddressBits && m % 8 == 0 && positionX == _literal.end())
+			if (0 < m && static_cast<unsigned>(m) <= hyperion::VMWordBits && m % 8 == 0 && positionX == _literal.end())
 			{
 				if (keyword == Token::UInt)
 					return std::make_tuple(Token::UIntM, m, 0);
@@ -213,7 +214,7 @@ std::tuple<Token, unsigned int, unsigned int> fromIdentifierOrKeyword(std::strin
 			) {
 				int n = parseSize(positionX + 1, _literal.end());
 				if (
-					8 <= m && m <= 256 && m % 8 == 0 &&
+					8 <= m && static_cast<unsigned>(m) <= hyperion::VMWordBits && m % 8 == 0 &&
 					0 <= n && n <= 80
 				) {
 					if (keyword == Token::UFixed)

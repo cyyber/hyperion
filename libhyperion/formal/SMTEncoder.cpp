@@ -1837,7 +1837,7 @@ std::pair<smtutil::Expression, smtutil::Expression> SMTEncoder::arithmeticOperat
 		// - RHS is -1
 		// the result is then -(type.min), which wraps back to type.min
 		smtutil::Expression maxLeft = _left == smt::minValue(*intType);
-		smtutil::Expression minusOneRight = _right == std::numeric_limits<size_t >::max();
+		smtutil::Expression minusOneRight = _right == smtutil::Expression(bigint(-1));
 		smtutil::Expression wrap = smtutil::Expression::ite(maxLeft && minusOneRight, smt::minValue(*intType), valueUnbounded);
 		return {wrap, valueUnbounded};
 	}

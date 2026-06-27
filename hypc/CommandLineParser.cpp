@@ -698,7 +698,7 @@ General Information)").c_str(),
 			po::value<std::vector<std::string>>()->value_name("libs"),
 			"Direct string or file containing library addresses. Syntax: "
 			"<libraryName>=<address> [, or whitespace] ...\n"
-			"Address is interpreted as a hex string prefixed by Z."
+			"Address is interpreted as a hex string prefixed by Q."
 		)
 	;
 	desc.add(linkerModeOptions);

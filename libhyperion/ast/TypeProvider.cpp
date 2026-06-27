@@ -40,7 +40,7 @@ TupleType const TypeProvider::m_emptyTuple{};
 AddressType const TypeProvider::m_payableAddress{StateMutability::Payable};
 AddressType const TypeProvider::m_address{StateMutability::NonPayable};
 
-std::array<std::unique_ptr<IntegerType>, AddressBytes> const TypeProvider::m_intM{{
+std::array<std::unique_ptr<IntegerType>, VMWordBytes> const TypeProvider::m_intM{{
 	{std::make_unique<IntegerType>(8 * 1, IntegerType::Modifier::Signed)},
 	{std::make_unique<IntegerType>(8 * 2, IntegerType::Modifier::Signed)},
 	{std::make_unique<IntegerType>(8 * 3, IntegerType::Modifier::Signed)},
@@ -107,7 +107,7 @@ std::array<std::unique_ptr<IntegerType>, AddressBytes> const TypeProvider::m_int
 	{std::make_unique<IntegerType>(8 * 64, IntegerType::Modifier::Signed)}
 }};
 
-std::array<std::unique_ptr<IntegerType>, AddressBytes> const TypeProvider::m_uintM{{
+std::array<std::unique_ptr<IntegerType>, VMWordBytes> const TypeProvider::m_uintM{{
 	{std::make_unique<IntegerType>(8 * 1, IntegerType::Modifier::Unsigned)},
 	{std::make_unique<IntegerType>(8 * 2, IntegerType::Modifier::Unsigned)},
 	{std::make_unique<IntegerType>(8 * 3, IntegerType::Modifier::Unsigned)},
@@ -174,7 +174,7 @@ std::array<std::unique_ptr<IntegerType>, AddressBytes> const TypeProvider::m_uin
 	{std::make_unique<IntegerType>(8 * 64, IntegerType::Modifier::Unsigned)}
 }};
 
-std::array<std::unique_ptr<FixedBytesType>, AddressBytes> const TypeProvider::m_bytesM{{
+std::array<std::unique_ptr<FixedBytesType>, VMWordBytes> const TypeProvider::m_bytesM{{
 	{std::make_unique<FixedBytesType>(1)},
 	{std::make_unique<FixedBytesType>(2)},
 	{std::make_unique<FixedBytesType>(3)},
@@ -463,7 +463,7 @@ RationalNumberType const* TypeProvider::rationalNumber(Literal const& _literal)
 		if (_literal.isHexNumber())
 		{
 			size_t const digitCount = _literal.valueWithoutUnderscores().length() - 2;
-			if (digitCount % 2 == 0 && (digitCount / 2) <= AddressBytes)
+			if (digitCount % 2 == 0 && (digitCount / 2) <= VMWordBytes)
 				compatibleBytesType = fixedBytes(static_cast<unsigned>(digitCount / 2));
 		} else if (_literal.looksLikeAddress()) {
 			compatibleBytesType = fixedBytes(static_cast<unsigned>(AddressBytes));
