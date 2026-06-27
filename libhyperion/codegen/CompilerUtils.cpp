@@ -673,17 +673,18 @@ void CompilerUtils::zeroInitialiseMemoryArray(ArrayType const& _type)
 	m_context << Instruction::SWAP1 << Instruction::POP;
 }
 
-void CompilerUtils::memoryCopy32()
+void CompilerUtils::memoryCopyWord()
 {
 	// Stack here: size target source
 
-	m_context.appendInlineAssembly(R"(
+	m_context.appendInlineAssembly(Whiskers(R"(
 		{
-			for { let i := 0 } lt(i, len) { i := add(i, 64) } {
+			for { let i := 0 } lt(i, len) { i := add(i, <wordSize>) } {
 				mstore(add(dst, i), mload(add(src, i)))
 			}
 		}
-	)",
+	)")
+		("wordSize", toCompactHexWithPrefix(u256(VMWordBytes))).render(),
 		{ "len", "dst", "src" }
 	);
 	m_context << Instruction::POP << Instruction::POP << Instruction::POP;
