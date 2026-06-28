@@ -143,7 +143,10 @@ void ControlFlowRevertPruner::modifyFunctionFlows()
 							// "reverting", since they can only be caused by
 							// recursion.
 							for (CFGNode * node: _node->exits)
-								ranges::remove(node->entries, _node);
+								node->entries.erase(
+									ranges::remove(node->entries, _node),
+									node->entries.end()
+								);
 
 							_node->exits = {functionFlow.revert};
 							functionFlow.revert->entries.push_back(_node);

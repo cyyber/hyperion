@@ -101,6 +101,14 @@ Json::Value didOpenParams(boost::filesystem::path const& _path, std::string _tex
 	return params;
 }
 
+Json::Value didOpenParamsWithUri(std::string _uri, std::string _text)
+{
+	Json::Value params;
+	params["textDocument"]["uri"] = std::move(_uri);
+	params["textDocument"]["text"] = std::move(_text);
+	return params;
+}
+
 Json::Value textDocumentParams(boost::filesystem::path const& _path)
 {
 	Json::Value params;
@@ -256,6 +264,31 @@ BOOST_AUTO_TEST_CASE(language_server_without_root_uses_opened_files_only)
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(language_server_malformed_did_open_does_not_poison_open_files)
+{
+	util::TemporaryDirectory tempDir{"lsp-malformed-did-open-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload(
+			"textDocument/didOpen",
+			didOpenParamsWithUri("https://example.invalid/main.hyp", "contract Bad {}")
+		),
+		payload(
+			"textDocument/didOpen",
+			didOpenParams(sourceFile, "contract C {}")
+		),
+		payload("textDocument/semanticTokens/full", textDocumentParams(sourceFile), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("\"id\":2") != std::string::npos);
+	BOOST_CHECK(output.find("\"data\":[") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(language_server_rejects_project_directory_without_root)
 {
 	Json::Value params;
@@ -364,6 +397,28 @@ BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_rejects_unknown_uri)
 	});
 
 	BOOST_CHECK(containsError(output, ErrorCode::RequestFailed, "Unknown file: file://" + sourceFile.generic_string()));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_returns_empty_for_parse_errors)
+{
+	util::TemporaryDirectory tempDir{"lsp-semantic-tokens-parse-error-test"};
+	boost::filesystem::path sourceFile = tempDir.path() / "main.hyp";
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload(
+			"textDocument/didOpen",
+			didOpenParams(sourceFile, "contract C { function f(")
+		),
+		payload("textDocument/semanticTokens/full", textDocumentParams(sourceFile), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(output.find("\"id\":2") != std::string::npos);
+	BOOST_CHECK(output.find("\"data\":[]") != std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }

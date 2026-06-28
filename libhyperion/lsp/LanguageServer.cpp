@@ -466,6 +466,17 @@ void LanguageServer::semanticTokensFull(MessageID _id, Json::Value const& _args)
 
 	compile();
 
+	// Parsing/analysis may have failed (e.g. the document currently has a syntax error
+	// mid-edit). Reply with an empty token set instead of surfacing an InternalError,
+	// mirroring the graceful degradation of the other AST-backed handlers.
+	if (m_compilerStack.state() < CompilerStack::AnalysisSuccessful)
+	{
+		Json::Value emptyReply = Json::objectValue;
+		emptyReply["data"] = Json::arrayValue;
+		m_client.reply(_id, std::move(emptyReply));
+		return;
+	}
+
 	SourceUnit const& ast = m_compilerStack.ast(sourceName);
 	m_compilerStack.charStream(sourceName);
 	Json::Value data = SemanticTokensBuilder().build(ast, m_compilerStack.charStream(sourceName));
@@ -511,8 +522,12 @@ void LanguageServer::handleTextDocumentDidOpen(Json::Value const& _args)
 
 	std::string text = _args["textDocument"]["text"].asString();
 	std::string uri = _args["textDocument"]["uri"].asString();
-	m_openFiles.insert(uri);
+	// Validate and store the document *before* recording it as open. setSourceByUri
+	// rejects malformed URIs (e.g. a non-"file://" scheme), and a poisoned entry left in
+	// m_openFiles would make every subsequent compile() rebuild throw, permanently wedging
+	// the session.
 	m_fileRepository.setSourceByUri(uri, std::move(text));
+	m_openFiles.insert(uri);
 	compileAndUpdateDiagnostics();
 }
 

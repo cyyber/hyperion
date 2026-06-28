@@ -310,11 +310,15 @@ std::string ABIFunctions::abiEncodingFunction(
 		switch (fromArray->location())
 		{
 			case DataLocation::CallData:
-				if (
-					fromArray->isByteArrayOrString() ||
-					*fromArray->baseType() == *TypeProvider::uint256() ||
-					*fromArray->baseType() == FixedBytesType(32)
-				)
+				// Only byte arrays / strings can be ABI-encoded by copying calldata
+				// verbatim: their elements are a single byte and therefore fully occupy
+				// their calldata stride. For value-type elements the calldata stride is a
+				// full VM word (VMWordBytes), while the value itself occupies fewer bytes
+				// (e.g. uint256 and bytes32 fill only 32 of the 64 bytes), so the remaining
+				// padding is caller-controlled and must be cleaned per element to produce a
+				// canonical encoding. A raw copy would otherwise forward attacker-supplied
+				// padding bits (non-canonical / malleable abi.encode).
+				if (fromArray->isByteArrayOrString())
 					return abiEncodingFunctionCalldataArrayWithoutCleanup(*fromArray, *toArray, _options);
 				else
 					return abiEncodingFunctionSimpleArray(*fromArray, *toArray, _options);
@@ -446,12 +450,9 @@ std::string ABIFunctions::abiEncodingFunctionCalldataArrayWithoutCleanup(
 	auto const& toArrayType = dynamic_cast<ArrayType const&>(_to);
 
 	hypAssert(fromArrayType.location() == DataLocation::CallData, "");
-	hypAssert(
-		fromArrayType.isByteArrayOrString() ||
-		*fromArrayType.baseType() == *TypeProvider::uint256() ||
-		*fromArrayType.baseType() == FixedBytesType(32),
-		""
-	);
+	// Only byte arrays / strings may be copied verbatim: their single-byte elements
+	// fully occupy the calldata stride, so there is no per-element padding to clean.
+	hypAssert(fromArrayType.isByteArrayOrString(), "");
 	hypAssert(fromArrayType.calldataStride() == toArrayType.memoryStride(), "");
 
 	hypAssert(
