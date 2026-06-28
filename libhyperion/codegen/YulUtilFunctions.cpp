@@ -2663,15 +2663,27 @@ std::string YulUtilFunctions::mappingIndexAccessFunction(MappingType const& _map
 		if (_mappingType.keyType()->isDynamicallySized())
 			return Whiskers(R"(
 				function <functionName>(slot <?+key>,</+key> <key>) -> dataSlot {
-					dataSlot := <hash>(<key> <?+key>,</+key> slot)
+					let pos := <allocateUnbounded>()
+					let end := <encodeKey>(pos <?+key>,</+key> <key>)
+					let encodedSlot := slot
+					if iszero(and(slot, not(<uint256Mask>))) {
+						encodedSlot := <leftAlignSlot>(slot)
+					}
+					mstore(end, encodedSlot)
+					dataSlot := <leftAlignHash>(keccak256(pos, add(sub(end, pos), <uint256Bytes>)))
 				}
 			)")
 			("functionName", functionName)
 			("key", suffixedVariableNameList("key_", 0, _keyType.sizeOnStack()))
-			("hash", packedHashFunction(
-				{&_keyType, TypeProvider::uint256()},
-				{_mappingType.keyType(), TypeProvider::uint256()}
+			("allocateUnbounded", allocateUnboundedFunction())
+			("encodeKey", ABIFunctions(m_qrvmVersion, m_revertStrings, m_functionCollector).tupleEncoderPacked(
+				{&_keyType},
+				{_mappingType.keyType()}
 			))
+			("uint256Mask", formatNumber(u512((bigint(1) << 256) - 1)))
+			("leftAlignSlot", shiftLeftFunction(VMWordBits - 256))
+			("leftAlignHash", shiftLeftFunction(VMWordBits - 256))
+			("uint256Bytes", std::to_string(32))
 			.render();
 		else
 		{
