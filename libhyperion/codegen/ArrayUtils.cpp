@@ -470,7 +470,7 @@ void ArrayUtils::copyArrayToMemory(ArrayType const& _sourceType, bool _padToWord
 			m_context << Instruction::DIV << Instruction::MUL;
 			m_context << Instruction::DUP4 << Instruction::MSTORE;
 			// stack here: memory_offset storage_offset length
-			// add 32 or length to memory offset
+			// add VMWordBytes or length to memory offset
 			m_context << Instruction::SWAP2;
 			if (_padToWordBoundaries)
 				m_context << u256(VMWordBytes);

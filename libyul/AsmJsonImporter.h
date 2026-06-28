@@ -50,6 +50,7 @@ private:
 	/// helper function to access member functions of the JSON
 	/// and throw an error if it does not exist
 	Json::Value member(Json::Value const& _node, std::string const& _name);
+	std::string stringMember(Json::Value const& _node, std::string const& _name);
 
 	yul::Statement createStatement(Json::Value const& _node);
 	yul::Expression createExpression(Json::Value const& _node);

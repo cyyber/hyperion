@@ -44,9 +44,7 @@ using SourceLocation = langutil::SourceLocation;
 
 SourceLocation const AsmJsonImporter::createSourceLocation(Json::Value const& _node)
 {
-	yulAssert(member(_node, "src").isString(), "'src' must be a string");
-
-	return hyperion::langutil::parseSourceLocation(_node["src"].asString(), m_sourceNames);
+	return hyperion::langutil::parseSourceLocation(stringMember(_node, "src"), m_sourceNames);
 }
 
 template <class T>
@@ -64,24 +62,29 @@ T AsmJsonImporter::createAsmNode(Json::Value const& _node)
 
 Json::Value AsmJsonImporter::member(Json::Value const& _node, std::string const& _name)
 {
-	if (!_node.isMember(_name))
-		return Json::nullValue;
+	yulAssert(_node.isObject(), "Expected a JSON object.");
+	yulAssert(_node.isMember(_name), "Expected member '" + _name + "'.");
 	return _node[_name];
+}
+
+std::string AsmJsonImporter::stringMember(Json::Value const& _node, std::string const& _name)
+{
+	Json::Value value = member(_node, _name);
+	yulAssert(value.isString(), "Expected member '" + _name + "' to be a string.");
+	return value.asString();
 }
 
 TypedName AsmJsonImporter::createTypedName(Json::Value const& _node)
 {
 	auto typedName = createAsmNode<TypedName>(_node);
-	typedName.type = YulString{member(_node, "type").asString()};
-	typedName.name = YulString{member(_node, "name").asString()};
+	typedName.type = YulString{stringMember(_node, "type")};
+	typedName.name = YulString{stringMember(_node, "name")};
 	return typedName;
 }
 
 Statement AsmJsonImporter::createStatement(Json::Value const& _node)
 {
-	Json::Value jsonNodeType = member(_node, "nodeType");
-	yulAssert(jsonNodeType.isString(), "Expected \"nodeType\" to be of type string!");
-	std::string nodeType = jsonNodeType.asString();
+	std::string nodeType = stringMember(_node, "nodeType");
 
 	yulAssert(nodeType.substr(0, 3) == "Yul", "Invalid nodeType prefix");
 	nodeType = nodeType.substr(3);
@@ -117,9 +120,7 @@ Statement AsmJsonImporter::createStatement(Json::Value const& _node)
 
 Expression AsmJsonImporter::createExpression(Json::Value const& _node)
 {
-	Json::Value jsonNodeType = member(_node, "nodeType");
-	yulAssert(jsonNodeType.isString(), "Expected \"nodeType\" to be of type string!");
-	std::string nodeType = jsonNodeType.asString();
+	std::string nodeType = stringMember(_node, "nodeType");
 
 	yulAssert(nodeType.substr(0, 3) == "Yul", "Invalid nodeType prefix");
 	nodeType = nodeType.substr(3);
@@ -163,17 +164,14 @@ Block AsmJsonImporter::createBlock(Json::Value const& _node)
 Literal AsmJsonImporter::createLiteral(Json::Value const& _node)
 {
 	auto lit = createAsmNode<Literal>(_node);
-	std::string kind = member(_node, "kind").asString();
+	std::string kind = stringMember(_node, "kind");
 
-	Json::Value const hexValue = member(_node, "hexValue");
-	Json::Value const value = member(_node, "value");
-	yulAssert(hexValue.isString() || value.isString(), "Literal-value is unset.");
-	if (hexValue.isString())
-		lit.value = YulString{util::asString(util::fromHex(hexValue.asString()))};
+	if (_node.isMember("hexValue"))
+		lit.value = YulString{util::asString(util::fromHex(stringMember(_node, "hexValue")))};
 	else
-		lit.value = YulString{value.asString()};
+		lit.value = YulString{stringMember(_node, "value")};
 
-	lit.type= YulString{member(_node, "type").asString()};
+	lit.type= YulString{stringMember(_node, "type")};
 
 	if (kind == "number")
 	{
@@ -218,7 +216,7 @@ Leave AsmJsonImporter::createLeave(Json::Value const& _node)
 Identifier AsmJsonImporter::createIdentifier(Json::Value const& _node)
 {
 	auto identifier = createAsmNode<Identifier>(_node);
-	identifier.name = YulString(member(_node, "name").asString());
+	identifier.name = YulString(stringMember(_node, "name"));
 	return identifier;
 }
 
@@ -265,7 +263,7 @@ VariableDeclaration AsmJsonImporter::createVariableDeclaration(Json::Value const
 FunctionDefinition AsmJsonImporter::createFunctionDefinition(Json::Value const& _node)
 {
 	auto funcDef = createAsmNode<FunctionDefinition>(_node);
-	funcDef.name = YulString{member(_node, "name").asString()};
+	funcDef.name = YulString{stringMember(_node, "name")};
 
 	if (_node.isMember("parameters"))
 		for (auto const& var: member(_node, "parameters"))

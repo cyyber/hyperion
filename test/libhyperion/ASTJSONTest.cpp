@@ -109,6 +109,12 @@ void expectInvalidAst(Json::Value _ast)
 	BOOST_CHECK_THROW(importer.jsonToSourceUnit({{"A.hyp", std::move(_ast)}}), langutil::InvalidAstError);
 }
 
+void expectImportException(Json::Value _ast)
+{
+	ASTJsonImporter importer(hyperion::test::CommonOptions::get().qrvmVersion());
+	BOOST_CHECK_THROW(importer.jsonToSourceUnit({{"A.hyp", std::move(_ast)}}), hyperion::util::Exception);
+}
+
 }
 
 BOOST_AUTO_TEST_SUITE(ASTJsonImporterTest)
@@ -161,6 +167,42 @@ BOOST_AUTO_TEST_CASE(rejects_oversized_name_source_location)
 	BOOST_REQUIRE(!ast["nodes"].empty());
 	ast["nodes"][0]["nameLocation"] = "999999999999999999999:1:0";
 	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_string_yul_typed_name)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { function f() public { assembly { let x := 1 pop(x) } } }\n");
+	Json::Value& statements = ast["nodes"][0]["nodes"][0]["body"]["statements"][0]["AST"]["statements"];
+	BOOST_REQUIRE(statements.isArray());
+	BOOST_REQUIRE(!statements.empty());
+	BOOST_REQUIRE(statements[0]["variables"].isArray());
+	BOOST_REQUIRE(!statements[0]["variables"].empty());
+
+	statements[0]["variables"][0]["name"] = Json::arrayValue;
+	expectImportException(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_string_yul_literal_kind)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { function f() public { assembly { pop(0) } } }\n");
+	Json::Value& arguments =
+		ast["nodes"][0]["nodes"][0]["body"]["statements"][0]["AST"]["statements"][0]["expression"]["arguments"];
+	BOOST_REQUIRE(arguments.isArray());
+	BOOST_REQUIRE(!arguments.empty());
+
+	arguments[0]["kind"] = Json::objectValue;
+	expectImportException(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_string_yul_identifier_name)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { function f() public { assembly { pop(0) } } }\n");
+	Json::Value& functionName =
+		ast["nodes"][0]["nodes"][0]["body"]["statements"][0]["AST"]["statements"][0]["expression"]["functionName"];
+	BOOST_REQUIRE(functionName.isObject());
+
+	functionName["name"] = Json::arrayValue;
+	expectImportException(std::move(ast));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
