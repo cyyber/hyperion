@@ -672,6 +672,7 @@ ASTPointer<ElementaryTypeName> ASTJsonImporter::createElementaryTypeName(Json::V
 	std::string name = member(_node, "name").asString();
 	Token token;
 	std::tie(token, firstNum, secondNum) = TokenTraits::fromIdentifierOrKeyword(name);
+	astAssert(TokenTraits::isElementaryTypeName(token), "Invalid elementary type name: " + name);
 	ElementaryTypeNameToken elem(token, firstNum,  secondNum);
 
 	std::optional<StateMutability> mutability = {};

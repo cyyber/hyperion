@@ -136,6 +136,33 @@ BOOST_AUTO_TEST_CASE(rejects_non_string_contract_kind)
 	expectInvalidAst(std::move(ast));
 }
 
+BOOST_AUTO_TEST_CASE(rejects_invalid_elementary_type_name)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { uint x; }\n");
+	BOOST_REQUIRE(ast["nodes"].isArray());
+	BOOST_REQUIRE(!ast["nodes"].empty());
+	BOOST_REQUIRE(ast["nodes"][0]["nodes"].isArray());
+	BOOST_REQUIRE(!ast["nodes"][0]["nodes"].empty());
+	ast["nodes"][0]["nodes"][0]["typeName"]["name"] = "uint999";
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_numeric_source_location)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C {}\n");
+	ast["src"] = "abc:1:0";
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_oversized_name_source_location)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C {}\n");
+	BOOST_REQUIRE(ast["nodes"].isArray());
+	BOOST_REQUIRE(!ast["nodes"].empty());
+	ast["nodes"][0]["nameLocation"] = "999999999999999999999:1:0";
+	expectInvalidAst(std::move(ast));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 void ASTJSONTest::generateTestVariants(std::string const& _filename)
