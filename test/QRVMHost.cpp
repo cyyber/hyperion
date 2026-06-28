@@ -309,7 +309,9 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 		{
 			result.create_address = message.recipient;
 			destination.code = qrvmc::bytes(result.output_data, result.output_data + result.output_size);
-			destination.codehash = convertToQRVMC(keccak256({result.output_data, result.output_size}));
+			destination.codehash = convertUintToQRVMC(
+				u256(h256::Arith(keccak256({result.output_data, result.output_size})))
+			);
 		}
 	}
 
@@ -321,7 +323,7 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 
 qrvmc::bytes64 QRVMHost::get_block_hash(int64_t _number) const noexcept
 {
-	return convertToQRVMC(u256("0x3737373737373737373737373737373737373737373737373737373737373737") + _number);
+	return convertUintToQRVMC(u256("0x3737373737373737373737373737373737373737373737373737373737373737") + _number);
 }
 
 h512 QRVMHost::convertFromQRVMC(qrvmc::address const& _addr)

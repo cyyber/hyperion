@@ -269,9 +269,9 @@ OptimiserSettings CommandLineOptions::optimiserSettings() const
 
 	settings.runYulOptimiser = optimizer.optimizeYul;
 	if (optimizer.optimizeYul)
-		// NOTE: Standard JSON disables optimizeStackAllocation by default when yul optimizer is disabled.
-		// --optimize --no-optimize-yul on the CLI does not have that effect.
 		settings.optimizeStackAllocation = true;
+	else
+		settings.optimizeStackAllocation = false;
 
 	if (optimizer.expectedExecutionsPerDeployment.has_value())
 		settings.expectedExecutionsPerDeployment = optimizer.expectedExecutionsPerDeployment.value();

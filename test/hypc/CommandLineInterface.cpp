@@ -1107,6 +1107,20 @@ BOOST_AUTO_TEST_CASE(cli_no_output)
 	BOOST_REQUIRE(result.success);
 }
 
+BOOST_AUTO_TEST_CASE(optimize_without_yul_optimizer_emits_metadata)
+{
+	string const contractSource = R"(
+		// SPDX-License-Identifier: GPL-3.0
+		pragma hyperion >=0.0;
+		contract C {})";
+
+	OptionsReaderAndMessages result = runCLI({"hypc", "--metadata", "--optimize", "--no-optimize-yul", "--no-color", "-"}, contractSource);
+
+	BOOST_TEST(result.success);
+	BOOST_TEST(result.stderrContent == "");
+	BOOST_TEST(result.stdoutContent.find("\"yul\":false") != string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(standard_json_include_paths)
 {
 	TemporaryDirectory tempDir({"base/", "include/", "lib/nested/"}, TEST_CASE_NAME);

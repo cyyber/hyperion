@@ -699,7 +699,9 @@ BOOST_AUTO_TEST_CASE(blockhash)
 	bytes code = compileFirstExpression(sourceCode, {}, {});
 
 	bytes expectation({uint8_t(Instruction::PUSH1), 0x03,
-					   uint8_t(Instruction::BLOCKHASH)});
+					   uint8_t(Instruction::BLOCKHASH),
+					   uint8_t(Instruction::PUSH2), 0x01, 0x00,
+					   uint8_t(Instruction::SHL)});
 	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
 }
 

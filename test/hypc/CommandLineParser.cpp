@@ -463,6 +463,7 @@ BOOST_AUTO_TEST_CASE(optimizer_flags)
 
 	OptimiserSettings qrvmasmOnly = OptimiserSettings::standard();
 	qrvmasmOnly.runYulOptimiser = false;
+	qrvmasmOnly.optimizeStackAllocation = false;
 
 	map<vector<string>, OptimiserSettings> settingsMap = {
 		{{}, OptimiserSettings::minimal()},

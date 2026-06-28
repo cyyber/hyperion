@@ -143,6 +143,7 @@ ASTPointer<T> ASTJsonImporter::convertJsonToASTNode(Json::Value const& _node)
 
 ASTPointer<ASTNode> ASTJsonImporter::convertJsonToASTNode(Json::Value const& _json)
 {
+	astAssert(_json.isObject(), "JSON-Node must be an object.");
 	astAssert(_json["nodeType"].isString() && _json.isMember("id"), "JSON-Node needs to have 'nodeType' and 'id' fields.");
 	std::string nodeType = _json["nodeType"].asString();
 	if (nodeType == "PragmaDirective")
@@ -1084,6 +1085,7 @@ ASTPointer<StructuredDocumentation> ASTJsonImporter::createDocumentation(Json::V
 
 Json::Value ASTJsonImporter::member(Json::Value const& _node, std::string const& _name)
 {
+	astAssert(_node.isObject(), "JSON-Node must be an object.");
 	if (!_node.isMember(_name))
 		return Json::nullValue;
 	return _node[_name];

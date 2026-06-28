@@ -115,6 +115,19 @@ void expectImportException(Json::Value _ast)
 	BOOST_CHECK_THROW(importer.jsonToSourceUnit({{"A.hyp", std::move(_ast)}}), hyperion::util::Exception);
 }
 
+void expectValidAst(Json::Value _ast)
+{
+	ASTJsonImporter importer(hyperion::test::CommonOptions::get().qrvmVersion());
+	try
+	{
+		importer.jsonToSourceUnit({{"A.hyp", std::move(_ast)}});
+	}
+	catch (std::exception const& _exception)
+	{
+		BOOST_FAIL("Unexpected AST import exception: " << _exception.what());
+	}
+}
+
 }
 
 BOOST_AUTO_TEST_SUITE(ASTJsonImporterTest)
@@ -139,6 +152,22 @@ BOOST_AUTO_TEST_CASE(rejects_non_string_contract_kind)
 	BOOST_REQUIRE(ast["nodes"].isArray());
 	BOOST_REQUIRE(!ast["nodes"].empty());
 	ast["nodes"][0]["contractKind"] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_source_unit)
+{
+	expectInvalidAst(Json::Value(Json::arrayValue));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_nested_node)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { function f() public { uint x; } }\n");
+	Json::Value& statements = ast["nodes"][0]["nodes"][0]["body"]["statements"];
+	BOOST_REQUIRE(statements.isArray());
+	BOOST_REQUIRE(!statements.empty());
+
+	statements[0] = Json::arrayValue;
 	expectInvalidAst(std::move(ast));
 }
 
@@ -203,6 +232,17 @@ BOOST_AUTO_TEST_CASE(rejects_non_string_yul_identifier_name)
 
 	functionName["name"] = Json::arrayValue;
 	expectImportException(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(imports_yul_variable_declaration_without_value)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { function f() public { assembly { let x } } }\n");
+	Json::Value& statement = ast["nodes"][0]["nodes"][0]["body"]["statements"][0]["AST"]["statements"][0];
+	BOOST_REQUIRE(statement.isObject());
+	BOOST_REQUIRE_EQUAL(statement["nodeType"].asString(), "YulVariableDeclaration");
+	BOOST_REQUIRE(!statement.isMember("value") || statement["value"].isNull());
+
+	expectValidAst(std::move(ast));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

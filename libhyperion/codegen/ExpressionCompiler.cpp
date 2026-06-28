@@ -1056,6 +1056,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		{
 			acceptAndConvert(*arguments[0], *function.parameterTypes()[0], true);
 			m_context << Instruction::BLOCKHASH;
+			utils().leftShiftNumberOnStack(VMWordBits - 256);
 			break;
 		}
 		case FunctionType::Kind::AddMod:
@@ -1837,6 +1838,7 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 				true
 			);
 			m_context << Instruction::EXTCODEHASH;
+			utils().leftShiftNumberOnStack(VMWordBits - 256);
 		}
 		else if ((std::set<std::string>{"send", "transfer"}).count(member))
 		{

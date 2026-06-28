@@ -1520,7 +1520,11 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		std::string args;
 		for (size_t i = 0; i < arguments.size(); ++i)
 			args += (args.empty() ? "" : ", ") + expressionAsType(*arguments[i], *(parameterTypes[i]));
-		define(_functionCall) << functions[functionType->kind()] << "(" << args << ")\n";
+		define(_functionCall) <<
+			(functionType->kind() == FunctionType::Kind::BlockHash ? m_utils.shiftLeftFunction(VMWordBits - 256) + "(" : "") <<
+			functions[functionType->kind()] << "(" << args << ")" <<
+			(functionType->kind() == FunctionType::Kind::BlockHash ? ")" : "") <<
+			"\n";
 		break;
 	}
 	case FunctionType::Kind::Creation:
@@ -1788,9 +1792,11 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 		}
 		else if (member == "codehash")
 			define(_memberAccess) <<
+				m_utils.shiftLeftFunction(VMWordBits - 256) <<
+				"(" <<
 				"extcodehash(" <<
 				expressionAsType(_memberAccess.expression(), *TypeProvider::address()) <<
-				")\n";
+				"))\n";
 		else if (std::set<std::string>{"send", "transfer"}.count(member))
 		{
 			hypAssert(dynamic_cast<AddressType const&>(*_memberAccess.expression().annotation().type).stateMutability() == StateMutability::Payable);

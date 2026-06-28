@@ -52,7 +52,6 @@ T AsmJsonImporter::createAsmNode(Json::Value const& _node)
 {
 	T r;
 	SourceLocation nativeLocation = createSourceLocation(_node);
-	yulAssert(nativeLocation.hasText(), "Invalid source location in Asm AST");
 	// TODO: We should add originLocation to the AST.
 	// While it's not included, we'll use nativeLocation for it because we only support importing
 	// inline assembly as a part of a Hyperion AST and there these locations are always the same.
@@ -256,7 +255,8 @@ VariableDeclaration AsmJsonImporter::createVariableDeclaration(Json::Value const
 	auto varDec = createAsmNode<VariableDeclaration>(_node);
 	for (auto const& var: member(_node, "variables"))
 		varDec.variables.emplace_back(createTypedName(var));
-	varDec.value = std::make_unique<Expression>(createExpression(member(_node, "value")));
+	if (_node.isMember("value") && !_node["value"].isNull())
+		varDec.value = std::make_unique<Expression>(createExpression(member(_node, "value")));
 	return varDec;
 }
 
