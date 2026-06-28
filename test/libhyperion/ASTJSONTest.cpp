@@ -17,6 +17,7 @@
 // SPDX-License-Identifier: GPL-3.0
 
 #include <liblangutil/SourceReferenceFormatter.h>
+#include <libhyperion/ast/ASTJsonImporter.h>
 #include <libhyperion/ast/ASTJsonExporter.h>
 #include <libhyputil/AnsiColorized.h>
 #include <libhyputil/CommonIO.h>
@@ -93,7 +94,49 @@ void replaceTagWithVersion(std::string& _input)
 	);
 }
 
+Json::Value exportedSourceUnitAst(std::string const& _source)
+{
+	CompilerStack compiler;
+	compiler.setSources({{"A.hyp", _source}});
+	compiler.setQRVMVersion(hyperion::test::CommonOptions::get().qrvmVersion());
+	BOOST_REQUIRE(compiler.parseAndAnalyze());
+	return ASTJsonExporter(compiler.state()).toJson(compiler.ast("A.hyp"));
 }
+
+void expectInvalidAst(Json::Value _ast)
+{
+	ASTJsonImporter importer(hyperion::test::CommonOptions::get().qrvmVersion());
+	BOOST_CHECK_THROW(importer.jsonToSourceUnit({{"A.hyp", std::move(_ast)}}), langutil::InvalidAstError);
+}
+
+}
+
+BOOST_AUTO_TEST_SUITE(ASTJsonImporterTest)
+
+BOOST_AUTO_TEST_CASE(rejects_non_string_source_unit_license)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C {}\n");
+	ast["license"] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_bool_experimental_hyperion)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C {}\n");
+	ast["experimentalHyperion"] = Json::objectValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_string_contract_kind)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C {}\n");
+	BOOST_REQUIRE(ast["nodes"].isArray());
+	BOOST_REQUIRE(!ast["nodes"].empty());
+	ast["nodes"][0]["contractKind"] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 void ASTJSONTest::generateTestVariants(std::string const& _filename)
 {

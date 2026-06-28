@@ -88,7 +88,7 @@ std::string FileRepository::sourceUnitNameToUri(std::string const& _sourceUnitNa
 
 std::string FileRepository::uriToSourceUnitName(std::string const& _path) const
 {
-	lspRequire(boost::algorithm::starts_with(_path, "file://"), ErrorCode::InternalError, "URI must start with file://");
+	lspRequire(boost::algorithm::starts_with(_path, "file://"), ErrorCode::InvalidParams, "URI must start with file://");
 	return stripFileUriSchemePrefix(_path);
 }
 

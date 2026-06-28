@@ -210,6 +210,40 @@ BOOST_AUTO_TEST_CASE(calldata_array_elements_reject_dirty_padding)
 	)
 }
 
+BOOST_AUTO_TEST_CASE(v1_calldata_array_elements_clean_dirty_padding)
+{
+	std::string sourceCode = R"(
+		contract C {
+			function encodeUint(uint256[] calldata a) external returns (bytes memory) {
+				return abi.encode(a);
+			}
+
+			function encodeBytes32(bytes32[] calldata a) external returns (bytes memory) {
+				return abi.encode(a);
+			}
+		}
+	)";
+
+	OLD_ENCODER(
+		compileAndRun(sourceCode, 0, "C");
+
+		bytes canonicalUint = encodeArgs(u256(0x40), u256(1), u256(0x11));
+		bytes dirtyUint = encodeArgs(u256(0x40), u256(1)) + bytes(32, 0x5a) + toBigEndian(u256(0x11));
+		ABI_CHECK(
+			callContractFunctionNoEncoding("encodeUint(uint256[])", dirtyUint),
+			encodeArgs(u256(0x40), u256(canonicalUint.size()), canonicalUint)
+		);
+
+		std::string bytes32Value(32, '\x12');
+		bytes canonicalBytes32 = encodeArgs(u256(0x40), u256(1), bytes32Value);
+		bytes dirtyBytes32 = encodeArgs(u256(0x40), u256(1)) + asBytes(bytes32Value) + bytes(32, 0x5a);
+		ABI_CHECK(
+			callContractFunctionNoEncoding("encodeBytes32(bytes32[])", dirtyBytes32),
+			encodeArgs(u256(0x40), u256(canonicalBytes32.size()), canonicalBytes32)
+		);
+	)
+}
+
 BOOST_AUTO_TEST_CASE(memory_array_two_dim)
 {
 	std::string sourceCode = R"(

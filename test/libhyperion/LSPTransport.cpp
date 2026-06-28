@@ -109,6 +109,13 @@ Json::Value didOpenParamsWithUri(std::string _uri, std::string _text)
 	return params;
 }
 
+Json::Value textDocumentParamsWithUri(std::string _uri)
+{
+	Json::Value params;
+	params["textDocument"]["uri"] = std::move(_uri);
+	return params;
+}
+
 Json::Value textDocumentParams(boost::filesystem::path const& _path)
 {
 	Json::Value params;
@@ -284,8 +291,10 @@ BOOST_AUTO_TEST_CASE(language_server_malformed_did_open_does_not_poison_open_fil
 		payload("exit", Json::nullValue)
 	});
 
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "URI must start with file://"));
 	BOOST_CHECK(output.find("\"id\":2") != std::string::npos);
 	BOOST_CHECK(output.find("\"data\":[") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
@@ -401,6 +410,22 @@ BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_rejects_unknown_uri)
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_rejects_foreign_scheme_uri)
+{
+	util::TemporaryDirectory tempDir{"lsp-semantic-tokens-foreign-scheme-uri-test"};
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/semanticTokens/full", textDocumentParamsWithUri("https://example.invalid/main.hyp"), 2),
+		payload("shutdown", Json::nullValue, 3),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::InvalidParams, "URI must start with file://"));
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_returns_empty_for_parse_errors)
 {
 	util::TemporaryDirectory tempDir{"lsp-semantic-tokens-parse-error-test"};
@@ -419,6 +444,26 @@ BOOST_AUTO_TEST_CASE(language_server_semantic_tokens_returns_empty_for_parse_err
 
 	BOOST_CHECK(output.find("\"id\":2") != std::string::npos);
 	BOOST_CHECK(output.find("\"data\":[]") != std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
+	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(language_server_did_change_requires_text_document)
+{
+	util::TemporaryDirectory tempDir{"lsp-did-change-missing-text-document-test"};
+	Json::Value change;
+	change["text"] = "contract C {}";
+	Json::Value params;
+	params["contentChanges"].append(std::move(change));
+
+	std::string output = runLanguageServer({
+		payload("initialize", initializeParams(tempDir.path()), 1),
+		payload("textDocument/didChange", params),
+		payload("shutdown", Json::nullValue, 2),
+		payload("exit", Json::nullValue)
+	});
+
+	BOOST_CHECK(containsError(output, ErrorCode::RequestFailed, "Text document parameter missing."));
 	BOOST_CHECK_EQUAL(output.find("\"code\":-32603"), std::string::npos);
 	BOOST_CHECK_EQUAL(output.find("Unhandled exception"), std::string::npos);
 }

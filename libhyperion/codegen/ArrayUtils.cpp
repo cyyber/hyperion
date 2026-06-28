@@ -311,6 +311,29 @@ void ArrayUtils::copyArrayToMemory(ArrayType const& _sourceType, bool _padToWord
 	{
 		if (!_sourceType.isDynamicallySized())
 			m_context << _sourceType.length();
+		if (!_sourceType.isByteArrayOrString() && _sourceType.baseType()->isValueType())
+		{
+			m_context << u256(0) << Instruction::SWAP3;
+			// stack: counter source length target
+			qrvmasm::AssemblyItem repeat = m_context.newTag();
+			m_context << repeat;
+			m_context << Instruction::DUP2 << Instruction::DUP5;
+			m_context << Instruction::LT << Instruction::ISZERO;
+			qrvmasm::AssemblyItem loopEnd = m_context.appendConditionalJump();
+
+			m_context << Instruction::DUP3;
+			utils.loadFromMemoryDynamic(*_sourceType.baseType(), true, true, false);
+			utils.storeInMemoryDynamic(*_sourceType.baseType(), _padToWordBoundaries, false);
+
+			m_context << Instruction::SWAP2 << u256(_sourceType.calldataStride()) << Instruction::ADD << Instruction::SWAP2;
+			m_context << Instruction::SWAP3 << u256(1) << Instruction::ADD << Instruction::SWAP3;
+			m_context.appendJumpTo(repeat);
+			m_context << loopEnd;
+			m_context << Instruction::SWAP3;
+			utils.popStackSlots(3);
+			// stack: updated_target_pos
+			return;
+		}
 		if (!_sourceType.isByteArrayOrString())
 			convertLengthToSize(_sourceType);
 

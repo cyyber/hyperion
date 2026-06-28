@@ -1,0 +1,28 @@
+contract C {
+    mapping(string => mapping(string => uint)) stringData;
+    mapping(bytes => mapping(bytes => uint)) bytesData;
+
+    function test_string() public returns (uint a, uint b, uint c) {
+        stringData["outer-a"]["shared-inner"] = 11;
+        stringData["outer-b"]["shared-inner"] = 22;
+        a = stringData["outer-a"]["shared-inner"];
+        b = stringData["outer-b"]["shared-inner"];
+        c = stringData["missing"]["shared-inner"];
+    }
+
+    function test_bytes() public returns (uint a, uint b, uint c) {
+        bytes memory outerA = hex"010203";
+        bytes memory outerB = hex"040506";
+        bytes memory inner = hex"abcdef";
+        bytesData[outerA][inner] = 31;
+        bytesData[outerB][inner] = 47;
+        a = bytesData[outerA][inner];
+        b = bytesData[outerB][inner];
+        c = bytesData[hex"9999"][inner];
+    }
+}
+// ====
+// compileViaYul: true
+// ----
+// test_string() -> 11, 22, 0
+// test_bytes() -> 31, 47, 0

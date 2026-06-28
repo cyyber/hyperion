@@ -101,7 +101,10 @@ std::optional<std::vector<SourceLocation>> ASTJsonImporter::createSourceLocation
 	if (_node.isMember("nameLocations") && _node["nameLocations"].isArray())
 	{
 		for (auto const& val: _node["nameLocations"])
+		{
+			astAssert(val.isString(), "'nameLocations' entries must be strings.");
 			locations.emplace_back(langutil::parseSourceLocation(val.asString(), m_sourceNames));
+		}
 		return locations;
 	}
 
@@ -265,11 +268,17 @@ ASTPointer<SourceUnit> ASTJsonImporter::createSourceUnit(Json::Value const& _nod
 {
 	std::optional<std::string> license;
 	if (_node.isMember("license") && !_node["license"].isNull())
+	{
+		astAssert(_node["license"].isString(), "'license' must be a string or null.");
 		license = _node["license"].asString();
+	}
 
 	bool experimentalHyperion = false;
 	if (_node.isMember("experimentalHyperion") && !_node["experimentalHyperion"].isNull())
+	{
+		astAssert(_node["experimentalHyperion"].isBool(), "'experimentalHyperion' must be a boolean or null.");
 		experimentalHyperion = _node["experimentalHyperion"].asBool();
+	}
 
 	std::vector<ASTPointer<ASTNode>> nodes;
 	for (auto& child: member(_node, "nodes"))
@@ -368,7 +377,10 @@ ASTPointer<IdentifierPath> ASTJsonImporter::createIdentifierPath(Json::Value con
 
 	if (_node.isMember("nameLocations") && _node["nameLocations"].isArray())
 		for (auto const& val: _node["nameLocations"])
+		{
+			astAssert(val.isString(), "'nameLocations' entries must be strings.");
 			namePathLocations.emplace_back(langutil::parseSourceLocation(val.asString(), m_sourceNames));
+		}
 	else
 		namePathLocations.resize(namePath.size());
 
@@ -1078,6 +1090,7 @@ Json::Value ASTJsonImporter::member(Json::Value const& _node, std::string const&
 
 Token ASTJsonImporter::scanSingleToken(Json::Value const& _node)
 {
+	astAssert(_node.isString(), "Token value must be a string.");
 	langutil::CharStream charStream(_node.asString(), "");
 	langutil::Scanner scanner{charStream};
 	astAssert(scanner.peekNextToken() == Token::EOS, "Token string is too long.");
@@ -1109,12 +1122,13 @@ bool ASTJsonImporter::memberAsBool(Json::Value const& _node, std::string const& 
 ContractKind ASTJsonImporter::contractKind(Json::Value const& _node)
 {
 	ContractKind kind;
-	astAssert(!member(_node, "contractKind").isNull(), "'Contract-kind' can not be null.");
-	if (_node["contractKind"].asString() == "interface")
+	Json::Value const contractKindValue = member(_node, "contractKind");
+	astAssert(contractKindValue.isString(), "'Contract-kind' must be a string.");
+	if (contractKindValue.asString() == "interface")
 		kind = ContractKind::Interface;
-	else if (_node["contractKind"].asString() == "contract")
+	else if (contractKindValue.asString() == "contract")
 		kind = ContractKind::Contract;
-	else if (_node["contractKind"].asString() == "library")
+	else if (contractKindValue.asString() == "library")
 		kind = ContractKind::Library;
 	else
 		astAssert(false, "Unknown ContractKind");
@@ -1136,7 +1150,10 @@ Token ASTJsonImporter::literalTokenKind(Json::Value const& _node)
 	else if (_node["kind"].asString() == "hexString")
 		tok = Token::HexStringLiteral;
 	else if (_node["kind"].asString() == "bool")
+	{
+		astAssert(member(_node, "value").isString(), "Boolean literal value must be a string.");
 		tok = (member(_node, "value").asString() == "true") ? Token::TrueLiteral : Token::FalseLiteral;
+	}
 	else
 		astAssert(false, "Unknown kind of literalString");
 	return tok;

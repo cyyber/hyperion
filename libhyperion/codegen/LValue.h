@@ -150,7 +150,7 @@ private:
 
 /**
  * Reference to some item in storage. On the stack this is <storage key> <offset_inside_value>,
- * where 0 <= offset_inside_value < 32 and an offset of i means that the value is multiplied
+ * where 0 <= offset_inside_value < VMWordBytes and an offset of i means that the value is multiplied
  * by 2**i before storing it.
  */
 class StorageItem: public LValue

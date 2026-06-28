@@ -535,6 +535,12 @@ void LanguageServer::handleTextDocumentDidChange(Json::Value const& _args)
 {
 	requireServerInitialized();
 
+	lspRequire(
+		_args["textDocument"],
+		ErrorCode::RequestFailed,
+		"Text document parameter missing."
+	);
+
 	std::string const uri = _args["textDocument"]["uri"].asString();
 
 	for (Json::Value jsonContentChange: _args["contentChanges"])
