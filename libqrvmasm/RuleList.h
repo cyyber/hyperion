@@ -343,7 +343,7 @@ std::vector<SimplificationRule<Pattern>> simplificationRuleListPart5(
 		[=]() { return A.d() >= Pattern::WordSize / 8; }
 	});
 
-	// Replace SIGNEXTEND(A, X), A >= 31 with ID
+	// Replace SIGNEXTEND(A, X), A >= WordSize / 8 - 1 with ID
 	rules.push_back({
 		Builtins::SIGNEXTEND(A, X),
 		[=]() -> Pattern { return X; },

@@ -8,5 +8,7 @@ contract C {
             assert(r1[i] == r2[i]);
     }
 }
+// ====
+// compileViaYul: true
 // ----
 // f() ->

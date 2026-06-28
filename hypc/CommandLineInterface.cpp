@@ -628,15 +628,22 @@ std::map<std::string, Json::Value> CommandLineInterface::parseAstFromInput()
 		Json::Value ast;
 		astAssert(jsonParseStrict(sourceCode, ast), "Input file could not be parsed to JSON");
 		astAssert(ast.isMember("sources"), "Invalid Format for import-JSON: Must have 'sources'-object");
+		Json::Value const& sources = ast["sources"];
+		astAssert(sources.isObject(), "Invalid Format for import-JSON: 'sources' must be an object");
 
-		for (auto& src: ast["sources"].getMemberNames())
+		for (auto& src: sources.getMemberNames())
 		{
-			std::string astKey = ast["sources"][src].isMember("ast") ? "ast" : "AST";
+			Json::Value& source = ast["sources"][src];
+			astAssert(source.isObject(), "Invalid Format for import-JSON: source entry must be an object");
+			std::string astKey = source.isMember("ast") ? "ast" : "AST";
 
-			astAssert(ast["sources"][src].isMember(astKey), "astkey is not member");
-			astAssert(ast["sources"][src][astKey]["nodeType"].asString() == "SourceUnit",  "Top-level node should be a 'SourceUnit'");
+			astAssert(source.isMember(astKey), "astkey is not member");
+			astAssert(source[astKey].isObject(), "astkey must be an object");
+			astAssert(source[astKey].isMember("nodeType"), "Top-level node should have a 'nodeType'");
+			astAssert(source[astKey]["nodeType"].isString(), "Top-level node 'nodeType' should be a string");
+			astAssert(source[astKey]["nodeType"].asString() == "SourceUnit",  "Top-level node should be a 'SourceUnit'");
 			astAssert(sourceJsons.count(src) == 0, "All sources must have unique names");
-			sourceJsons.emplace(src, std::move(ast["sources"][src][astKey]));
+			sourceJsons.emplace(src, std::move(source[astKey]));
 			tmpSources[src] = util::jsonCompactPrint(ast);
 		}
 	}

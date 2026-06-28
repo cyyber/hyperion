@@ -176,6 +176,30 @@ BOOST_AUTO_TEST_CASE(multiple_input_modes)
 				);
 }
 
+BOOST_AUTO_TEST_CASE(import_ast_rejects_non_object_sources)
+{
+	OptionsReaderAndMessages result = runCLI(
+		{"hypc", "--import-ast", "--no-color", "-"},
+		R"({"sources":[]})"
+	);
+
+	BOOST_TEST(!result.success);
+	BOOST_TEST(boost::starts_with(result.stderrContent, "Error: Failed to import AST: "));
+	BOOST_TEST(result.stderrContent.find("'sources' must be an object") != string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(import_ast_rejects_non_string_node_type)
+{
+	OptionsReaderAndMessages result = runCLI(
+		{"hypc", "--import-ast", "--no-color", "-"},
+		R"({"sources":{"A.hyp":{"ast":{"nodeType":[]}}}})"
+	);
+
+	BOOST_TEST(!result.success);
+	BOOST_TEST(boost::starts_with(result.stderrContent, "Error: Failed to import AST: "));
+	BOOST_TEST(result.stderrContent.find("'nodeType' should be a string") != string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(no_import_callback_allowed_paths)
 {
 	array<string, 2> options = {

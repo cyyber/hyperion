@@ -2665,12 +2665,8 @@ std::string YulUtilFunctions::mappingIndexAccessFunction(MappingType const& _map
 				function <functionName>(slot <?+key>,</+key> <key>) -> dataSlot {
 					let pos := <allocateUnbounded>()
 					let end := <encodeKey>(pos <?+key>,</+key> <key>)
-					let encodedSlot := slot
-					if iszero(and(slot, not(<uint256Mask>))) {
-						encodedSlot := <leftAlignSlot>(slot)
-					}
-					mstore(end, encodedSlot)
-					dataSlot := <leftAlignHash>(keccak256(pos, add(sub(end, pos), <uint256Bytes>)))
+					mstore(end, slot)
+					dataSlot := keccak256(pos, add(sub(end, pos), <wordSizeHex>))
 				}
 			)")
 			("functionName", functionName)
@@ -2680,10 +2676,7 @@ std::string YulUtilFunctions::mappingIndexAccessFunction(MappingType const& _map
 				{&_keyType},
 				{_mappingType.keyType()}
 			))
-			("uint256Mask", formatNumber(u512((bigint(1) << 256) - 1)))
-			("leftAlignSlot", shiftLeftFunction(VMWordBits - 256))
-			("leftAlignHash", shiftLeftFunction(VMWordBits - 256))
-			("uint256Bytes", std::to_string(32))
+			("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 			.render();
 		else
 		{

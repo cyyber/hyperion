@@ -1403,6 +1403,7 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 						utils().packedEncode(TypePointers{selectorType}, TypePointers());
 						utils().toSizeAfterFreeMemoryPointer();
 						m_context << Instruction::KECCAK256;
+						utils().leftShiftNumberOnStack(VMWordBits - 256);
 						// stack: <memory pointer> <hash>
 
 						dataOnStack = TypeProvider::fixedBytes(32);
