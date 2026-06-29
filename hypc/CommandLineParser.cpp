@@ -284,6 +284,8 @@ OptimiserSettings CommandLineOptions::optimiserSettings() const
 
 		if (delimiterPos != std::string::npos)
 			settings.yulOptimiserCleanupSteps = fullSequence.substr(delimiterPos + 1);
+		else if (OptimiserSuite::isEmptyOptimizerSequence(fullSequence))
+			settings.yulOptimiserCleanupSteps = "";
 		else
 			hypAssert(settings.yulOptimiserCleanupSteps == OptimiserSettings::DefaultYulOptimiserCleanupSteps);
 	}

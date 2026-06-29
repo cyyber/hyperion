@@ -4119,7 +4119,6 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 		return MemberList::MemberMap({
 			{"coinbase", TypeProvider::payableAddress()},
 			{"timestamp", TypeProvider::uint256()},
-			{"blockhash", TypeProvider::function(strings{"uint"}, strings{"bytes32"}, FunctionType::Kind::BlockHash, StateMutability::View)},
 			{"prevrandao", TypeProvider::uint256()},
 			{"number", TypeProvider::uint256()},
 			{"gaslimit", TypeProvider::uint256()},
@@ -4129,7 +4128,6 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 	case Kind::Message:
 		return MemberList::MemberMap({
 			{"sender", TypeProvider::address()},
-			{"gas", TypeProvider::uint256()},
 			{"value", TypeProvider::uint256()},
 			{"data", TypeProvider::array(DataLocation::CallData)},
 			{"sig", TypeProvider::fixedBytes(4)}

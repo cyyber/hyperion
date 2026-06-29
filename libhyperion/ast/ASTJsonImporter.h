@@ -134,7 +134,7 @@ private:
 
 	// =============== general helper functions ===================
 	/// @returns the member of a given JSON object, throws if member does not exist
-	Json::Value member(Json::Value const& _node, std::string const& _name);
+	Json::Value member(Json::Value const& _node, std::string const& _name) const;
 	/// @returns the appropriate TokenObject used in parsed Strings (pragma directive or operator)
 	Token scanSingleToken(Json::Value const& _node);
 	template<class T>

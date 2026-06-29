@@ -171,6 +171,90 @@ BOOST_AUTO_TEST_CASE(rejects_non_object_nested_node)
 	expectInvalidAst(std::move(ast));
 }
 
+BOOST_AUTO_TEST_CASE(rejects_non_object_import_symbol_alias)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C {}\n");
+
+	Json::Value importDirective(Json::objectValue);
+	importDirective["absolutePath"] = "B.hyp";
+	importDirective["file"] = "B.hyp";
+	importDirective["id"] = Json::Int64{1000000};
+	importDirective["nameLocation"] = "0:0:0";
+	importDirective["nodeType"] = "ImportDirective";
+	importDirective["src"] = "0:0:0";
+	importDirective["symbolAliases"] = Json::arrayValue;
+	importDirective["symbolAliases"].append(Json::Value(Json::arrayValue));
+	importDirective["unitAlias"] = "";
+
+	BOOST_REQUIRE(ast["nodes"].isArray());
+	ast["nodes"].append(std::move(importDirective));
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_parameter_list_entry)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { function f(uint x) public {} }\n");
+	Json::Value& parameters = ast["nodes"][0]["nodes"][0]["parameters"]["parameters"];
+	BOOST_REQUIRE(parameters.isArray());
+	BOOST_REQUIRE(!parameters.empty());
+
+	parameters[0] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_override_entry)
+{
+	Json::Value ast = exportedSourceUnitAst(
+		"contract A { function f() public virtual {} }\n"
+		"contract B is A { function f() public override(A) {} }\n"
+	);
+	Json::Value& overrides = ast["nodes"][1]["nodes"][0]["overrides"]["overrides"];
+	BOOST_REQUIRE(overrides.isArray());
+	BOOST_REQUIRE(!overrides.empty());
+
+	overrides[0] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_struct_member)
+{
+	Json::Value ast = exportedSourceUnitAst("contract C { struct S { uint x; } }\n");
+	Json::Value& members = ast["nodes"][0]["nodes"][0]["members"];
+	BOOST_REQUIRE(members.isArray());
+	BOOST_REQUIRE(!members.empty());
+
+	members[0] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_using_for_library_name)
+{
+	Json::Value ast = exportedSourceUnitAst(
+		"library L { function f(uint x) internal {} }\n"
+		"contract C { using L for uint; }\n"
+	);
+	Json::Value& libraryName = ast["nodes"][1]["nodes"][0]["libraryName"];
+	BOOST_REQUIRE(libraryName.isObject());
+
+	libraryName = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
+BOOST_AUTO_TEST_CASE(rejects_non_object_using_for_function_list_entry)
+{
+	Json::Value ast = exportedSourceUnitAst(
+		"function f(uint x) pure returns (uint) { return x; }\n"
+		"using {f} for uint;\n"
+		"contract C {}\n"
+	);
+	Json::Value& functionList = ast["nodes"][1]["functionList"];
+	BOOST_REQUIRE(functionList.isArray());
+	BOOST_REQUIRE(!functionList.empty());
+
+	functionList[0] = Json::arrayValue;
+	expectInvalidAst(std::move(ast));
+}
+
 BOOST_AUTO_TEST_CASE(rejects_invalid_elementary_type_name)
 {
 	Json::Value ast = exportedSourceUnitAst("contract C { uint x; }\n");
