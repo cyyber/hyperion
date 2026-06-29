@@ -484,6 +484,8 @@ std::optional<Json::Value> checkOptimizerDetailSteps(Json::Value const& _details
 
 			if (delimiterPos != std::string::npos)
 				_cleanupSetting = fullSequence.substr(delimiterPos + 1);
+			else if (OptimiserSuite::isEmptyOptimizerSequence(fullSequence))
+				_cleanupSetting = "";
 			else
 				hypAssert(_cleanupSetting == OptimiserSettings::DefaultYulOptimiserCleanupSteps);
 		}

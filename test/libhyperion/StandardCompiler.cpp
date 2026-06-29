@@ -1199,6 +1199,35 @@ BOOST_AUTO_TEST_CASE(optimizer_settings_details_exactly_as_default_disabled)
 	BOOST_CHECK(optimizer["runs"].asUInt() == 200);
 }
 
+BOOST_AUTO_TEST_CASE(optimizer_settings_empty_yul_steps_without_yul)
+{
+	for (char const* optimizerSteps: {"", "   "})
+	{
+		Json::Value input(Json::objectValue);
+		input["language"] = "Hyperion";
+		input["sources"]["fileA"]["content"] = "contract A { }";
+		input["settings"]["outputSelection"]["fileA"]["A"].append("metadata");
+		input["settings"]["optimizer"]["details"]["yul"] = false;
+		input["settings"]["optimizer"]["details"]["yulDetails"]["optimizerSteps"] = optimizerSteps;
+
+		frontend::StandardCompiler compiler;
+		Json::Value result = compiler.compile(input);
+		BOOST_CHECK(containsAtMostWarnings(result));
+		Json::Value contract = getContractResult(result, "fileA", "A");
+		BOOST_REQUIRE(contract.isObject());
+		BOOST_REQUIRE(contract["metadata"].isString());
+
+		Json::Value metadata;
+		BOOST_REQUIRE(util::jsonParseStrict(contract["metadata"].asString(), metadata));
+
+		Json::Value const& details = metadata["settings"]["optimizer"]["details"];
+		BOOST_REQUIRE(details.isObject());
+		BOOST_CHECK(details["yul"].asBool() == false);
+		BOOST_REQUIRE(details["yulDetails"].isObject());
+		BOOST_CHECK(details["yulDetails"]["optimizerSteps"].asString() == ":");
+	}
+}
+
 BOOST_AUTO_TEST_CASE(optimizer_settings_details_different)
 {
 	char const* input = R"(
