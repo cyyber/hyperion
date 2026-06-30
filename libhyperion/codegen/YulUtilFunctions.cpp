@@ -3323,25 +3323,27 @@ std::string YulUtilFunctions::allocateAndInitializeMemoryStructFunction(StructTy
 			memPtr := <allocStruct>()
 			let offset := memPtr
 			<#member>
-				mstore(offset, <zeroValue>())
-				offset := add(offset, <wordSize>)
+				{
+					let <memberValues> := <zeroValue>()
+					<writeToMemory>(offset, <memberValues>)
+					offset := add(offset, <memberSize>)
+				}
 			</member>
 		}
 		)");
 		templ("functionName", functionName);
 		templ("allocStruct", allocateMemoryStructFunction(_type));
-		templ("wordSize", std::to_string(VMWordBytes));
 
 		TypePointers const& members = _type.memoryMemberTypes();
 
 		std::vector<std::map<std::string, std::string>> memberParams(members.size());
 		for (size_t i = 0; i < members.size(); ++i)
 		{
-			hypAssert(members[i]->memoryHeadSize() == VMWordBytes, "");
-			memberParams[i]["zeroValue"] = zeroValueFunction(
-				*TypeProvider::withLocationIfReference(DataLocation::Memory, members[i]),
-				false
-			);
+			Type const& memberType = *members[i];
+			memberParams[i]["memberValues"] = suffixedVariableNameList("memberValue_", 0, memberType.stackItems().size());
+			memberParams[i]["zeroValue"] = zeroValueFunction(memberType, true);
+			memberParams[i]["writeToMemory"] = writeToMemoryFunction(memberType);
+			memberParams[i]["memberSize"] = std::to_string(memberType.memoryHeadSize());
 		}
 		templ("member", memberParams);
 		return templ.render();
@@ -3726,7 +3728,6 @@ std::string YulUtilFunctions::copyStructToStorageFunction(StructType const& _fro
 		for (size_t i = 0; i < structMembers.size(); ++i)
 		{
 			Type const& memberType = *structMembers[i].type;
-			hypAssert(memberType.memoryHeadSize() == VMWordBytes, "");
 			auto const&[slotDiff, offset] = _to.storageOffsetsOfMember(structMembers[i].name);
 
 			Whiskers t(R"(

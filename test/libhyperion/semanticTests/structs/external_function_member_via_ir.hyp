@@ -1,0 +1,61 @@
+pragma abicoder v2;
+
+contract C {
+    struct S {
+        function(uint) external returns (uint) fn;
+        uint marker;
+    }
+
+    S stored;
+    mapping(uint => S) mapped;
+    S[] array;
+
+    function target(uint x) external returns (uint) {
+        return x + 1;
+    }
+
+    function other(uint x) external returns (uint) {
+        return x + 10;
+    }
+
+    function zeroMemory() public returns (uint) {
+        S memory s;
+        return s.marker;
+    }
+
+    function memoryToStorage() public returns (uint, uint) {
+        S memory s = S(this.target, 7);
+        stored = s;
+        return (stored.fn(2), stored.marker);
+    }
+
+    function storageMemberWrite() public returns (uint, uint) {
+        mapped[5].fn = this.other;
+        mapped[5].marker = 11;
+        return (mapped[5].fn(2), mapped[5].marker);
+    }
+
+    function calldataToStorage(S calldata s) external returns (uint, uint) {
+        stored = s;
+        return (stored.fn(3), stored.marker);
+    }
+
+    function callCalldataToStorage() public returns (uint, uint) {
+        return this.calldataToStorage(S(this.other, 13));
+    }
+
+    function pushZero() public returns (uint, uint) {
+        array.push();
+        return (array.length, array[0].marker);
+    }
+}
+// ====
+// compileViaYul: true
+// ====
+// QRVMVersion: >zond
+// ----
+// zeroMemory() -> 0
+// memoryToStorage() -> 3, 7
+// storageMemberWrite() -> 12, 11
+// callCalldataToStorage() -> 13, 13
+// pushZero() -> 1, 0
