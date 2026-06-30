@@ -2467,13 +2467,21 @@ std::string YulUtilFunctions::accessCalldataTailFunction(Type const& _type)
 		return Whiskers(R"(
 			function <functionName>(base_ref, ptr_to_tail) -> addr<?dynamicallySized>, length</dynamicallySized> {
 				let rel_offset_of_tail := calldataload(ptr_to_tail)
-				if iszero(slt(rel_offset_of_tail, sub(sub(calldatasize(), base_ref), sub(<neededLength>, 1)))) { <invalidCalldataTailOffset>() }
+				if gt(rel_offset_of_tail, 0xffffffffffffffff) { <invalidCalldataTailOffset>() }
 				addr := add(base_ref, rel_offset_of_tail)
+				if or(
+					lt(addr, base_ref),
+					or(
+						gt(<neededLength>, calldatasize()),
+						gt(addr, sub(calldatasize(), <neededLength>))
+					)
+				) { <invalidCalldataTailOffset>() }
 				<?dynamicallySized>
 					length := calldataload(addr)
 					if gt(length, 0xffffffffffffffff) { <invalidCalldataTailLength>() }
 					addr := add(addr, <wordSize>)
-					if sgt(addr, sub(calldatasize(), mul(length, <calldataStride>))) { <shortCalldataTail>() }
+					let dataEnd := add(addr, mul(length, <calldataStride>))
+					if or(lt(dataEnd, addr), gt(dataEnd, calldatasize())) { <shortCalldataTail>() }
 				</dynamicallySized>
 			}
 		)")

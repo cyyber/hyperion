@@ -1483,8 +1483,15 @@ std::string ABIFunctions::calldataAccessFunction(Type const& _type)
 			Whiskers w(R"(
 				function <functionName>(base_ref, ptr) -> <return> {
 					let rel_offset_of_tail := calldataload(ptr)
-					if iszero(slt(rel_offset_of_tail, sub(sub(calldatasize(), base_ref), sub(<neededLength>, 1)))) { <revertStringOffset>() }
+					if gt(rel_offset_of_tail, 0xffffffffffffffff) { <revertStringOffset>() }
 					value := add(rel_offset_of_tail, base_ref)
+					if or(
+						lt(value, base_ref),
+						or(
+							gt(<neededLength>, calldatasize()),
+							gt(value, sub(calldatasize(), <neededLength>))
+						)
+					) { <revertStringOffset>() }
 					<handleLength>
 				}
 			)");
@@ -1496,7 +1503,8 @@ std::string ABIFunctions::calldataAccessFunction(Type const& _type)
 					length := calldataload(value)
 					value := add(value, <wordSize>)
 					if gt(length, 0xffffffffffffffff) { <revertStringLength>() }
-					if sgt(value, sub(calldatasize(), mul(length, <calldataStride>))) { <revertStringStride>() }
+					let dataEnd := add(value, mul(length, <calldataStride>))
+					if or(lt(dataEnd, value), gt(dataEnd, calldatasize())) { <revertStringStride>() }
 				)")
 				("wordSize", toCompactHexWithPrefix(u256(VMWordBytes)))
 				("calldataStride", toCompactHexWithPrefix(arrayType->calldataStride()))
