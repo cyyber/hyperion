@@ -48,6 +48,7 @@
 #include <fstream>
 #include <limits>
 #include <iterator>
+#include <cctype>
 
 using namespace hyperion;
 using namespace hyperion::qrvmasm;
@@ -58,6 +59,16 @@ std::map<std::string, std::shared_ptr<std::string const>> Assembly::s_sharedSour
 
 namespace
 {
+
+bool isHexDigits(std::string const& _value)
+{
+	if (_value.empty())
+		return false;
+	for (char c: _value)
+		if (!std::isxdigit(static_cast<unsigned char>(c)))
+			return false;
+	return true;
+}
 
 bigint parseAssemblyInteger(std::string const& _value, std::string const& _field)
 {
@@ -668,9 +679,12 @@ std::pair<std::shared_ptr<Assembly>, std::vector<std::string>> Assembly::fromJSO
 				size_t index{};
 				try
 				{
+					solRequire(isHexDigits(dataItemID), AssemblyImportException, "The key '" + dataItemID + "' inside '.data' is not an integer.");
 					// Using signed variant because stoul() still accepts negative numbers and
 					// just lets them wrap around.
-					int parsedDataItemID = std::stoi(dataItemID, nullptr, 16);
+					size_t parseEnd = 0;
+					int parsedDataItemID = std::stoi(dataItemID, &parseEnd, 16);
+					solRequire(parseEnd == dataItemID.size(), AssemblyImportException, "The key '" + dataItemID + "' inside '.data' is not an integer.");
 					solRequire(parsedDataItemID >= 0, AssemblyImportException, "The key '" + dataItemID + "' inside '.data' is out of the supported integer range.");
 					index = static_cast<size_t>(parsedDataItemID);
 				}
