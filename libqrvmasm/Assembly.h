@@ -244,7 +244,7 @@ protected:
 	std::optional<std::map<u512, u512>> m_tagReplacements;
 
 	mutable LinkerObject m_assembledObject;
-	mutable std::vector<size_t> m_tagPositionsInBytecode;
+	mutable std::map<size_t, size_t> m_tagPositionsInBytecode;
 
 	langutil::QRVMVersion m_qrvmVersion;
 

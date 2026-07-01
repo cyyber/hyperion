@@ -806,15 +806,18 @@ void CommandLineInterface::assembleFromQRVMAssemblyJSON()
 	try
 	{
 		qrvmAssemblyStack->parseAndAnalyze(sourceUnitName, source);
+		if (m_options.output.debugInfoSelection.has_value())
+			qrvmAssemblyStack->selectDebugInfo(m_options.output.debugInfoSelection.value());
+		qrvmAssemblyStack->assemble();
 	}
-	catch (qrvmasm::AssemblyImportException const& _exception)
+	catch (qrvmasm::AssemblyException const& _exception)
 	{
 		hypThrow(CommandLineExecutionError, "Assembly Import Error: "s + _exception.what());
 	}
-
-	if (m_options.output.debugInfoSelection.has_value())
-		qrvmAssemblyStack->selectDebugInfo(m_options.output.debugInfoSelection.value());
-	qrvmAssemblyStack->assemble();
+	catch (std::exception const& _exception)
+	{
+		hypThrow(CommandLineExecutionError, "Assembly Import Error: "s + _exception.what());
+	}
 
 	m_qrvmAssemblyStack = std::move(qrvmAssemblyStack);
 	m_assemblyStack = m_qrvmAssemblyStack.get();

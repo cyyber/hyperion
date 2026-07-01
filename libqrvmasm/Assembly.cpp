@@ -59,37 +59,46 @@ std::map<std::string, std::shared_ptr<std::string const>> Assembly::s_sharedSour
 namespace
 {
 
-template <class Integer>
-Integer parseAssemblyInteger(std::string const& _value, std::string const& _field)
+bigint parseAssemblyInteger(std::string const& _value, std::string const& _field)
 {
 	try
 	{
-		return Integer(_value);
+		return bigint(_value);
 	}
 	catch (std::exception const&)
 	{
 		hypThrow(AssemblyImportException, _field + " is not a valid integer.");
 	}
-	return Integer();
+	return bigint();
 }
 
-template <class Integer>
-Integer parseAssemblyHexInteger(std::string const& _value, std::string const& _field)
+bigint parseAssemblyHexInteger(std::string const& _value, std::string const& _field)
 {
 	try
 	{
-		return Integer("0x" + _value);
+		return bigint("0x" + _value);
 	}
 	catch (std::exception const&)
 	{
 		hypThrow(AssemblyImportException, _field + " is not a valid hexadecimal integer.");
 	}
-	return Integer();
+	return bigint();
+}
+
+u512 parseAssemblyHexSizeT(std::string const& _value, std::string const& _field)
+{
+	bigint value = parseAssemblyHexInteger(_value, _field);
+	solRequire(
+		value >= 0 && value <= std::numeric_limits<size_t>::max(),
+		AssemblyImportException,
+		_field + " is out of bounds."
+	);
+	return u512(value);
 }
 
 u512 parseAssemblyHexWord(std::string const& _value, std::string const& _field)
 {
-	bigint value = parseAssemblyHexInteger<bigint>(_value, _field);
+	bigint value = parseAssemblyHexInteger(_value, _field);
 	solRequire(
 		value >= 0 && value < (bigint(1) << VMWordBits),
 		AssemblyImportException,
@@ -201,11 +210,16 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 	std::string value = getOrDefault<std::string>(_json["value"], "");
 	std::string jumpType = getOrDefault<std::string>(_json["jumpType"], "");
 
-	auto updateUsedTags = [&](u256 const& data)
+	auto updateUsedTags = [&](bigint const& data)
 	{
-		solRequire(data < std::numeric_limits<unsigned>::max(), AssemblyImportException, "Tag value out of bounds.");
-		m_usedTags = std::max(m_usedTags, static_cast<unsigned>(data) + 1);
-		return data;
+		solRequire(
+			data >= 0 && data < std::numeric_limits<unsigned>::max(),
+			AssemblyImportException,
+			"Tag value out of bounds."
+		);
+		unsigned tagID = static_cast<unsigned>(data);
+		m_usedTags = std::max(m_usedTags, tagID + 1);
+		return u512(tagID);
 	};
 
 	auto storeImmutableHash = [&](std::string const& _immutableName) -> h256
@@ -289,17 +303,17 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		else if (name == "PUSH [tag]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushTag, updateUsedTags(parseAssemblyInteger<u256>(value, "Member 'value' for instruction '" + name + "'"))};
+			result = {AssemblyItemType::PushTag, updateUsedTags(parseAssemblyInteger(value, "Member 'value' for instruction '" + name + "'"))};
 		}
 		else if (name == "PUSH [$]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushSub, parseAssemblyHexInteger<u256>(value, "Member 'value' for instruction '" + name + "'")};
+			result = {AssemblyItemType::PushSub, parseAssemblyHexSizeT(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSH #[$]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushSubSize, parseAssemblyHexInteger<u256>(value, "Member 'value' for instruction '" + name + "'")};
+			result = {AssemblyItemType::PushSubSize, parseAssemblyHexSizeT(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSHSIZE")
 		{
@@ -329,7 +343,7 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		else if (name == "tag")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::Tag, u512(updateUsedTags(parseAssemblyInteger<u256>(value, "Member 'value' for instruction '" + name + "'")))};
+			result = {AssemblyItemType::Tag, updateUsedTags(parseAssemblyInteger(value, "Member 'value' for instruction '" + name + "'"))};
 		}
 		else if (name == "PUSH data")
 		{
@@ -929,9 +943,12 @@ LinkerObject const& Assembly::assemble() const
 			);
 			immutableReferencesBySub = linkerObject.immutableReferences;
 		}
-		for (size_t tagPos: sub->m_tagPositionsInBytecode)
+		for (auto const& tagPosition: sub->m_tagPositionsInBytecode)
+		{
+			size_t tagPos = tagPosition.second;
 			if (tagPos != std::numeric_limits<size_t>::max() && tagPos > subTagSize)
 				subTagSize = tagPos;
+		}
 	}
 
 	bool setsImmutables = false;
@@ -953,7 +970,7 @@ LinkerObject const& Assembly::assemble() const
 		);
 
 	unsigned bytesRequiredForCode = codeSize(static_cast<unsigned>(subTagSize));
-	m_tagPositionsInBytecode = std::vector<size_t>(m_usedTags, std::numeric_limits<size_t>::max());
+	m_tagPositionsInBytecode.clear();
 	std::map<size_t, std::pair<size_t, size_t>> tagRef;
 	std::multimap<h256, unsigned> dataRef;
 	std::multimap<size_t, size_t> subRef;
@@ -972,7 +989,7 @@ LinkerObject const& Assembly::assemble() const
 	for (AssemblyItem const& i: m_items)
 	{
 		// store position of the invalid jump destination
-		if (i.type() != Tag && m_tagPositionsInBytecode[0] == std::numeric_limits<size_t>::max())
+		if (i.type() != Tag && !m_tagPositionsInBytecode.count(0))
 			m_tagPositionsInBytecode[0] = ret.bytecode.size();
 
 		switch (i.type())
@@ -1082,8 +1099,8 @@ LinkerObject const& Assembly::assemble() const
 			assertThrow(i.splitForeignPushTag().first == std::numeric_limits<size_t>::max(), AssemblyException, "Foreign tag.");
 			size_t tagId = static_cast<size_t>(i.data());
 			assertThrow(ret.bytecode.size() < 0xffffffffL, AssemblyException, "Tag too large.");
-			assertThrow(m_tagPositionsInBytecode[tagId] == std::numeric_limits<size_t>::max(), AssemblyException, "Duplicate tag position.");
-			m_tagPositionsInBytecode[tagId] = ret.bytecode.size();
+			bool inserted = m_tagPositionsInBytecode.emplace(tagId, ret.bytecode.size()).second;
+			assertThrow(inserted, AssemblyException, "Duplicate tag position.");
 			ret.bytecode.push_back(static_cast<uint8_t>(Instruction::JUMPDEST));
 			break;
 		}
@@ -1129,20 +1146,22 @@ LinkerObject const& Assembly::assemble() const
 		size_t tagId;
 		std::tie(subId, tagId) = i.second;
 		assertThrow(subId == std::numeric_limits<size_t>::max() || subId < m_subs.size(), AssemblyException, "Invalid sub id");
-		std::vector<size_t> const& tagPositions =
+		Assembly const& tagAssembly =
 			subId == std::numeric_limits<size_t>::max() ?
-			m_tagPositionsInBytecode :
-			m_subs[subId]->m_tagPositionsInBytecode;
-		assertThrow(tagId < tagPositions.size(), AssemblyException, "Reference to non-existing tag.");
-		size_t pos = tagPositions[tagId];
-		assertThrow(pos != std::numeric_limits<size_t>::max(), AssemblyException, "Reference to tag without position.");
+			*this :
+			*m_subs[subId];
+		assertThrow(tagId < tagAssembly.m_usedTags, AssemblyException, "Reference to non-existing tag.");
+		auto tagPosition = tagAssembly.m_tagPositionsInBytecode.find(tagId);
+		assertThrow(tagPosition != tagAssembly.m_tagPositionsInBytecode.end(), AssemblyException, "Reference to tag without position.");
+		size_t pos = tagPosition->second;
 		assertThrow(numberEncodingSize(pos) <= bytesPerTag, AssemblyException, "Tag too large for reserved space.");
 		bytesRef r(ret.bytecode.data() + i.first, bytesPerTag);
 		toBigEndian(pos, r);
 	}
 	for (auto const& [name, tagInfo]: m_namedTags)
 	{
-		size_t position = m_tagPositionsInBytecode.at(tagInfo.id);
+		auto tagPosition = m_tagPositionsInBytecode.find(tagInfo.id);
+		size_t position = tagPosition == m_tagPositionsInBytecode.end() ? std::numeric_limits<size_t>::max() : tagPosition->second;
 		std::optional<size_t> tagIndex;
 		for (auto&& [index, item]: m_items | ranges::views::enumerate)
 			if (item.type() == Tag && static_cast<size_t>(item.data()) == tagInfo.id)
