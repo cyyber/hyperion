@@ -87,6 +87,17 @@ Integer parseAssemblyHexInteger(std::string const& _value, std::string const& _f
 	return Integer();
 }
 
+u512 parseAssemblyHexWord(std::string const& _value, std::string const& _field)
+{
+	bigint value = parseAssemblyHexInteger<bigint>(_value, _field);
+	solRequire(
+		value >= 0 && value < (bigint(1) << VMWordBits),
+		AssemblyImportException,
+		_field + " is out of bounds."
+	);
+	return u512(value);
+}
+
 bytes parseAssemblyHexBytes(std::string const& _value, std::string const& _field, bool _allowEmpty)
 {
 	bytes decoded = fromHex(_value);
@@ -268,7 +279,7 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		if (name == "PUSH")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::Push, parseAssemblyHexInteger<u512>(value, "Member 'value' for instruction '" + name + "'")};
+			result = {AssemblyItemType::Push, parseAssemblyHexWord(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSH [ErrorTag]")
 		{
@@ -323,7 +334,7 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		else if (name == "PUSH data")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushData, parseAssemblyHexInteger<u512>(value, "Member 'value' for instruction '" + name + "'")};
+			result = {AssemblyItemType::PushData, parseAssemblyHexWord(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "VERBATIM")
 		{
