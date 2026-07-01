@@ -888,10 +888,13 @@ void CommandLineInterface::compile()
 					astAssert(false, "Analysis of the AST failed");
 				}
 			}
-			catch (Exception const& _exc)
+			catch (std::exception const& _exc)
 			{
-				// FIXME: AST import is missing proper validations. This hack catches failing
-				// assertions and presents them as if they were compiler errors.
+				// AST import validation is best-effort: importer/analysis helpers may throw
+				// hyperion Exceptions (astAssert/yulAssert) or std/boost/Json exceptions (e.g.
+				// bigint parse failures on malformed literals). Catch std::exception (the base
+				// of hyperion::util::Exception too) so any malformed --import-ast input is
+				// surfaced as a graceful compiler error instead of an uncaught-exception abort.
 				hypThrow(CommandLineExecutionError, "Failed to import AST: "s + _exc.what());
 			}
 		}

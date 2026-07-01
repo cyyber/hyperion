@@ -27,6 +27,7 @@
 #include <libyul/Exceptions.h>
 
 #include <liblangutil/Exceptions.h>
+#include <libhyputil/CommonData.h>
 #include <libhyputil/VMConstants.h>
 #include <liblangutil/Scanner.h>
 
@@ -180,6 +181,14 @@ Literal AsmJsonImporter::createLiteral(Json::Value const& _node)
 		yulAssert(
 			scanner.currentToken() == Token::Number,
 			"Expected number but got " + langutil::TokenTraits::friendlyName(scanner.currentToken()) + std::string(" while scanning ") + lit.value.str()
+		);
+		// A single leading Number token is not sufficient: the scanner would also
+		// accept trailing garbage (e.g. "0:0", "0x10:0:0", "1.5"). Require the whole
+		// value to be a valid decimal or hex literal so the downstream bigint() parse
+		// in AsmAnalysis cannot throw on attacker-supplied import JSON.
+		yulAssert(
+			util::isValidDecimal(lit.value.str()) || util::isValidHex(lit.value.str()),
+			"Invalid number literal \"" + lit.value.str() + "\"."
 		);
 	}
 	else if (kind == "bool")
