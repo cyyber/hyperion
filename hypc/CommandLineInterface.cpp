@@ -773,9 +773,19 @@ void CommandLineInterface::processInput()
 		break;
 	case InputMode::QRVMAssemblerJSON:
 		assembleFromQRVMAssemblyJSON();
-		handleCombinedJSON();
-		handleBytecode(m_assemblyStack->contractNames().front());
-		handleQRVMAssembly(m_assemblyStack->contractNames().front());
+		// Output formatting can still fail on imported assembly that assembled successfully but
+		// violates a text-format constraint (e.g. a tag value >= 0x10000 in --asm). Relay such
+		// failures as a graceful command-line error instead of letting them escape as uncaught.
+		try
+		{
+			handleCombinedJSON();
+			handleBytecode(m_assemblyStack->contractNames().front());
+			handleQRVMAssembly(m_assemblyStack->contractNames().front());
+		}
+		catch (qrvmasm::AssemblyException const& _exception)
+		{
+			hypThrow(CommandLineExecutionError, "Assembly Output Error: "s + _exception.what());
+		}
 		break;
 	}
 }

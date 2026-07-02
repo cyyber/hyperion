@@ -57,7 +57,15 @@ void ArrayUtils::copyArrayToStorage(ArrayType const& _targetType, ArrayType cons
 
 	bool sourceIsStorage = _sourceType.location() == DataLocation::Storage;
 	bool fromCalldata = _sourceType.location() == DataLocation::CallData;
-	bool directCopy = sourceIsStorage && sourceBaseType->isValueType() && *sourceBaseType == *targetBaseType;
+	// The single-slot SLOAD/SSTORE fast-path below only copies one word per element while striding
+	// by storageSize(). It is therefore only sound for value types occupying exactly one storage slot;
+	// a multi-slot value type (an external function pointer needs two: address + selector) must fall
+	// through to the generic per-element loop, which copies every slot via StorageItem.
+	bool directCopy =
+		sourceIsStorage &&
+		sourceBaseType->isValueType() &&
+		sourceBaseType->storageSize() == 1 &&
+		*sourceBaseType == *targetBaseType;
 	bool haveByteOffsetSource = !directCopy && sourceIsStorage && sourceBaseType->storageBytes() <= (VMWordBytes / 2);
 	bool haveByteOffsetTarget = !directCopy && targetBaseType->storageBytes() <= (VMWordBytes / 2);
 	unsigned byteOffsetSize = (haveByteOffsetSource ? 1u : 0u) + (haveByteOffsetTarget ? 1u : 0u);
