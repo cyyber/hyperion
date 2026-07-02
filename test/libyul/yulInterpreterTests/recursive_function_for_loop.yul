@@ -7,7 +7,7 @@
         {
             y := 1
             mstore8(1, 1)
-            for { } slt(1, keccak256(1, msize())) { let x_1 := foo_0(x) }
+            for { } slt(1, sub(0, msize())) { let x_1 := foo_0(x) }
             {
                 y := add(y, 1)
                 continue

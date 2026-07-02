@@ -66,9 +66,9 @@ u512 readZeroExtended(bytes const& _data, u512 const& _offset)
 	return val;
 }
 
-u512 leftAlignedHash(h256 const& _hash)
+u512 rightAlignedHash(h256 const& _hash)
 {
-	return u512(h256::Arith(_hash)) << (VMWordBits - 256);
+	return u512(h256::Arith(_hash));
 }
 
 u512 expWord(u512 _base, u512 _exponent)
@@ -206,7 +206,7 @@ u512 QRVMInstructionInterpreter::eval(
 			return u512("0x1234cafe1234cafe1234cafe") + arg[0];
 		uint64_t offset = uint64_t(arg[0] & uint64_t(-1));
 		uint64_t size = uint64_t(arg[1] & uint64_t(-1));
-		return leftAlignedHash(keccak256(m_state.readMemory(offset, size)));
+		return rightAlignedHash(keccak256(m_state.readMemory(offset, size)));
 	}
 	case Instruction::ADDRESS:
 		return h512::Arith(m_state.address);
@@ -254,7 +254,7 @@ u512 QRVMInstructionInterpreter::eval(
 	case Instruction::EXTCODESIZE:
 		return u512(h256::Arith(keccak256(h512(arg[0])))) & 0xffffff;
 	case Instruction::EXTCODEHASH:
-		return leftAlignedHash(keccak256(h512(arg[0] + 1)));
+		return rightAlignedHash(keccak256(h512(arg[0] + 1)));
 	case Instruction::EXTCODECOPY:
 		if (accessMemory(arg[1], arg[3]))
 			// TODO this way extcodecopy and codecopy do the same thing.
