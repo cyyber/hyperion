@@ -240,6 +240,31 @@ BOOST_AUTO_TEST_CASE(imported_push_preserves_512_bit_value)
 	BOOST_CHECK_EQUAL(assembly->assemble().toHex(), "9f" + value);
 }
 
+BOOST_AUTO_TEST_CASE(imported_foreign_push_tag_preserves_packed_value)
+{
+	std::string const packedTag = "18446744073709551617";
+	Json::Value jsonValue;
+	BOOST_REQUIRE(util::jsonParseStrict(
+		"{\".code\":["
+		"{\"name\":\"PUSH [tag]\",\"value\":\"" + packedTag + "\"},"
+		"{\"name\":\"STOP\"}"
+		"],\".data\":{\"0\":{\".code\":["
+		"{\"name\":\"tag\",\"value\":\"1\"},"
+		"{\"name\":\"JUMPDEST\"},"
+		"{\"name\":\"STOP\"}"
+		"]}}}",
+		jsonValue
+	));
+
+	auto [assembly, sourceList] = Assembly::fromJSON(jsonValue);
+	BOOST_REQUIRE(assembly);
+	BOOST_CHECK(sourceList.empty());
+	BOOST_REQUIRE_EQUAL(assembly->items().size(), 2);
+	BOOST_CHECK_EQUAL(assembly->items().front().splitForeignPushTag().first, 0);
+	BOOST_CHECK_EQUAL(assembly->items().front().splitForeignPushTag().second, 1);
+	BOOST_CHECK_NO_THROW(assembly->assemble());
+}
+
 BOOST_AUTO_TEST_CASE(imported_assembly_rejects_malformed_json_values)
 {
 	checkImportFails("{\".code\":[{\"name\":\"PUSH\",\"value\":\"zz\"}]}");
@@ -248,6 +273,8 @@ BOOST_AUTO_TEST_CASE(imported_assembly_rejects_malformed_json_values)
 	checkImportFails("{\".code\":[{\"name\":\"STOP\",\"modifierDepth\":-1}]}");
 	checkImportFails("{\".code\":[{\"name\":\"STOP\"}],\".data\":{\"gg\":\"0102\"}}");
 	checkImportFails("{\".code\":[{\"name\":\"STOP\"}],\".data\":{\"00\":\"0102\"}}");
+	checkImportFails("{\".code\":[{\"name\":\"PUSH [tag]\",\"value\":\"4294967295\"}]}");
+	checkImportFails("{\".code\":[{\"name\":\"tag\",\"value\":\"18446744073709551617\"},{\"name\":\"JUMPDEST\"}]}");
 }
 
 BOOST_AUTO_TEST_CASE(immutables_and_its_source_maps)

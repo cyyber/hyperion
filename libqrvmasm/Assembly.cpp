@@ -238,6 +238,25 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		return u512(tagID);
 	};
 
+	auto parsePushTag = [&](std::string const& _value, std::string const& _field)
+	{
+		bigint data = parseAssemblyInteger(_value, _field);
+		solRequire(data >= 0 && data < (bigint(1) << VMWordBits), AssemblyImportException, "Tag value out of bounds.");
+		if (data < std::numeric_limits<unsigned>::max())
+			return updateUsedTags(data);
+
+		bigint const subAssembly = data >> 64;
+		bigint const tag = data & ((bigint(1) << 64) - 1);
+		solRequire(
+			subAssembly > 0 &&
+			subAssembly <= bigint(std::numeric_limits<size_t>::max()) + 1 &&
+			tag < std::numeric_limits<unsigned>::max(),
+			AssemblyImportException,
+			"Tag value out of bounds."
+		);
+		return u512(data);
+	};
+
 	auto storeImmutableHash = [&](std::string const& _immutableName) -> h256
 	{
 		h256 hash(util::keccak256(_immutableName));
@@ -319,7 +338,7 @@ AssemblyItem Assembly::createAssemblyItemFromJSON(Json::Value const& _json, std:
 		else if (name == "PUSH [tag]")
 		{
 			requireValueDefinedForInstruction(name, value);
-			result = {AssemblyItemType::PushTag, updateUsedTags(parseAssemblyInteger(value, "Member 'value' for instruction '" + name + "'"))};
+			result = {AssemblyItemType::PushTag, parsePushTag(value, "Member 'value' for instruction '" + name + "'")};
 		}
 		else if (name == "PUSH [$]")
 		{
