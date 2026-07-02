@@ -43,6 +43,22 @@ namespace hyperion::yul
 
 using SourceLocation = langutil::SourceLocation;
 
+namespace
+{
+
+bool isValidHexValue(std::string const& _value)
+{
+	return _value.size() % 2 == 0 && _value.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos;
+}
+
+std::string decodeHexValue(std::string const& _value)
+{
+	yulAssert(isValidHexValue(_value), "Literal hexValue must be an even-length hexadecimal string.");
+	return util::asString(util::fromHex(_value));
+}
+
+}
+
 SourceLocation const AsmJsonImporter::createSourceLocation(Json::Value const& _node)
 {
 	return hyperion::langutil::parseSourceLocation(stringMember(_node, "src"), m_sourceNames);
@@ -167,7 +183,7 @@ Literal AsmJsonImporter::createLiteral(Json::Value const& _node)
 	std::string kind = stringMember(_node, "kind");
 
 	if (_node.isMember("hexValue"))
-		lit.value = YulString{util::asString(util::fromHex(stringMember(_node, "hexValue")))};
+		lit.value = YulString{decodeHexValue(stringMember(_node, "hexValue"))};
 	else
 		lit.value = YulString{stringMember(_node, "value")};
 

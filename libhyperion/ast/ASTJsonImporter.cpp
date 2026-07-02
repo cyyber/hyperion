@@ -42,6 +42,22 @@ namespace hyperion::frontend
 
 using SourceLocation = langutil::SourceLocation;
 
+namespace
+{
+
+bool isValidHexValue(std::string const& _value)
+{
+	return _value.size() % 2 == 0 && _value.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos;
+}
+
+std::string decodeHexValue(std::string const& _value)
+{
+	astAssert(isValidHexValue(_value), "Literal hexValue must be an even-length hexadecimal string.");
+	return util::asString(util::fromHex(_value));
+}
+
+}
+
 template<class T>
 ASTPointer<T> ASTJsonImporter::nullOrCast(Json::Value const& _json)
 {
@@ -1079,7 +1095,7 @@ ASTPointer<ASTNode> ASTJsonImporter::createLiteral(Json::Value const&  _node)
 	astAssert(valueValue.isString() || hexValue.isString(), "Literal-value is unset.");
 
 	ASTPointer<ASTString> value = hexValue.isString() ?
-		std::make_shared<ASTString>(util::asString(util::fromHex(hexValue.asString()))) :
+		std::make_shared<ASTString>(decodeHexValue(hexValue.asString())) :
 		std::make_shared<ASTString>(valueValue.asString());
 
 	return createASTNode<Literal>(
@@ -1178,7 +1194,12 @@ Token ASTJsonImporter::literalTokenKind(Json::Value const& _node)
 	else if (kind.asString() == "bool")
 	{
 		astAssert(member(_node, "value").isString(), "Boolean literal value must be a string.");
-		tok = (member(_node, "value").asString() == "true") ? Token::TrueLiteral : Token::FalseLiteral;
+		std::string boolValue = member(_node, "value").asString();
+		astAssert(boolValue == "true" || boolValue == "false", "Boolean literal value must be \"true\" or \"false\".");
+		Json::Value const hexValue = member(_node, "hexValue");
+		if (hexValue.isString())
+			astAssert(decodeHexValue(hexValue.asString()) == boolValue, "Boolean literal hexValue does not match value.");
+		tok = (boolValue == "true") ? Token::TrueLiteral : Token::FalseLiteral;
 	}
 	else
 		astAssert(false, "Unknown kind of literalString");

@@ -131,6 +131,11 @@ bytes parseAssemblyHexBytes(std::string const& _value, std::string const& _field
 
 h256 parseAssemblyDataHash(std::string const& _value)
 {
+	solRequire(
+		_value.size() == h256::size * 2 && isHexDigits(_value),
+		AssemblyImportException,
+		"The key '" + _value + "' inside '.data' is not a 32-byte hexadecimal string."
+	);
 	bytes decoded = parseAssemblyHexBytes(_value, "The key '" + _value + "' inside '.data'", false);
 	solRequire(
 		decoded.size() == h256::size,
@@ -700,7 +705,11 @@ std::pair<std::shared_ptr<Assembly>, std::vector<std::string>> Assembly::fromJSO
 				auto [subAssembly, emptySourceList] = Assembly::fromJSON(dataItem, _level == 0 ? parsedSourceList : _sourceList, _level + 1);
 				hypAssert(subAssembly);
 				hypAssert(emptySourceList.empty());
-				hypAssert(subAssemblies.count(index) == 0);
+				solRequire(
+					subAssemblies.count(index) == 0,
+					AssemblyImportException,
+					"The key '" + dataItemID + "' inside '.data' duplicates an existing subassembly index."
+				);
 				subAssemblies[index] = subAssembly;
 			}
 			else
