@@ -30,6 +30,7 @@
 #include <libhyputil/Assertions.h>
 #include <optional>
 #include <iostream>
+#include <limits>
 #include <sstream>
 
 namespace hyperion::qrvmasm
@@ -175,7 +176,18 @@ public:
 	size_t bytesRequired(size_t _addressLength, Precision _precision = Precision::Precise) const;
 	size_t arguments() const;
 	size_t returnValues() const;
-	size_t deposit() const { return returnValues() - arguments(); }
+	int deposit() const
+	{
+		size_t const args = arguments();
+		size_t const returns = returnValues();
+		assertThrow(
+			args <= static_cast<size_t>(std::numeric_limits<int>::max()) &&
+			returns <= static_cast<size_t>(std::numeric_limits<int>::max()),
+			InvalidDeposit,
+			"Stack effect too large."
+		);
+		return static_cast<int>(returns) - static_cast<int>(args);
+	}
 
 	/// @returns true if the assembly item can be used in a functional context.
 	bool canBeFunctional() const;
@@ -189,6 +201,7 @@ public:
 	std::string getJumpTypeAsString() const;
 
 	void setPushedValue(u512 const& _value) const { m_pushedValue = std::make_shared<u512>(_value); }
+	void clearPushedValue() const { m_pushedValue.reset(); }
 	u512 const* pushedValue() const { return m_pushedValue.get(); }
 
 	std::string toAssemblyText(Assembly const& _assembly) const;
@@ -196,12 +209,14 @@ public:
 	size_t m_modifierDepth = 0;
 
 	void setImmutableOccurrences(size_t _n) const { m_immutableOccurrences = _n; }
+	void clearImmutableOccurrences() const { m_immutableOccurrences.reset(); }
+	std::optional<size_t> immutableOccurrences() const { return m_immutableOccurrences; }
 
 private:
 	size_t opcodeCount() const noexcept;
 
 	AssemblyItemType m_type;
-	Instruction m_instruction; ///< Only valid if m_type == Operation
+	Instruction m_instruction = Instruction::STOP; ///< Only valid if m_type == Operation
 	std::shared_ptr<u512> m_data; ///< Only valid if m_type != Operation
 	/// If m_type == VerbatimBytecode, this holds number of arguments, number of
 	/// return variables and verbatim bytecode.

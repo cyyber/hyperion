@@ -430,7 +430,7 @@ BOOST_AUTO_TEST_CASE(basic_compilation)
 		"dataOffset(sub_0)\n  0x00\n  codecopy\n  0x00\n  return\nstop\n\nsub_0: assembly {\n        "
 		"/* \"fileA\":0:14  contract A { } */\n      mstore(0x80, 0x0100)\n      "
 		"0x00\n      "
-		"dup1\n      revert\n\n    auxdata: 0xa26469706673582212"
+		"dup1\n      revert\n    stop\n\n    auxdata: 0xa26469706673582212"
 	) == 0);
 	BOOST_CHECK(contract["qrvm"]["gasEstimates"].isObject());
 	BOOST_CHECK_EQUAL(contract["qrvm"]["gasEstimates"].size(), 1);

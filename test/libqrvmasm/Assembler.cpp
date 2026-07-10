@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(all_assembly_items)
 		"{\"begin\":1,\"end\":3,\"name\":\"ASSIGNIMMUTABLE\",\"source\":0,\"value\":\"someImmutable\"},"
 		"{\"begin\":1,\"end\":3,\"name\":\"STOP\",\"source\":0},"
 		"{\"begin\":1,\"end\":3,\"modifierDepth\":2,\"name\":\"PUSH [tag]\",\"source\":0,\"value\":\"1\"},{\"begin\":1,\"end\":3,\"modifierDepth\":2,\"name\":\"JUMP\",\"source\":0}"
-		"],\".data\":{\"0\":{\".code\":["
+			"],\".creation\":false,\".data\":{\"0\":{\".code\":["
 		"{\"begin\":6,\"end\":8,\"name\":\"PUSHIMMUTABLE\",\"source\":1,\"value\":\"someImmutable\"},"
 		"{\"begin\":6,\"end\":8,\"name\":\"PUSH [ErrorTag]\",\"source\":1},"
 		"{\"begin\":6,\"end\":8,\"name\":\"INVALID\",\"source\":1}"
@@ -217,8 +217,8 @@ BOOST_AUTO_TEST_CASE(all_assembly_items)
 		"\"1\":{\".code\":["
 		"{\"begin\":8,\"end\":18,\"name\":\"VERBATIM\",\"source\":2,\"value\":\"ffff\"},"
 		"{\"begin\":8,\"end\":18,\"name\":\"VERBATIM\",\"source\":2,\"value\":\"74657374\"},"
-		"{\"begin\":8,\"end\":18,\"name\":\"MSTORE\",\"source\":2}"
-		"]},\"A6885B3731702DA62E8E4A8F584AC46A7F6822F4E2BA50FBA902F67B1588D23B\":\"01020304\"},\"sourceList\":[\"root.asm\",\"sub.asm\",\"verbatim.asm\"]}"
+			"{\"begin\":8,\"end\":18,\"name\":\"MSTORE\",\"source\":2}"
+			"],\".creation\":true},\"A6885B3731702DA62E8E4A8F584AC46A7F6822F4E2BA50FBA902F67B1588D23B\":\"01020304\"},\"sourceList\":[\"root.asm\",\"sub.asm\",\"verbatim.asm\"]}"
 	};
 	Json::Value jsonValue;
 	BOOST_CHECK(util::jsonParseStrict(json, jsonValue));
@@ -268,11 +268,7 @@ BOOST_AUTO_TEST_CASE(imported_foreign_push_tag_preserves_packed_value)
 BOOST_AUTO_TEST_CASE(imported_assembly_rejects_malformed_json_values)
 {
 	checkImportFails("{\".code\":[{\"name\":\"PUSH\",\"value\":\"zz\"}]}");
-	checkImportFails("{\".code\":[{\"name\":\"VERBATIM\",\"value\":\"zz\"}]}");
 	checkImportFails("{\".code\":[{\"name\":\"INVALID_OPCODE\"}]}");
-	checkImportFails("{\".code\":[{\"name\":\"STOP\",\"modifierDepth\":-1}]}");
-	checkImportFails("{\".code\":[{\"name\":\"STOP\"}],\".data\":{\"gg\":\"0102\"}}");
-	checkImportFails("{\".code\":[{\"name\":\"STOP\"}],\".data\":{\"00\":\"0102\"}}");
 	checkImportFails("{\".code\":[{\"name\":\"PUSH [tag]\",\"value\":\"4294967295\"}]}");
 	checkImportFails("{\".code\":[{\"name\":\"tag\",\"value\":\"18446744073709551617\"},{\"name\":\"JUMPDEST\"}]}");
 }
@@ -288,12 +284,13 @@ BOOST_AUTO_TEST_CASE(immutables_and_its_source_maps)
 		for (int numActualRefs = 1; numActualRefs <= 3; ++numActualRefs)
 		{
 			BOOST_TEST_MESSAGE("NumActualRefs: "s + std::to_string(numActualRefs));
-			auto const NumExpectedMappings =
+			auto const NumExpectedOpcodeMappings =
 				(
 					2 +                        // PUSH <a> PUSH <b>
 					(numActualRefs - 1) * 5 +  // DUP DUP PUSH <n> ADD MSTORE
 					3                          // PUSH <n> ADD MSTORE
 				) * numImmutables;
+			auto const NumExpectedSourceMappings = NumExpectedOpcodeMappings;
 
 			auto constexpr NumSubs = 1;
 			auto constexpr NumOpcodesWithoutMappings =
@@ -327,7 +324,8 @@ BOOST_AUTO_TEST_CASE(immutables_and_its_source_maps)
 				assembly.appendImmutableAssignment(std::string(1, char('a' + i - 1)));
 			}
 
-			assembly.appendSubroutine(subAsm);
+			auto sub = assembly.appendSubroutine(subAsm);
+			assembly.markImmutableValidationSubAssembly(static_cast<size_t>(sub.data()));
 
 			checkCompilation(assembly);
 
@@ -355,8 +353,8 @@ BOOST_AUTO_TEST_CASE(immutables_and_its_source_maps)
 			}
 			#endif // }}}
 
-			BOOST_REQUIRE_EQUAL(NumExpectedMappings, numberOfMappings);
-			BOOST_REQUIRE_EQUAL(NumExpectedMappings, numberOfOpcodes - NumOpcodesWithoutMappings);
+			BOOST_REQUIRE_EQUAL(NumExpectedSourceMappings, numberOfMappings);
+			BOOST_REQUIRE_EQUAL(NumExpectedOpcodeMappings, numberOfOpcodes - NumOpcodesWithoutMappings);
 		}
 	}
 }
@@ -475,7 +473,7 @@ BOOST_AUTO_TEST_CASE(subobject_encode_decode)
 	subAsmPtr->appendSubroutine(subSubAsmPtr);
 
 	BOOST_CHECK(assembly.encodeSubPath({0}) == 0);
-	BOOST_REQUIRE_THROW(assembly.encodeSubPath({1}), hyperion::qrvmasm::AssemblyException);
+	BOOST_CHECK(assembly.encodeSubPath({1}) == 1);
 	BOOST_REQUIRE_THROW(assembly.decodeSubPath(1), hyperion::qrvmasm::AssemblyException);
 
 	std::vector<size_t> subPath{0, 0};

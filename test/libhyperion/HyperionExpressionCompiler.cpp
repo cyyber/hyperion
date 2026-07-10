@@ -148,7 +148,8 @@ bytes compileFirstExpression(
 			context.resetVisitedNodes(contract);
 			context.setMostDerivedContract(*contract);
 			context.setArithmetic(Arithmetic::Wrapping);
-			size_t parametersSize = _localVariables.size(); // assume they are all one slot on the stack
+			size_t const initialStackHeight = _localVariables.size(); // assume they are all one slot on the stack
+			size_t parametersSize = initialStackHeight;
 			context.adjustStackOffset(static_cast<int>(parametersSize));
 			for (std::vector<std::string> const& variable: _localVariables)
 				context.addVariable(
@@ -172,7 +173,7 @@ bytes compileFirstExpression(
 			BOOST_REQUIRE(context.appendYulUtilityFunctionsRan());
 
 			BOOST_REQUIRE(context.assemblyPtr());
-			LinkerObject const& object = context.assemblyPtr()->assemble();
+			LinkerObject const& object = context.assemblyPtr()->assembleWithInitialStackHeight(initialStackHeight);
 			BOOST_REQUIRE(object.immutableReferences.empty());
 			bytes instructions = object.bytecode;
 			// debug

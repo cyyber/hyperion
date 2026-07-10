@@ -1792,7 +1792,7 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 		}
 		else if (member == "codehash")
 			define(_memberAccess) <<
-				m_utils.shiftLeftFunction(VMWordBits - 256) <<
+				m_utils.leftAlignHashOpcodeResultFunction() <<
 				"(" <<
 				"extcodehash(" <<
 				expressionAsType(_memberAccess.expression(), *TypeProvider::address()) <<

@@ -187,6 +187,7 @@ size_t ContractCompiler::packIntoContractCreator(ContractDefinition const& _cont
 	m_context << deployRoutine;
 
 	hypAssert(m_context.runtimeSub() != std::numeric_limits<size_t>::max(), "Runtime sub not registered");
+	m_context.assemblyPtr()->markImmutableValidationSubAssembly(m_context.runtimeSub());
 
 	ContractType contractType(_contract);
 	auto const& immutables = contractType.immutableVariables();
@@ -231,6 +232,7 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	CompilerContext::LocationSetter locationSetter(m_context, _contract);
 
 	hypAssert(m_context.runtimeSub() != std::numeric_limits<size_t>::max(), "Runtime sub not registered");
+	m_context.assemblyPtr()->markDeployTimeAddressSubAssembly(m_context.runtimeSub());
 	m_context.pushSubroutineSize(m_context.runtimeSub());
 	m_context.pushSubroutineOffset(m_context.runtimeSub());
 	// This code replaces the address added by appendDeployTimeAddress().

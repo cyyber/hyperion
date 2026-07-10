@@ -1837,8 +1837,14 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 				*TypeProvider::address(),
 				true
 			);
-			m_context << Instruction::EXTCODEHASH;
+			m_context << Instruction::EXTCODEHASH << Instruction::DUP1;
 			utils().leftShiftNumberOnStack(VMWordBits - 256);
+			m_context
+				<< Instruction::SWAP1
+				<< ((u512(1) << (VMWordBits - 256)) - 1)
+				<< Instruction::NOT
+				<< Instruction::AND
+				<< Instruction::OR;
 		}
 		else if ((std::set<std::string>{"send", "transfer"}).count(member))
 		{

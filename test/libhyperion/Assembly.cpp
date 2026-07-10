@@ -91,7 +91,7 @@ qrvmasm::AssemblyItems compileContract(std::shared_ptr<CharStream> _sourceCode)
 			);
 			compiler.compileContract(*contract, std::map<ContractDefinition const*, std::shared_ptr<Compiler const>>{}, bytes());
 
-			return compiler.runtimeAssembly().items();
+			return static_cast<qrvmasm::Assembly const&>(compiler.runtimeAssembly()).items();
 		}
 	BOOST_FAIL("No contract found in source.");
 	return AssemblyItems();

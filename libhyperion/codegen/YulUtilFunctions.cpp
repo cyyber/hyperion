@@ -412,6 +412,23 @@ std::string YulUtilFunctions::shiftRightSignedFunctionDynamic()
 	});
 }
 
+std::string YulUtilFunctions::leftAlignHashOpcodeResultFunction()
+{
+	std::string const functionName = "left_align_hash_opcode_result";
+	return m_functionCollector.createFunction(functionName, [&]() {
+		return
+			Whiskers(R"(
+			function <functionName>(value) -> aligned {
+				aligned := or(and(value, not(<lowerMask>)), shl(<shiftBits>, value))
+			}
+			)")
+			("functionName", functionName)
+			("lowerMask", formatNumber((u512(1) << (VMWordBits - 256)) - 1))
+			("shiftBits", std::to_string(VMWordBits - 256))
+			.render();
+	});
+}
+
 
 std::string YulUtilFunctions::typedShiftLeftFunction(Type const& _type, Type const& _amountType)
 {

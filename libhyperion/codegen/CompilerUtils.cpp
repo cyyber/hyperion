@@ -730,9 +730,13 @@ void CompilerUtils::pushCombinedFunctionEntryLabel(Declaration const& _function,
 	{
 		leftShiftNumberOnStack(32);
 		if (_runtimeOnly)
+		{
+			m_context.pushSubroutineOffset(m_context.runtimeSub());
 			m_context <<
 				rtc->functionEntryLabel(_function).toSubAssemblyTag(m_context.runtimeSub()) <<
+				Instruction::SUB <<
 				Instruction::OR;
+		}
 	}
 }
 
@@ -1319,10 +1323,11 @@ void CompilerUtils::pushZeroValue(Type const& _type)
 			if (CompilerContext* runCon = m_context.runtimeContext())
 			{
 				leftShiftNumberOnStack(32);
+				m_context.pushSubroutineOffset(m_context.runtimeSub());
 				m_context << runCon->lowLevelFunctionTag("$invalidFunction", 0, 0, [](CompilerContext& _context) {
 					_context.appendPanic(util::PanicCode::InvalidInternalFunction);
 				}).toSubAssemblyTag(m_context.runtimeSub());
-				m_context << Instruction::OR;
+				m_context << Instruction::SUB << Instruction::OR;
 			}
 			return;
 		}
@@ -1507,7 +1512,7 @@ void CompilerUtils::copyContractCodeToMemory(ContractDefinition const& contract,
 				_context.compiledContract(contract) :
 				_context.compiledContractRuntime(contract);
 			// pushes size
-			auto subroutine = _context.addSubroutine(assembly);
+			auto subroutine = _context.addSubroutine(assembly->clone());
 			_context << Instruction::DUP1 << subroutine;
 			_context << Instruction::DUP4 << Instruction::CODECOPY;
 			_context << Instruction::ADD;

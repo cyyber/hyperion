@@ -28,6 +28,7 @@
 #include <libqrvmasm/SemanticInformation.h>
 
 #include <functional>
+#include <limits>
 #include <set>
 
 using namespace hyperion;
@@ -89,7 +90,22 @@ bool BlockDeduplicator::deduplicate()
 			if (it == blocksSeen.end())
 				blocksSeen.insert(i);
 			else
-				m_replacedTags[m_items.at(i).data()] = m_items.at(*it).data();
+			{
+				u512 const replacedTag = m_items.at(i).data();
+				u512 const replacementTag = m_items.at(*it).data();
+				auto tagIsProtected = [&](u512 const& _tag)
+				{
+					return
+						_tag <= std::numeric_limits<size_t>::max() &&
+						m_protectedTags->count(static_cast<size_t>(_tag));
+				};
+				if (
+					m_protectedTags &&
+					(tagIsProtected(replacedTag) || tagIsProtected(replacementTag))
+				)
+					continue;
+				m_replacedTags[replacedTag] = replacementTag;
+			}
 		}
 
 		if (!applyTagReplacement(m_items, m_replacedTags))

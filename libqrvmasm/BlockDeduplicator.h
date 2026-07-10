@@ -32,6 +32,7 @@
 #include <vector>
 #include <functional>
 #include <map>
+#include <set>
 
 namespace hyperion::qrvmasm
 {
@@ -46,7 +47,10 @@ using AssemblyItems = std::vector<AssemblyItem>;
 class BlockDeduplicator
 {
 public:
-	explicit BlockDeduplicator(AssemblyItems& _items): m_items(_items) {}
+	explicit BlockDeduplicator(AssemblyItems& _items, std::set<size_t> const* _protectedTags = nullptr):
+		m_protectedTags(_protectedTags),
+		m_items(_items)
+	{}
 	/// @returns true if something was changed
 	bool deduplicate();
 	/// @returns the tags that were replaced.
@@ -92,6 +96,7 @@ private:
 	};
 
 	std::map<u512, u512> m_replacedTags;
+	std::set<size_t> const* m_protectedTags = nullptr;
 	AssemblyItems& m_items;
 };
 

@@ -43,6 +43,7 @@
 #include <libhyperion/analysis/TypeChecker.h>
 #include <libhyperion/analysis/ViewPureChecker.h>
 #include <libhyperion/analysis/ImmutableValidator.h>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <libhyperion/ast/AST.h>
 #include <libhyperion/ast/TypeProvider.h>
@@ -802,7 +803,7 @@ qrvmasm::AssemblyItems const* CompilerStack::assemblyItems(std::string const& _c
 		hypThrow(CompilerError, "Compilation was not successful.");
 
 	Contract const& currentContract = contract(_contractName);
-	return currentContract.qrvmAssembly ? &currentContract.qrvmAssembly->items() : nullptr;
+	return currentContract.qrvmAssembly ? &static_cast<qrvmasm::Assembly const&>(*currentContract.qrvmAssembly).items() : nullptr;
 }
 
 qrvmasm::AssemblyItems const* CompilerStack::runtimeAssemblyItems(std::string const& _contractName) const
@@ -811,7 +812,7 @@ qrvmasm::AssemblyItems const* CompilerStack::runtimeAssemblyItems(std::string co
 		hypThrow(CompilerError, "Compilation was not successful.");
 
 	Contract const& currentContract = contract(_contractName);
-	return currentContract.qrvmRuntimeAssembly ? &currentContract.qrvmRuntimeAssembly->items() : nullptr;
+	return currentContract.qrvmRuntimeAssembly ? &static_cast<qrvmasm::Assembly const&>(*currentContract.qrvmRuntimeAssembly).items() : nullptr;
 }
 
 Json::Value CompilerStack::generatedSources(std::string const& _contractName, bool _runtime) const
@@ -1370,7 +1371,7 @@ void CompilerStack::assembleYul(
 	try
 	{
 		// Assemble runtime object.
-		compiledContract.runtimeObject = compiledContract.qrvmRuntimeAssembly->assemble();
+		compiledContract.runtimeObject = compiledContract.qrvmRuntimeAssembly->assembleDeployTimeAddressTemplate();
 	}
 	catch (qrvmasm::AssemblyException const&)
 	{
@@ -1442,9 +1443,9 @@ void CompilerStack::compileContract(
 		// Run optimiser and compile the contract.
 		compiler->compileContract(_contract, _otherCompilers, cborEncodedMetadata);
 	}
-	catch(qrvmasm::OptimizerException const&)
+	catch(qrvmasm::OptimizerException const& _exception)
 	{
-		hypAssert(false, "Optimizer exception during compilation");
+		hypAssert(false, "Optimizer exception during compilation: " + boost::diagnostic_information(_exception));
 	}
 
 	_otherCompilers[compiledContract.contract] = compiler;

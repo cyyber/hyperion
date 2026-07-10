@@ -26,8 +26,35 @@
 
 #include <libhyputil/VMConstants.h>
 
+#include <limits>
+
 using namespace hyperion;
 using namespace hyperion::qrvmasm;
+
+namespace
+{
+
+void applyStackDeposit(std::vector<u512>& _stack, int _deposit)
+{
+	if (_deposit < 0)
+	{
+		size_t const removed = static_cast<size_t>(-static_cast<long long>(_deposit));
+		assertThrow(_stack.size() >= removed, OptimizerException, "Invalid stack effect generated.");
+		_stack.resize(_stack.size() - removed);
+	}
+	else
+	{
+		size_t const added = static_cast<size_t>(_deposit);
+		assertThrow(
+			added <= std::numeric_limits<size_t>::max() - _stack.size(),
+			OptimizerException,
+			"Invalid stack effect generated."
+		);
+		_stack.resize(_stack.size() + added);
+	}
+}
+
+}
 
 unsigned ConstantOptimisationMethod::optimiseConstants(
 	bool _isCreation,
@@ -289,7 +316,7 @@ bool ComputeMethod::checkRepresentation(u512 const& _value, AssemblyItems const&
 			default:
 				return false;
 			}
-			stack.resize(stack.size() + item.deposit());
+			applyStackDeposit(stack, item.deposit());
 			break;
 		}
 		case Push:
