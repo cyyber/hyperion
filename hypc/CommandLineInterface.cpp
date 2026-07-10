@@ -628,15 +628,22 @@ std::map<std::string, Json::Value> CommandLineInterface::parseAstFromInput()
 		Json::Value ast;
 		astAssert(jsonParseStrict(sourceCode, ast), "Input file could not be parsed to JSON");
 		astAssert(ast.isMember("sources"), "Invalid Format for import-JSON: Must have 'sources'-object");
+		Json::Value const& sources = ast["sources"];
+		astAssert(sources.isObject(), "Invalid Format for import-JSON: 'sources' must be an object");
 
-		for (auto& src: ast["sources"].getMemberNames())
+		for (auto& src: sources.getMemberNames())
 		{
-			std::string astKey = ast["sources"][src].isMember("ast") ? "ast" : "AST";
+			Json::Value& source = ast["sources"][src];
+			astAssert(source.isObject(), "Invalid Format for import-JSON: source entry must be an object");
+			std::string astKey = source.isMember("ast") ? "ast" : "AST";
 
-			astAssert(ast["sources"][src].isMember(astKey), "astkey is not member");
-			astAssert(ast["sources"][src][astKey]["nodeType"].asString() == "SourceUnit",  "Top-level node should be a 'SourceUnit'");
+			astAssert(source.isMember(astKey), "astkey is not member");
+			astAssert(source[astKey].isObject(), "astkey must be an object");
+			astAssert(source[astKey].isMember("nodeType"), "Top-level node should have a 'nodeType'");
+			astAssert(source[astKey]["nodeType"].isString(), "Top-level node 'nodeType' should be a string");
+			astAssert(source[astKey]["nodeType"].asString() == "SourceUnit",  "Top-level node should be a 'SourceUnit'");
 			astAssert(sourceJsons.count(src) == 0, "All sources must have unique names");
-			sourceJsons.emplace(src, std::move(ast["sources"][src][astKey]));
+			sourceJsons.emplace(src, std::move(source[astKey]));
 			tmpSources[src] = util::jsonCompactPrint(ast);
 		}
 	}
@@ -766,9 +773,19 @@ void CommandLineInterface::processInput()
 		break;
 	case InputMode::QRVMAssemblerJSON:
 		assembleFromQRVMAssemblyJSON();
-		handleCombinedJSON();
-		handleBytecode(m_assemblyStack->contractNames().front());
-		handleQRVMAssembly(m_assemblyStack->contractNames().front());
+		// Output formatting can still fail on imported assembly that assembled successfully but
+		// violates a text-format constraint (e.g. a tag value >= 0x10000 in --asm). Relay such
+		// failures as a graceful command-line error instead of letting them escape as uncaught.
+		try
+		{
+			handleCombinedJSON();
+			handleBytecode(m_assemblyStack->contractNames().front());
+			handleQRVMAssembly(m_assemblyStack->contractNames().front());
+		}
+		catch (qrvmasm::AssemblyException const& _exception)
+		{
+			hypThrow(CommandLineExecutionError, "Assembly Output Error: "s + _exception.what());
+		}
 		break;
 	}
 }
@@ -799,15 +816,18 @@ void CommandLineInterface::assembleFromQRVMAssemblyJSON()
 	try
 	{
 		qrvmAssemblyStack->parseAndAnalyze(sourceUnitName, source);
+		if (m_options.output.debugInfoSelection.has_value())
+			qrvmAssemblyStack->selectDebugInfo(m_options.output.debugInfoSelection.value());
+		qrvmAssemblyStack->assemble();
 	}
-	catch (qrvmasm::AssemblyImportException const& _exception)
+	catch (qrvmasm::AssemblyException const& _exception)
 	{
 		hypThrow(CommandLineExecutionError, "Assembly Import Error: "s + _exception.what());
 	}
-
-	if (m_options.output.debugInfoSelection.has_value())
-		qrvmAssemblyStack->selectDebugInfo(m_options.output.debugInfoSelection.value());
-	qrvmAssemblyStack->assemble();
+	catch (std::exception const& _exception)
+	{
+		hypThrow(CommandLineExecutionError, "Assembly Import Error: "s + _exception.what());
+	}
 
 	m_qrvmAssemblyStack = std::move(qrvmAssemblyStack);
 	m_assemblyStack = m_qrvmAssemblyStack.get();
@@ -881,10 +901,13 @@ void CommandLineInterface::compile()
 					astAssert(false, "Analysis of the AST failed");
 				}
 			}
-			catch (Exception const& _exc)
+			catch (std::exception const& _exc)
 			{
-				// FIXME: AST import is missing proper validations. This hack catches failing
-				// assertions and presents them as if they were compiler errors.
+				// AST import validation is best-effort: importer/analysis helpers may throw
+				// hyperion Exceptions (astAssert/yulAssert) or std/boost/Json exceptions (e.g.
+				// bigint parse failures on malformed literals). Catch std::exception (the base
+				// of hyperion::util::Exception too) so any malformed --import-ast input is
+				// surfaced as a graceful compiler error instead of an uncaught-exception abort.
 				hypThrow(CommandLineExecutionError, "Failed to import AST: "s + _exc.what());
 			}
 		}
@@ -1084,11 +1107,11 @@ void CommandLineInterface::link()
 
 	// Map from how the libraries will be named inside the bytecode to their addresses.
 	std::map<std::string, h512> librariesReplacements;
-	int const placeholderSize = 2 * AddressBytes; // AddressBytes encoded as hex characters
+	int const placeholderSize = 2 * AddressBytes; // AddressBytes-wide address encoded as hex characters.
 	for (auto const& library: m_options.linker.libraries)
 	{
 		std::string const& name = library.first;
-		// Library placeholders are AddressBytes hex digits that start and end with '__'.
+		// Library placeholders are 2 * AddressBytes hex characters that start and end with '__'.
 		// This leaves placeholderSize - 4 characters for the library identifier. The identifier used to
 		// be just the cropped or '_'-padded library name, but this changed to
 		// the cropped hex representation of the hash of the library name.

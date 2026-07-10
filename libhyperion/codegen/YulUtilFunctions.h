@@ -95,6 +95,7 @@ public:
 	std::string shiftRightFunction(size_t _numBits);
 	std::string shiftRightFunctionDynamic();
 	std::string shiftRightSignedFunctionDynamic();
+	std::string leftAlignHashOpcodeResultFunction();
 
 	/// @returns the name of a function that performs a left shift and subsequent cleanup
 	/// and, if needed, prior cleanup.

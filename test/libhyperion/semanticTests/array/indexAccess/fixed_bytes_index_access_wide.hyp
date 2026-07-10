@@ -1,0 +1,19 @@
+contract C {
+    function literal() public pure returns (bytes1, bytes1, bytes1, bytes1) {
+        bytes64 x = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        return (x[0], x[31], x[32], x[63]);
+    }
+
+    function at(uint256 index) public pure returns (bytes1) {
+        bytes64 x = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        return x[index];
+    }
+}
+// ====
+// compileViaYul: also
+// ----
+// literal() -> "A", "f", "g", "/"
+// at(uint256): 31 -> "f"
+// at(uint256): 32 -> "g"
+// at(uint256): 63 -> "/"
+// at(uint256): 64 -> FAILURE, hex"4e487b71", 0x32

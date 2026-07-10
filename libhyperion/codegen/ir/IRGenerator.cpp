@@ -982,7 +982,7 @@ std::string IRGenerator::dispatchRoutine(ContractDefinition const& _contract)
 	Whiskers t(R"X(
 		<?+cases>if iszero(lt(calldatasize(), 4))
 		{
-			let selector := <shr224>(calldataload(0))
+			let selector := <selectorShiftRight>(calldataload(0))
 			switch selector
 			<#cases>
 			case <functionSelector>
@@ -997,7 +997,7 @@ std::string IRGenerator::dispatchRoutine(ContractDefinition const& _contract)
 		<?+receiveQuanta>if iszero(calldatasize()) { <receiveQuanta> }</+receiveQuanta>
 		<fallback>
 	)X");
-	t("shr224", m_utils.shiftRightFunction(VMWordBits - 32));
+	t("selectorShiftRight", m_utils.shiftRightFunction(VMWordBits - 32));
 	std::vector<std::map<std::string, std::string>> functions;
 	for (auto const& function: _contract.interfaceFunctions())
 	{
@@ -1043,8 +1043,7 @@ std::string IRGenerator::dispatchRoutine(ContractDefinition const& _contract)
 		{
 			hypAssert(fallback->parameters().size() == 1 && fallback->returnParameters().size() == 1, "");
 			fallbackCode += "let retval := " + m_context.enqueueFunctionForCodeGeneration(*fallback) + "(0, calldatasize())\n";
-			fallbackCode += "return(add(retval, 0x40), mload(retval))\n";
-
+			fallbackCode += "return(add(retval, " + std::to_string(VMWordBytes) + "), mload(retval))\n";
 		}
 
 		t("fallback", fallbackCode);

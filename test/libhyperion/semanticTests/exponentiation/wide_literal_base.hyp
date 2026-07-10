@@ -1,0 +1,9 @@
+contract test {
+    function powWide(uint16 e) public pure returns (uint512) {
+        return 0x010000000000000000000000000000000000000000000000000000000000000000 ** e;
+    }
+}
+// ----
+// powWide(uint16): 0 -> 1
+// powWide(uint16): 1 -> 0x010000000000000000000000000000000000000000000000000000000000000000
+// powWide(uint16): 2 -> FAILURE, hex"4e487b71", 0x11

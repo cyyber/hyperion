@@ -59,6 +59,11 @@ void DocumentHoverHandler::operator()(MessageID _id, Json::Value const& _args)
 {
 	auto const [sourceUnitName, lineColumn] = HandlerBase(*this).extractSourceUnitNameAndLineColumn(_args);
 	auto const [sourceNode, sourceOffset] = m_server.astNodeAndOffsetAtSourceLocation(sourceUnitName, lineColumn);
+	if (!sourceNode)
+	{
+		client().reply(_id, Json::nullValue);
+		return;
+	}
 
 	MarkdownBuilder markdown;
 	auto rangeToHighlight = toRange(sourceNode->location());
@@ -89,7 +94,7 @@ void DocumentHoverHandler::operator()(MessageID _id, Json::Value const& _args)
 					if (declaration && declaration->type())
 						markdown.hyperionCode(declaration->type()->toString(false));
 					if (auto const* structurallyDocumented = dynamic_cast<StructurallyDocumented const*>(declaration))
-						if (structurallyDocumented->documentation()->text())
+						if (structurallyDocumented->documentation() && structurallyDocumented->documentation()->text())
 							markdown.paragraph(*structurallyDocumented->documentation()->text());
 				}
 				break;

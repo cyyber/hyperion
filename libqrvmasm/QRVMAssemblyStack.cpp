@@ -57,7 +57,7 @@ void QRVMAssemblyStack::assemble()
 		m_qrvmRuntimeAssembly = std::make_shared<qrvmasm::Assembly>(m_qrvmAssembly->sub(0));
 		hypAssert(m_qrvmRuntimeAssembly && !m_qrvmRuntimeAssembly->isCreation());
 		m_runtimeSourceMapping = AssemblyItem::computeSourceMapping(m_qrvmRuntimeAssembly->items(), sourceIndices());
-		m_runtimeObject = m_qrvmRuntimeAssembly->assemble();
+		m_runtimeObject = m_qrvmRuntimeAssembly->assembleDeployTimeAddressTemplate();
 	}
 }
 

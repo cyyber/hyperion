@@ -309,7 +309,9 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 		{
 			result.create_address = message.recipient;
 			destination.code = qrvmc::bytes(result.output_data, result.output_data + result.output_size);
-			destination.codehash = convertToQRVMC(keccak256({result.output_data, result.output_size}));
+			destination.codehash = convertToQRVMC(
+				keccak256({result.output_data, result.output_size})
+			);
 		}
 	}
 
@@ -321,7 +323,10 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 
 qrvmc::bytes64 QRVMHost::get_block_hash(int64_t _number) const noexcept
 {
-	return convertToQRVMC(u256("0x3737373737373737373737373737373737373737373737373737373737373737") + _number);
+	int64_t const currentBlock = tx_context.block_number;
+	if (_number < 0 || _number >= currentBlock || _number < currentBlock - 256)
+		return {};
+	return convertUintToQRVMC(u256("0x3737373737373737373737373737373737373737373737373737373737373737") + _number);
 }
 
 h512 QRVMHost::convertFromQRVMC(qrvmc::address const& _addr)
@@ -364,7 +369,7 @@ u256 QRVMHost::convertUintFromQRVMC(qrvmc::bytes64 const& _data)
 
 qrvmc::bytes64 QRVMHost::convertUintToQRVMC(u256 const& _value)
 {
-	// Same layout as convertToQRVMC(h256)
+	// uint256 is right-aligned: place in lower 32 bytes (bytes 32-63).
 	qrvmc::bytes64 d{};
 	bytes be = toBigEndian(_value);
 	for (unsigned i = 0; i < 32; ++i)

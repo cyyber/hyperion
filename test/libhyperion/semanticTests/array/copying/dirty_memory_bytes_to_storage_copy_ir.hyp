@@ -1,10 +1,10 @@
 contract C {
     bytes x;
-    function f() public returns (uint r) {
+    function f() public returns (uint512 r) {
         bytes memory m = "tmp";
         assembly {
             mstore(m, 8)
-            mstore(add(m, 32), "deadbeef15dead")
+            mstore(add(m, 64), "deadbeef15dead")
         }
         x = m;
         assembly {
@@ -15,4 +15,4 @@ contract C {
 // ====
 // compileViaYul: true
 // ----
-// f() -> 0
+// f() -> 0x64656164626565660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010

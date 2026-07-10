@@ -34,6 +34,7 @@
 #include <liblangutil/SourceReferenceFormatter.h>
 
 #include <libqrvmasm/Assembly.h>
+#include <libqrvmasm/Instruction.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/test/unit_test.hpp>
@@ -276,6 +277,33 @@ BOOST_AUTO_TEST_SUITE(Analysis) // {{{
 BOOST_AUTO_TEST_CASE(string_literals)
 {
 	BOOST_CHECK(successAssemble("{ let x := \"12345678901234567890123456789012\" }"));
+}
+
+BOOST_AUTO_TEST_CASE(string_literal_constants_are_left_aligned)
+{
+	YulStack stack(
+		hyperion::test::CommonOptions::get().qrvmVersion(),
+		YulStack::Language::StrictAssembly,
+		OptimiserSettings::none(),
+		DebugInfoSelection::None()
+	);
+	BOOST_REQUIRE(stack.parseAndAnalyze("", "{ pop(\"abc\") }"));
+	BOOST_REQUIRE(stack.errors().empty());
+
+	MachineAssemblyObject object = stack.assemble(YulStack::Machine::QRVM);
+	BOOST_REQUIRE(object.bytecode);
+
+	bytes expected{uint8_t(qrvmasm::Instruction::PUSH64), 'a', 'b', 'c'};
+	expected.resize(1 + VMWordBytes, 0);
+	expected.push_back(uint8_t(qrvmasm::Instruction::POP));
+	expected.push_back(uint8_t(qrvmasm::Instruction::STOP));
+
+	BOOST_CHECK_EQUAL_COLLECTIONS(
+		object.bytecode->bytecode.begin(),
+		object.bytecode->bytecode.end(),
+		expected.begin(),
+		expected.end()
+	);
 }
 
 BOOST_AUTO_TEST_CASE(oversize_string_literals)

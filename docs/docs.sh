@@ -3,9 +3,7 @@
 #------------------------------------------------------------------------------
 # Bash script to build the Hyperion Sphinx documentation locally.
 #
-# The documentation for hyperion is hosted at:
-#
-#     https://docs.soliditylang.org
+# The Hyperion documentation source lives in this repository under docs/.
 #
 # ------------------------------------------------------------------------------
 # This file is part of hyperion.

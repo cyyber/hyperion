@@ -43,6 +43,8 @@ class KnownState;
 
 namespace GasCosts
 {
+	// Zond keeps the EVM gas schedule values here intentionally. These costs only feed
+	// optimizer heuristics and informational gas estimates; consensus gas is not derived here.
 	static unsigned const stackLimit = 1024;
 	static unsigned const tier0Gas = 0;
 	static unsigned const tier1Gas = 2;

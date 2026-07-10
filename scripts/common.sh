@@ -29,15 +29,15 @@ _initial_work_dir=$(pwd)
 if [[ -n ${CIRCLECI:-} ]]
 then
     export TERM="${TERM:-xterm}"
-    function printTask { echo -e "$(tput bold)$(tput setaf 2)$1$(tput setaf 7)"; }
-    function printError { >&2 echo -e "$(tput setaf 1)$1$(tput setaf 7)"; }
-    function printWarning { >&2 echo -e "$(tput setaf 11)$1$(tput setaf 7)"; }
-    function printLog { echo -e "$(tput setaf 3)$1$(tput setaf 7)"; }
+    function printTask { echo -e "$(tput bold)$(tput setaf 2)${1:-}$(tput setaf 7)"; }
+    function printError { >&2 echo -e "$(tput setaf 1)${1:-}$(tput setaf 7)"; }
+    function printWarning { >&2 echo -e "$(tput setaf 11)${1:-}$(tput setaf 7)"; }
+    function printLog { echo -e "$(tput setaf 3)${1:-}$(tput setaf 7)"; }
 else
-    function printTask { echo -e "$(tput bold)$(tput setaf 2)$1$(tput sgr0)"; }
-    function printError { >&2 echo -e "$(tput setaf 1)$1$(tput sgr0)"; }
-    function printWarning { >&2 echo -e "$(tput setaf 11)$1$(tput sgr0)"; }
-    function printLog { echo -e "$(tput setaf 3)$1$(tput sgr0)"; }
+    function printTask { echo -e "$(tput bold)$(tput setaf 2)${1:-}$(tput sgr0)"; }
+    function printError { >&2 echo -e "$(tput setaf 1)${1:-}$(tput sgr0)"; }
+    function printWarning { >&2 echo -e "$(tput setaf 11)${1:-}$(tput sgr0)"; }
+    function printLog { echo -e "$(tput setaf 3)${1:-}$(tput sgr0)"; }
 fi
 
 function checkDputEntries

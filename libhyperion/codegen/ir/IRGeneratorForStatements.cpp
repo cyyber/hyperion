@@ -148,8 +148,16 @@ private:
 					auto const& stringLiteral = dynamic_cast<StringLiteralType const&>(*type);
 					hypAssert(variable->type()->category() == Type::Category::FixedBytes);
 					unsigned const numBytes = dynamic_cast<FixedBytesType const&>(*variable->type()).numBytes();
-					hypAssert(stringLiteral.value().size() <= numBytes);
-					u512 litVal = u512(h256::Arith(h256(stringLiteral.value(), h256::AlignLeft))) << (VMWordBits - 256);
+					std::string const& strValue = stringLiteral.value();
+					hypAssert(strValue.size() <= numBytes);
+					// Fold every byte into the VM word; h256 would truncate string
+					// literals longer than 32 bytes (bytes33..bytes64), so build the
+					// value byte by byte and left-align it like the legacy pipeline.
+					u512 litVal = 0;
+					for (char c: strValue)
+						litVal = (litVal << 8) | static_cast<uint8_t>(c);
+					if (strValue.size() < VMWordBytes)
+						litVal <<= (VMWordBytes - strValue.size()) * 8;
 					value = formatNumber(litVal);
 					break;
 				}
@@ -1262,11 +1270,12 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 				std::string dataAreaFunction = m_utils.arrayDataAreaFunction(*TypeProvider::bytesMemory());
 				std::string arrayLengthFunction = m_utils.arrayLengthFunction(*TypeProvider::bytesMemory());
 				define(hashVariable) <<
-					"keccak256(" <<
+					m_utils.shiftLeftFunction(VMWordBits - 256) <<
+					"(keccak256(" <<
 					(dataAreaFunction + "(" + array.commaSeparatedList() + ")") <<
 					", " <<
 					(arrayLengthFunction + "(" + array.commaSeparatedList() +")") <<
-					")\n";
+					"))\n";
 				IRVariable selectorVariable(m_context.newYulVariable(), *TypeProvider::fixedBytes(4));
 				define(selectorVariable, hashVariable);
 				selector = selectorVariable.name();
@@ -1278,13 +1287,13 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 
 		Whiskers templ(R"(
 			let <data> := <allocateUnbounded>()
-			let <memPtr> := add(<data>, 0x40)
+			let <memPtr> := add(<data>, <wordSize>)
 			<?+selector>
 				mstore(<memPtr>, <selector>)
 				<memPtr> := add(<memPtr>, 4)
 			</+selector>
 			let <mend> := <encode>(<memPtr><arguments>)
-			mstore(<data>, sub(<mend>, add(<data>, 0x40)))
+			mstore(<data>, sub(<mend>, add(<data>, <wordSize>)))
 			<finalizeAllocation>(<data>, sub(<mend>, <data>))
 		)");
 		templ("data", IRVariable(_functionCall).part("mpos").name());
@@ -1299,6 +1308,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		);
 		templ("arguments", joinHumanReadablePrefixed(argumentVars));
 		templ("finalizeAllocation", m_utils.finalizeAllocationFunction());
+		templ("wordSize", std::to_string(VMWordBytes));
 
 		appendCode() << templ.render();
 		break;
@@ -1332,7 +1342,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		{
 			IRVariable var = convert(*arguments[0], *TypeProvider::bytesMemory());
 			templ("abiDecode", m_context.abiFunctions().tupleDecoder(targetTypes, true));
-			templ("offset", "add(" + var.part("mpos").name() + ", 64)");
+			templ("offset", "add(" + var.part("mpos").name() + ", " + std::to_string(VMWordBytes) + ")");
 			templ("length",
 				m_utils.arrayLengthFunction(*TypeProvider::bytesMemory()) + "(" + var.part("mpos").name() + ")"
 			);
@@ -1383,9 +1393,9 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		if (auto const* stringLiteral = dynamic_cast<StringLiteralType const*>(arguments.front()->annotation().type))
 		{
 			// Optimization: Compute keccak256 on string literals at compile-time.
-			// keccak256 result is bytes32, must be left-aligned in 512-bit word.
+			// keccak256 result is bytes32, must be left-aligned in the VM word.
 			define(_functionCall) <<
-				("0x" + keccak256(stringLiteral->value()).hex() + std::string(64, '0')) <<
+				("0x" + keccak256(stringLiteral->value()).hex() + std::string((VMWordBytes - 32) * 2, '0')) <<
 				"\n";
 		}
 		else
@@ -1510,7 +1520,11 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		std::string args;
 		for (size_t i = 0; i < arguments.size(); ++i)
 			args += (args.empty() ? "" : ", ") + expressionAsType(*arguments[i], *(parameterTypes[i]));
-		define(_functionCall) << functions[functionType->kind()] << "(" << args << ")\n";
+		define(_functionCall) <<
+			(functionType->kind() == FunctionType::Kind::BlockHash ? m_utils.shiftLeftFunction(VMWordBits - 256) + "(" : "") <<
+			functions[functionType->kind()] << "(" << args << ")" <<
+			(functionType->kind() == FunctionType::Kind::BlockHash ? ")" : "") <<
+			"\n";
 		break;
 	}
 	case FunctionType::Kind::Creation:
@@ -1624,6 +1638,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		Whiskers templ(R"(
 			let <pos> := <allocateUnbounded>()
 			let <end> := <encodeArgs>(<pos> <argumentString>)
+			mstore(0, 0)
 			let <success> := <call>(<gas>, <address>, <pos>, sub(<end>, <pos>), 0, 32)
 			if iszero(<success>) { <forwardingRevert>() }
 			let <retVars> := <shl>(mload(0))
@@ -1777,9 +1792,11 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 		}
 		else if (member == "codehash")
 			define(_memberAccess) <<
+				m_utils.leftAlignHashOpcodeResultFunction() <<
+				"(" <<
 				"extcodehash(" <<
 				expressionAsType(_memberAccess.expression(), *TypeProvider::address()) <<
-				")\n";
+				"))\n";
 		else if (std::set<std::string>{"send", "transfer"}.count(member))
 		{
 			hypAssert(dynamic_cast<AddressType const&>(*_memberAccess.expression().annotation().type).stateMutability() == StateMutability::Payable);
@@ -1828,7 +1845,7 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 				hypAssert(
 					!(dynamic_cast<EventDefinition const&>(functionType.declaration()).isAnonymous())
 				);
-				// Event signature hash is bytes32 — left-align in the 64-byte VM word.
+				// Event signature hash is bytes32, left-align in the VM word.
 				define(IRVariable{_memberAccess}) << formatNumber(
 					u512(h256::Arith(util::keccak256(functionType.externalSignature()))) << (VMWordBits - 256)
 				) << "\n";
@@ -1898,13 +1915,14 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 			m_context.subObjectsCreated().insert(&contract);
 			appendCode() << Whiskers(R"(
 				let <size> := datasize("<objectName>")
-				let <result> := <allocationFunction>(add(<size>, 64))
+				let <result> := <allocationFunction>(add(<size>, <wordSize>))
 				mstore(<result>, <size>)
-				datacopy(add(<result>, 64), dataoffset("<objectName>"), <size>)
+				datacopy(add(<result>, <wordSize>), dataoffset("<objectName>"), <size>)
 			)")
 			("allocationFunction", m_utils.allocationFunction())
 			("size", m_context.newYulVariable())
 			("objectName", IRNames::creationObject(contract) + (member == "runtimeCode" ? "." + IRNames::deployedObject(contract) : ""))
+			("wordSize", std::to_string(VMWordBytes))
 			("result", IRVariable(_memberAccess).commaSeparatedList()).render();
 		}
 		else if (member == "name")
@@ -2324,13 +2342,13 @@ void IRGeneratorForStatements::endVisit(IndexAccess const& _indexAccess)
 		define(index, *_indexAccess.indexExpression());
 		appendCode() << Whiskers(R"(
 			if iszero(lt(<index>, <length>)) { <panic>() }
-			let <result> := <shl248>(byte(<index>, <array>))
+			let <result> := <shlTopByte>(byte(<index>, <array>))
 		)")
 		("index", index.name())
 		("length", std::to_string(fixedBytesType.numBytes()))
 		("panic", m_utils.panicFunction(PanicCode::ArrayOutOfBounds))
 		("array", IRVariable(_indexAccess.baseExpression()).name())
-		("shl248", m_utils.shiftLeftFunction(VMWordBits - 8))
+		("shlTopByte", m_utils.shiftLeftFunction(VMWordBits - 8))
 		("result", IRVariable(_indexAccess).name())
 		.render();
 	}
@@ -2555,7 +2573,7 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 		</checkExtcodesize>
 		// storage for arguments and returned data
 		let <pos> := <allocateUnbounded>()
-		mstore(<pos>, <shl28>(<funSel>))
+		mstore(<pos>, <selectorShiftLeft>(<funSel>))
 		let <end> := <encodeArgs>(add(<pos>, 4) <argumentString>)
 
 		let <success> := <call>(<gas>, <address>, <?hasValue> <value>, </hasValue> <pos>, sub(<end>, <pos>), <pos>, <staticReturndataSize>)
@@ -2602,7 +2620,7 @@ void IRGeneratorForStatements::appendExternalFunctionCall(
 	templ("allocateUnbounded", m_utils.allocateUnboundedFunction());
 	templ("finalizeAllocation", m_utils.finalizeAllocationFunction());
 	// Shift selector to the top of the VM word so dispatcher (shr(VMWordBits-32, calldataload(0))) picks it up.
-	templ("shl28", m_utils.shiftLeftFunction(VMWordBits - 32));
+	templ("selectorShiftLeft", m_utils.shiftLeftFunction(VMWordBits - 32));
 
 	templ("funSel", IRVariable(_functionCall.expression()).part("functionSelector").name());
 	templ("address", IRVariable(_functionCall.expression()).part("address").name());
@@ -2677,7 +2695,7 @@ void IRGeneratorForStatements::appendBareCall(
 			let <pos> := <allocateUnbounded>()
 			let <length> := sub(<encode>(<pos> <?+arg>,</+arg> <arg>), <pos>)
 		<!needsEncoding>
-			let <pos> := add(<arg>, 0x40)
+			let <pos> := add(<arg>, <wordSize>)
 			let <length> := mload(<arg>)
 		</needsEncoding>
 
@@ -2688,6 +2706,7 @@ void IRGeneratorForStatements::appendBareCall(
 	templ("allocateUnbounded", m_utils.allocateUnboundedFunction());
 	templ("pos", m_context.newYulVariable());
 	templ("length", m_context.newYulVariable());
+	templ("wordSize", std::to_string(VMWordBytes));
 
 	templ("arg", IRVariable(*_arguments.front()).commaSeparatedList());
 	Type const& argType = type(*_arguments.front());

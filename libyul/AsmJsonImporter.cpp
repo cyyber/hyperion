@@ -27,6 +27,7 @@
 #include <libyul/Exceptions.h>
 
 #include <liblangutil/Exceptions.h>
+#include <libhyputil/CommonData.h>
 #include <libhyputil/VMConstants.h>
 #include <liblangutil/Scanner.h>
 
@@ -42,11 +43,25 @@ namespace hyperion::yul
 
 using SourceLocation = langutil::SourceLocation;
 
+namespace
+{
+
+bool isValidHexValue(std::string const& _value)
+{
+	return _value.size() % 2 == 0 && _value.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos;
+}
+
+std::string decodeHexValue(std::string const& _value)
+{
+	yulAssert(isValidHexValue(_value), "Literal hexValue must be an even-length hexadecimal string.");
+	return util::asString(util::fromHex(_value));
+}
+
+}
+
 SourceLocation const AsmJsonImporter::createSourceLocation(Json::Value const& _node)
 {
-	yulAssert(member(_node, "src").isString(), "'src' must be a string");
-
-	return hyperion::langutil::parseSourceLocation(_node["src"].asString(), m_sourceNames);
+	return hyperion::langutil::parseSourceLocation(stringMember(_node, "src"), m_sourceNames);
 }
 
 template <class T>
@@ -54,7 +69,6 @@ T AsmJsonImporter::createAsmNode(Json::Value const& _node)
 {
 	T r;
 	SourceLocation nativeLocation = createSourceLocation(_node);
-	yulAssert(nativeLocation.hasText(), "Invalid source location in Asm AST");
 	// TODO: We should add originLocation to the AST.
 	// While it's not included, we'll use nativeLocation for it because we only support importing
 	// inline assembly as a part of a Hyperion AST and there these locations are always the same.
@@ -64,24 +78,29 @@ T AsmJsonImporter::createAsmNode(Json::Value const& _node)
 
 Json::Value AsmJsonImporter::member(Json::Value const& _node, std::string const& _name)
 {
-	if (!_node.isMember(_name))
-		return Json::nullValue;
+	yulAssert(_node.isObject(), "Expected a JSON object.");
+	yulAssert(_node.isMember(_name), "Expected member '" + _name + "'.");
 	return _node[_name];
+}
+
+std::string AsmJsonImporter::stringMember(Json::Value const& _node, std::string const& _name)
+{
+	Json::Value value = member(_node, _name);
+	yulAssert(value.isString(), "Expected member '" + _name + "' to be a string.");
+	return value.asString();
 }
 
 TypedName AsmJsonImporter::createTypedName(Json::Value const& _node)
 {
 	auto typedName = createAsmNode<TypedName>(_node);
-	typedName.type = YulString{member(_node, "type").asString()};
-	typedName.name = YulString{member(_node, "name").asString()};
+	typedName.type = YulString{stringMember(_node, "type")};
+	typedName.name = YulString{stringMember(_node, "name")};
 	return typedName;
 }
 
 Statement AsmJsonImporter::createStatement(Json::Value const& _node)
 {
-	Json::Value jsonNodeType = member(_node, "nodeType");
-	yulAssert(jsonNodeType.isString(), "Expected \"nodeType\" to be of type string!");
-	std::string nodeType = jsonNodeType.asString();
+	std::string nodeType = stringMember(_node, "nodeType");
 
 	yulAssert(nodeType.substr(0, 3) == "Yul", "Invalid nodeType prefix");
 	nodeType = nodeType.substr(3);
@@ -117,9 +136,7 @@ Statement AsmJsonImporter::createStatement(Json::Value const& _node)
 
 Expression AsmJsonImporter::createExpression(Json::Value const& _node)
 {
-	Json::Value jsonNodeType = member(_node, "nodeType");
-	yulAssert(jsonNodeType.isString(), "Expected \"nodeType\" to be of type string!");
-	std::string nodeType = jsonNodeType.asString();
+	std::string nodeType = stringMember(_node, "nodeType");
 
 	yulAssert(nodeType.substr(0, 3) == "Yul", "Invalid nodeType prefix");
 	nodeType = nodeType.substr(3);
@@ -163,15 +180,14 @@ Block AsmJsonImporter::createBlock(Json::Value const& _node)
 Literal AsmJsonImporter::createLiteral(Json::Value const& _node)
 {
 	auto lit = createAsmNode<Literal>(_node);
-	std::string kind = member(_node, "kind").asString();
+	std::string kind = stringMember(_node, "kind");
 
-	hypAssert(member(_node, "hexValue").isString() || member(_node, "value").isString(), "");
 	if (_node.isMember("hexValue"))
-		lit.value = YulString{util::asString(util::fromHex(member(_node, "hexValue").asString()))};
+		lit.value = YulString{decodeHexValue(stringMember(_node, "hexValue"))};
 	else
-		lit.value = YulString{member(_node, "value").asString()};
+		lit.value = YulString{stringMember(_node, "value")};
 
-	lit.type= YulString{member(_node, "type").asString()};
+	lit.type= YulString{stringMember(_node, "type")};
 
 	if (kind == "number")
 	{
@@ -181,6 +197,14 @@ Literal AsmJsonImporter::createLiteral(Json::Value const& _node)
 		yulAssert(
 			scanner.currentToken() == Token::Number,
 			"Expected number but got " + langutil::TokenTraits::friendlyName(scanner.currentToken()) + std::string(" while scanning ") + lit.value.str()
+		);
+		// A single leading Number token is not sufficient: the scanner would also
+		// accept trailing garbage (e.g. "0:0", "0x10:0:0", "1.5"). Require the whole
+		// value to be a valid decimal or hex literal so the downstream bigint() parse
+		// in AsmAnalysis cannot throw on attacker-supplied import JSON.
+		yulAssert(
+			util::isValidDecimal(lit.value.str()) || util::isValidHex(lit.value.str()),
+			"Invalid number literal \"" + lit.value.str() + "\"."
 		);
 	}
 	else if (kind == "bool")
@@ -216,7 +240,7 @@ Leave AsmJsonImporter::createLeave(Json::Value const& _node)
 Identifier AsmJsonImporter::createIdentifier(Json::Value const& _node)
 {
 	auto identifier = createAsmNode<Identifier>(_node);
-	identifier.name = YulString(member(_node, "name").asString());
+	identifier.name = YulString(stringMember(_node, "name"));
 	return identifier;
 }
 
@@ -256,14 +280,15 @@ VariableDeclaration AsmJsonImporter::createVariableDeclaration(Json::Value const
 	auto varDec = createAsmNode<VariableDeclaration>(_node);
 	for (auto const& var: member(_node, "variables"))
 		varDec.variables.emplace_back(createTypedName(var));
-	varDec.value = std::make_unique<Expression>(createExpression(member(_node, "value")));
+	if (_node.isMember("value") && !_node["value"].isNull())
+		varDec.value = std::make_unique<Expression>(createExpression(member(_node, "value")));
 	return varDec;
 }
 
 FunctionDefinition AsmJsonImporter::createFunctionDefinition(Json::Value const& _node)
 {
 	auto funcDef = createAsmNode<FunctionDefinition>(_node);
-	funcDef.name = YulString{member(_node, "name").asString()};
+	funcDef.name = YulString{stringMember(_node, "name")};
 
 	if (_node.isMember("parameters"))
 		for (auto const& var: member(_node, "parameters"))

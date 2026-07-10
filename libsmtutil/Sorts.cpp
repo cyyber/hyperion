@@ -19,6 +19,8 @@
 
 #include <libsmtutil/Sorts.h>
 
+#include <libhyputil/VMConstants.h>
+
 namespace hyperion::smtutil
 {
 
@@ -33,6 +35,6 @@ std::shared_ptr<IntSort> SortProvider::intSort(bool _signed)
 	return uintSort;
 }
 
-std::shared_ptr<BitVectorSort> const SortProvider::bitVectorSort{std::make_shared<BitVectorSort>(256)};
+std::shared_ptr<BitVectorSort> const SortProvider::bitVectorSort{std::make_shared<BitVectorSort>(VMWordBits)};
 
 }

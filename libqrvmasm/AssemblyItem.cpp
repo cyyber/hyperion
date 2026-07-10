@@ -53,6 +53,7 @@ std::string toStringInHex(u512 _value)
 AssemblyItem AssemblyItem::toSubAssemblyTag(size_t _subId) const
 {
 	assertThrow(data() < (u512(1) << 64), util::Exception, "Tag already has subassembly set.");
+	assertThrow(data() < u512(std::numeric_limits<unsigned>::max()), util::Exception, "Tag id out of bounds.");
 	assertThrow(m_type == PushTag || m_type == Tag, util::Exception, "");
 	auto tag = static_cast<size_t>(data() & u512(0xffffffffffffffffULL));
 	AssemblyItem r = *this;
@@ -65,8 +66,14 @@ std::pair<size_t, size_t> AssemblyItem::splitForeignPushTag() const
 {
 	assertThrow(m_type == PushTag || m_type == Tag, util::Exception, "");
 	u512 combined = data();
-	size_t subId = static_cast<size_t>((combined >> 64) - 1);
-	size_t tag = static_cast<size_t>(combined & u512(0xffffffffffffffffULL));
+	u512 subAssembly = combined >> 64;
+	u512 tagValue = combined & u512(0xffffffffffffffffULL);
+	assertThrow(subAssembly <= u512(std::numeric_limits<size_t>::max()), util::Exception, "Subassembly id out of bounds.");
+	assertThrow(tagValue < u512(std::numeric_limits<unsigned>::max()), util::Exception, "Tag id out of bounds.");
+	size_t subId = subAssembly == 0 ?
+		std::numeric_limits<size_t>::max() :
+		static_cast<size_t>(subAssembly - 1);
+	size_t tag = static_cast<size_t>(tagValue);
 	return std::make_pair(subId, tag);
 }
 
@@ -111,6 +118,7 @@ std::pair<std::string, std::string> AssemblyItem::nameAndData() const
 void AssemblyItem::setPushTagSubIdAndTag(size_t _subId, size_t _tag)
 {
 	assertThrow(m_type == PushTag || m_type == Tag, util::Exception, "");
+	assertThrow(_tag < std::numeric_limits<unsigned>::max(), util::Exception, "Tag id out of bounds.");
 	u512 data = _tag;
 	if (_subId != std::numeric_limits<size_t>::max())
 		data |= (u512(_subId) + 1) << 64;
@@ -282,9 +290,14 @@ std::string AssemblyItem::toAssemblyText(Assembly const& _assembly) const
 		break;
 	}
 	case Tag:
-		assertThrow(data() < 0x10000, AssemblyException, "Declaration of sub-assembly tag.");
-		text = std::string("tag_") + std::to_string(static_cast<size_t>(data())) + ":";
+	{
+		size_t sub{0};
+		size_t tag{0};
+		std::tie(sub, tag) = splitForeignPushTag();
+		assertThrow(sub == std::numeric_limits<size_t>::max(), AssemblyException, "Declaration of sub-assembly tag.");
+		text = std::string("tag_") + std::to_string(tag) + ":";
 		break;
+	}
 	case PushData:
 		text = std::string("data_") + toHex(data());
 		break;

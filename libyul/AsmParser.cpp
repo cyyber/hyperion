@@ -703,8 +703,8 @@ bool Parser::isValidNumberLiteral(std::string const& _literal)
 {
 	try
 	{
-		// Try to convert _literal to u256.
-		[[maybe_unused]] auto tmp = u256(_literal);
+		// Try to convert _literal to the widest supported integer.
+		[[maybe_unused]] auto tmp = u512(_literal);
 	}
 	catch (...)
 	{

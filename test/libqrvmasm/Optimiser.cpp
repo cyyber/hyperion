@@ -39,6 +39,7 @@
 #include <string>
 #include <tuple>
 #include <memory>
+#include <set>
 
 using namespace hyperion::langutil;
 using namespace hyperion::qrvmasm;
@@ -937,6 +938,68 @@ BOOST_AUTO_TEST_CASE(block_deduplicator_assign_immutable_different_hash)
 	BOOST_CHECK(!deduplicator.deduplicate());
 }
 
+BOOST_AUTO_TEST_CASE(block_deduplicator_respects_protected_tags)
+{
+	auto makeInput = []() {
+		return AssemblyItems{
+			AssemblyItem(PushTag, 2),
+			Instruction::POP,
+			Instruction::STOP,
+			AssemblyItem(Tag, 1),
+			Instruction::STOP,
+			AssemblyItem(Tag, 2),
+			Instruction::STOP
+		};
+	};
+
+	for (size_t const protectedTag: {size_t{1}, size_t{2}})
+	{
+		std::set<size_t> const protectedTags{protectedTag};
+		AssemblyItems input = makeInput();
+		BlockDeduplicator deduplicator(input, &protectedTags);
+		BOOST_CHECK(!deduplicator.deduplicate());
+		BOOST_CHECK(deduplicator.replacedTags().empty());
+		BOOST_CHECK(input.front() == AssemblyItem(PushTag, 2));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(block_deduplicator_does_not_redirect_external_named_entry)
+{
+	Assembly::OptimiserSettings settings;
+	settings.runDeduplicate = true;
+	settings.qrvmVersion = hyperion::test::CommonOptions::get().qrvmVersion();
+	settings.expectedExecutionsPerDeployment = OptimiserSettings{}.expectedExecutionsPerDeployment;
+
+	auto subAsm = std::make_shared<Assembly>(settings.qrvmVersion, false, std::string{});
+	subAsm->append(Instruction::STOP);
+	AssemblyItem plainEntry = subAsm->newTag();
+	subAsm->append(plainEntry);
+	subAsm->append(u256(0));
+	subAsm->append(Instruction::POP);
+	AssemblyItem plainReturn{Instruction::JUMP};
+	plainReturn.setJumpType(AssemblyItem::JumpType::OutOfFunction);
+	subAsm->append(u256(0));
+	subAsm->append(plainReturn);
+	AssemblyItem parameterEntry = subAsm->namedTag("parameterEntry", 1, 0, std::nullopt);
+	subAsm->adjustDeposit(1);
+	subAsm->append(parameterEntry);
+	subAsm->append(Instruction::POP);
+	AssemblyItem parameterReturn{Instruction::JUMP};
+	parameterReturn.setJumpType(AssemblyItem::JumpType::OutOfFunction);
+	subAsm->append(u256(0));
+	subAsm->append(parameterReturn);
+
+	Assembly assembly{settings.qrvmVersion, true, {}};
+	AssemblyItem sub = assembly.newSub(subAsm);
+	assembly.pushSubroutineOffset(static_cast<size_t>(sub.data()));
+	assembly.append(parameterEntry.toSubAssemblyTag(static_cast<size_t>(sub.data())));
+	assembly.append(Instruction::POP);
+	assembly.append(Instruction::STOP);
+
+	BOOST_REQUIRE_NO_THROW(assembly.optimise(settings));
+	BOOST_CHECK_NO_THROW(assembly.assemble());
+}
+
 BOOST_AUTO_TEST_CASE(block_deduplicator_loops)
 {
 	AssemblyItems input{
@@ -1219,15 +1282,17 @@ BOOST_AUTO_TEST_CASE(jumpdest_removal)
 		AssemblyItem(Tag, 10),
 		AssemblyItem(Tag, 3),
 		u256(6),
-		AssemblyItem(Tag, 1),
+		AssemblyItem(PushTag, 1),
 		Instruction::JUMP,
+		AssemblyItem(Tag, 1),
 	};
 	AssemblyItems expectation{
 		AssemblyItem(PushTag, 1),
 		u256(5),
 		u256(6),
-		AssemblyItem(Tag, 1),
-		Instruction::JUMP
+		AssemblyItem(PushTag, 1),
+		Instruction::JUMP,
+		AssemblyItem(Tag, 1)
 	};
 	JumpdestRemover jdr(items);
 	BOOST_REQUIRE(jdr.optimise({}));
@@ -1235,6 +1300,76 @@ BOOST_AUTO_TEST_CASE(jumpdest_removal)
 		items.begin(), items.end(),
 		expectation.begin(), expectation.end()
 	);
+}
+
+BOOST_AUTO_TEST_CASE(jumpdest_removal_removes_unreferenced_literal_jump_targets)
+{
+	AssemblyItems items{
+		u256(2),
+		Instruction::JUMP,
+		AssemblyItem(Tag, 1),
+		Instruction::STOP,
+	};
+	AssemblyItems expectation{
+		u256(2),
+		Instruction::JUMP,
+		Instruction::STOP,
+	};
+	JumpdestRemover jdr(items);
+	BOOST_CHECK(jdr.optimise({}));
+	BOOST_CHECK_EQUAL_COLLECTIONS(
+		items.begin(), items.end(),
+		expectation.begin(), expectation.end()
+	);
+}
+
+BOOST_AUTO_TEST_CASE(jumpdest_removal_removes_unreferenced_computed_literal_jump_targets)
+{
+	AssemblyItems items{
+		u256(4),
+		Instruction::DUP1,
+		Instruction::JUMP,
+		AssemblyItem(Tag, 1),
+		Instruction::STOP,
+	};
+	AssemblyItems expectation{
+		u256(4),
+		Instruction::DUP1,
+		Instruction::JUMP,
+		Instruction::STOP,
+	};
+	JumpdestRemover jdr(items);
+	BOOST_CHECK(jdr.optimise({}));
+	BOOST_CHECK_EQUAL_COLLECTIONS(
+		items.begin(), items.end(),
+		expectation.begin(), expectation.end()
+	);
+}
+
+BOOST_AUTO_TEST_CASE(jumpdest_removal_removes_unreferenced_named_tags)
+{
+	Assembly::OptimiserSettings settings;
+	settings.runJumpdestRemover = true;
+	settings.qrvmVersion= hyperion::test::CommonOptions::get().qrvmVersion();
+	settings.expectedExecutionsPerDeployment = OptimiserSettings{}.expectedExecutionsPerDeployment;
+
+	Assembly assembly{settings.qrvmVersion, false, {}};
+	AssemblyItem debugOnlyEntry = assembly.namedTag("debugOnly", 0, 0, std::optional<uint64_t>{11});
+	assembly.append(Instruction::STOP);
+	assembly.append(debugOnlyEntry);
+	assembly.append(Instruction::STOP);
+
+	BOOST_CHECK_NO_THROW(assembly.optimise(settings));
+	BOOST_CHECK_NO_THROW(assembly.assemblyJSON({}));
+	BOOST_CHECK_NO_THROW(assembly.assemblyString());
+
+	LinkerObject const& object = assembly.assemble();
+	auto debugData = object.functionDebugData.find("debugOnly");
+	BOOST_REQUIRE(debugData != object.functionDebugData.end());
+	BOOST_CHECK(!debugData->second.bytecodeOffset);
+	BOOST_CHECK(!debugData->second.instructionIndex);
+	BOOST_REQUIRE(debugData->second.sourceID);
+	BOOST_CHECK_EQUAL(*debugData->second.sourceID, 11);
 }
 
 BOOST_AUTO_TEST_CASE(jumpdest_removal_subassemblies)
@@ -1260,21 +1395,21 @@ BOOST_AUTO_TEST_CASE(jumpdest_removal_subassemblies)
 	sub->append(u256(1));
 	auto t1 = sub->newTag();
 	sub->append(t1);
-	sub->append(u256(2));
+	auto t4 = sub->newTag();
+	sub->append(t4.pushTag());
 	sub->append(Instruction::JUMP);
 	auto t2 = sub->newTag();
 	sub->append(t2); // Identical to T1, will be unified
-	sub->append(u256(2));
+	sub->append(t4.pushTag());
 	sub->append(Instruction::JUMP);
 	auto t3 = sub->newTag();
 	sub->append(t3);
-	auto t4 = sub->newTag();
 	sub->append(t4);
 	auto t5 = sub->newTag();
 	sub->append(t5); // This will be removed
 	sub->append(u256(7));
-	sub->append(t4.pushTag());
-	sub->append(Instruction::JUMP);
+	sub->append(Instruction::POP);
+	sub->append(Instruction::STOP);
 
 	size_t subId = static_cast<size_t>(main.appendSubroutine(sub).data());
 	main.append(t1.toSubAssemblyTag(subId));
@@ -1289,18 +1424,123 @@ BOOST_AUTO_TEST_CASE(jumpdest_removal_subassemblies)
 		t1.toSubAssemblyTag(subId).pushTag(),
 		u256(8)
 	};
+	AssemblyItems const& mainItems = static_cast<Assembly const&>(main).items();
 	BOOST_CHECK_EQUAL_COLLECTIONS(
-		main.items().begin(), main.items().end(),
+		mainItems.begin(), mainItems.end(),
 		expectationMain.begin(), expectationMain.end()
 	);
 
 	AssemblyItems expectationSub{
-		u256(1), t1.tag(), u256(2), Instruction::JUMP, t4.tag(), u256(7), t4.pushTag(), Instruction::JUMP
+		u256(1),
+		t1.tag(),
+		Instruction::STOP
 	};
+	AssemblyItems const& subItems = static_cast<Assembly const&>(*sub).items();
 	BOOST_CHECK_EQUAL_COLLECTIONS(
-		sub->items().begin(), sub->items().end(),
+		subItems.begin(), subItems.end(),
 		expectationSub.begin(), expectationSub.end()
 	);
+}
+
+BOOST_AUTO_TEST_CASE(optimise_reuses_cache_for_later_settings)
+{
+	Assembly::OptimiserSettings settings;
+	settings.qrvmVersion= hyperion::test::CommonOptions::get().qrvmVersion();
+	settings.expectedExecutionsPerDeployment = OptimiserSettings{}.expectedExecutionsPerDeployment;
+
+	Assembly assembly{settings.qrvmVersion, false, {}};
+	assembly.append(u256(1));
+	assembly.append(Instruction::POP);
+
+	BOOST_CHECK_NO_THROW(assembly.optimise(settings));
+	BOOST_CHECK_NO_THROW(assembly.optimise(settings));
+	settings.runPeephole = true;
+	BOOST_CHECK_NO_THROW(assembly.optimise(settings));
+
+	Assembly assembled{settings.qrvmVersion, false, {}};
+	assembled.append(Instruction::STOP);
+	BOOST_REQUIRE_NO_THROW(assembled.assemble());
+	BOOST_CHECK_NO_THROW(assembled.optimise(settings));
+	BOOST_CHECK_NO_THROW(assembled.assemble());
+}
+
+BOOST_AUTO_TEST_CASE(optimise_updates_stack_deposit_after_rewriting_items)
+{
+	Assembly::OptimiserSettings settings;
+	settings.runPeephole = true;
+	settings.qrvmVersion= hyperion::test::CommonOptions::get().qrvmVersion();
+	settings.expectedExecutionsPerDeployment = OptimiserSettings{}.expectedExecutionsPerDeployment;
+
+	Assembly assembly{settings.qrvmVersion, false, {}};
+	AssemblyItem target = assembly.newTag();
+	assembly.append(target.pushTag());
+	assembly.append(Instruction::JUMP);
+	assembly.append(u256(0x42));
+	assembly.append(target);
+	assembly.append(Instruction::STOP);
+
+	BOOST_CHECK_EQUAL(assembly.deposit(), 1);
+	BOOST_REQUIRE_NO_THROW(assembly.optimise(settings));
+	BOOST_CHECK_EQUAL(assembly.deposit(), 0);
+	BOOST_CHECK_NO_THROW(assembly.assemble());
+}
+
+BOOST_AUTO_TEST_CASE(optimise_allows_unused_immutable_assignment_with_local_tag_source)
+{
+	Assembly::OptimiserSettings settings;
+	settings.runPeephole = true;
+	settings.qrvmVersion= hyperion::test::CommonOptions::get().qrvmVersion();
+	settings.expectedExecutionsPerDeployment = OptimiserSettings{}.expectedExecutionsPerDeployment;
+
+	auto makeAssembly = [&]()
+	{
+		Assembly assembly{settings.qrvmVersion, false, {}};
+		AssemblyItem sourceTag = assembly.newTag();
+		assembly.append(sourceTag.pushTag());
+		assembly.append(u256(0));
+		assembly.appendImmutableAssignment("unusedImmutable");
+		assembly.append(u256(0));
+		assembly.append(Instruction::MLOAD);
+		assembly.append(Instruction::JUMP);
+		assembly.append(sourceTag);
+		assembly.append(Instruction::STOP);
+		return assembly;
+	};
+
+	Assembly validAssembly = makeAssembly();
+	BOOST_CHECK_NO_THROW(validAssembly.assemble());
+
+	Assembly optimisedAssembly = makeAssembly();
+	BOOST_CHECK_NO_THROW(optimisedAssembly.optimise(settings));
+	BOOST_CHECK_NO_THROW(optimisedAssembly.assemble());
+}
+
+BOOST_AUTO_TEST_CASE(optimise_allows_layout_change_before_literal_jump_target)
+{
+	Assembly::OptimiserSettings settings;
+	settings.runPeephole = true;
+	settings.qrvmVersion= hyperion::test::CommonOptions::get().qrvmVersion();
+	settings.expectedExecutionsPerDeployment = OptimiserSettings{}.expectedExecutionsPerDeployment;
+
+	auto makeAssembly = [&]()
+	{
+		Assembly assembly{settings.qrvmVersion, false, {}};
+		AssemblyItem target = assembly.newTag();
+		assembly.append(u256(5));
+		assembly.append(Instruction::JUMP);
+		assembly.append(u256(0));
+		assembly.append(Instruction::POP);
+		assembly.append(target);
+		assembly.append(Instruction::STOP);
+		return assembly;
+	};
+
+	Assembly validAssembly = makeAssembly();
+	BOOST_CHECK_NO_THROW(validAssembly.assemble());
+
+	Assembly optimisedAssembly = makeAssembly();
+	BOOST_CHECK_NO_THROW(optimisedAssembly.optimise(settings));
+	BOOST_CHECK_NO_THROW(optimisedAssembly.assemble());
 }
 
 BOOST_AUTO_TEST_CASE(cse_sub_zero)

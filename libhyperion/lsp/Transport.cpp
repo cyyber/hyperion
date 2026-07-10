@@ -27,9 +27,11 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <charconv>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <system_error>
 
 
 #if defined(_WIN32)
@@ -38,6 +40,45 @@
 #endif
 
 using namespace hyperion::lsp;
+
+namespace
+{
+
+constexpr size_t c_maxContentLength = 16 * 1024 * 1024;
+constexpr size_t c_maxHeaderLineLength = 8 * 1024;
+constexpr size_t c_maxHeaderBytes = 64 * 1024;
+constexpr size_t c_maxHeaderCount = 64;
+
+std::optional<size_t> parseContentLength(std::string const& _value)
+{
+	if (_value.empty())
+		return std::nullopt;
+
+	size_t length = 0;
+	char const* begin = _value.data();
+	char const* end = begin + _value.size();
+	auto const [ptr, ec] = std::from_chars(begin, end, length);
+	if (ec != std::errc{} || ptr != end)
+		return std::nullopt;
+	return length;
+}
+
+std::optional<std::string> readLineFromStream(std::istream& _input, size_t _maxLength)
+{
+	std::string line;
+	char c = 0;
+	while (_input.get(c))
+	{
+		if (c == '\n')
+			return line;
+		if (line.size() >= _maxLength)
+			return std::nullopt;
+		line += c;
+	}
+	return line;
+}
+
+}
 
 // {{{ Transport
 std::optional<Json::Value> Transport::receive()
@@ -55,7 +96,28 @@ std::optional<Json::Value> Transport::receive()
 		return std::nullopt;
 	}
 
-	std::string const data = readBytes(stoul(headers->at("content-length")));
+	auto const contentLength = parseContentLength(headers->at("content-length"));
+	if (!contentLength)
+	{
+		error({}, ErrorCode::ParseError, "Invalid Content-Length header.");
+		return std::nullopt;
+	}
+	if (*contentLength > c_maxContentLength)
+	{
+		error(
+			{},
+			ErrorCode::ParseError,
+			fmt::format("Content-Length exceeds maximum supported size of {} bytes.", c_maxContentLength)
+		);
+		return std::nullopt;
+	}
+
+	std::string const data = readBytes(*contentLength);
+	if (data.size() != *contentLength)
+	{
+		error({}, ErrorCode::ParseError, "Unexpected end of input while reading RPC payload.");
+		return std::nullopt;
+	}
 
 	Json::Value jsonMessage;
 	std::string jsonParsingErrors;
@@ -84,19 +146,40 @@ void Transport::trace(std::string _message, Json::Value _extra)
 std::optional<std::map<std::string, std::string>> Transport::parseHeaders()
 {
 	std::map<std::string, std::string> headers;
+	size_t headerBytes = 0;
+	size_t headerCount = 0;
 
 	while (true)
 	{
-		auto line = getline();
-		if (boost::trim_copy(line).empty())
+		auto line = readLine(c_maxHeaderLineLength);
+		if (!line)
+		{
+			closeProtocol();
+			return std::nullopt;
+		}
+
+		headerBytes += line->size() + 1;
+		if (headerBytes > c_maxHeaderBytes)
+		{
+			closeProtocol();
+			return std::nullopt;
+		}
+
+		if (boost::trim_copy(*line).empty())
 			break;
 
-		auto const delimiterPos = line.find(':');
+		if (++headerCount > c_maxHeaderCount)
+		{
+			closeProtocol();
+			return std::nullopt;
+		}
+
+		auto const delimiterPos = line->find(':');
 		if (delimiterPos == std::string::npos)
 			return std::nullopt;
 
-		auto const name = boost::to_lower_copy(line.substr(0, delimiterPos));
-		auto const value = line.substr(delimiterPos + 1);
+		auto const name = boost::to_lower_copy(line->substr(0, delimiterPos));
+		auto const value = line->substr(delimiterPos + 1);
 		if (!headers.emplace(boost::trim_copy(name), boost::trim_copy(value)).second)
 			return std::nullopt;
 	}
@@ -151,7 +234,7 @@ IOStreamTransport::IOStreamTransport(std::istream& _in, std::ostream& _out):
 
 bool IOStreamTransport::closed() const noexcept
 {
-	return m_input.eof();
+	return protocolClosed() || m_input.eof();
 }
 
 std::string IOStreamTransport::readBytes(size_t _length)
@@ -159,11 +242,9 @@ std::string IOStreamTransport::readBytes(size_t _length)
 	return util::readBytes(m_input, _length);
 }
 
-std::string IOStreamTransport::getline()
+std::optional<std::string> IOStreamTransport::readLine(size_t _maxLength)
 {
-	std::string line;
-	std::getline(m_input, line);
-	return line;
+	return readLineFromStream(m_input, _maxLength);
 }
 
 void IOStreamTransport::writeBytes(std::string_view _data)
@@ -188,7 +269,7 @@ StdioTransport::StdioTransport()
 
 bool StdioTransport::closed() const noexcept
 {
-	return feof(stdin);
+	return protocolClosed() || feof(stdin);
 }
 
 std::string StdioTransport::readBytes(size_t _byteCount)
@@ -201,17 +282,17 @@ std::string StdioTransport::readBytes(size_t _byteCount)
 	return buffer;
 }
 
-std::string StdioTransport::getline()
+std::optional<std::string> StdioTransport::readLine(size_t _maxLength)
 {
-	std::string line;
-	std::getline(std::cin, line);
-	lspDebug(fmt::format("Received: {}", line));
+	std::optional<std::string> line = readLineFromStream(std::cin, _maxLength);
+	if (line)
+		lspDebug(fmt::format("Received: {}", *line));
 	return line;
 }
 
 void StdioTransport::writeBytes(std::string_view _data)
 {
-	lspDebug(fmt::format("Sending: {}", _data));
+	lspDebug(fmt::format("Sending {} bytes", _data.size()));
 	auto const bytesWritten = fwrite(_data.data(), 1, _data.size(), stdout);
 	hypAssert(bytesWritten == _data.size());
 }

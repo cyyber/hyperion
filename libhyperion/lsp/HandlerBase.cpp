@@ -26,6 +26,8 @@
 
 #include <fmt/format.h>
 
+#include <limits>
+
 using namespace hyperion::langutil;
 using namespace hyperion::lsp;
 using namespace hyperion::util;
@@ -37,9 +39,7 @@ Json::Value HandlerBase::toRange(SourceLocation const& _location) const
 
 	hypAssert(_location.sourceName, "");
 	langutil::CharStream const& stream = charStreamProvider().charStream(*_location.sourceName);
-	LineColumn start = stream.translatePositionToLineColumn(_location.start);
-	LineColumn end = stream.translatePositionToLineColumn(_location.end);
-	return toJsonRange(start, end);
+	return sourceLocationToJsonRange(stream.source(), _location);
 }
 
 Json::Value HandlerBase::toJson(SourceLocation const& _location) const
@@ -64,14 +64,14 @@ std::pair<std::string, LineColumn> HandlerBase::extractSourceUnitNameAndLineColu
 	auto const lineColumn = parseLineColumn(_args["position"]);
 	if (!lineColumn)
 		BOOST_THROW_EXCEPTION(
-			RequestError(ErrorCode::RequestFailed) <<
-			errinfo_comment(fmt::format(
-				"Unknown position {line}:{column} in file: {file}",
-				fmt::arg("line", lineColumn.value().line),
-				fmt::arg("column", lineColumn.value().column),
-				fmt::arg("file", sourceUnitName)
-			))
+			RequestError(ErrorCode::InvalidParams) <<
+			errinfo_comment("Invalid position parameter.")
 		);
 
-	return {sourceUnitName, *lineColumn};
+	if (std::optional<SourceLocation> const position = parsePosition(fileRepository(), sourceUnitName, _args["position"]))
+		return {
+			sourceUnitName,
+			byteOffsetToByteLineColumn(fileRepository().sourceUnits().at(sourceUnitName), position->start)
+		};
+	return {sourceUnitName, LineColumn{lineColumn->line, std::numeric_limits<int>::max()}};
 }

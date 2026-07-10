@@ -269,9 +269,9 @@ OptimiserSettings CommandLineOptions::optimiserSettings() const
 
 	settings.runYulOptimiser = optimizer.optimizeYul;
 	if (optimizer.optimizeYul)
-		// NOTE: Standard JSON disables optimizeStackAllocation by default when yul optimizer is disabled.
-		// --optimize --no-optimize-yul on the CLI does not have that effect.
 		settings.optimizeStackAllocation = true;
+	else
+		settings.optimizeStackAllocation = false;
 
 	if (optimizer.expectedExecutionsPerDeployment.has_value())
 		settings.expectedExecutionsPerDeployment = optimizer.expectedExecutionsPerDeployment.value();
@@ -284,6 +284,8 @@ OptimiserSettings CommandLineOptions::optimiserSettings() const
 
 		if (delimiterPos != std::string::npos)
 			settings.yulOptimiserCleanupSteps = fullSequence.substr(delimiterPos + 1);
+		else if (OptimiserSuite::isEmptyOptimizerSequence(fullSequence))
+			settings.yulOptimiserCleanupSteps = "";
 		else
 			hypAssert(settings.yulOptimiserCleanupSteps == OptimiserSettings::DefaultYulOptimiserCleanupSteps);
 	}
@@ -698,7 +700,7 @@ General Information)").c_str(),
 			po::value<std::vector<std::string>>()->value_name("libs"),
 			"Direct string or file containing library addresses. Syntax: "
 			"<libraryName>=<address> [, or whitespace] ...\n"
-			"Address is interpreted as a hex string prefixed by Z."
+			"Address is interpreted as a hex string prefixed by Q."
 		)
 	;
 	desc.add(linkerModeOptions);

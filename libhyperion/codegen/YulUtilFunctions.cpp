@@ -412,6 +412,23 @@ std::string YulUtilFunctions::shiftRightSignedFunctionDynamic()
 	});
 }
 
+std::string YulUtilFunctions::leftAlignHashOpcodeResultFunction()
+{
+	std::string const functionName = "left_align_hash_opcode_result";
+	return m_functionCollector.createFunction(functionName, [&]() {
+		return
+			Whiskers(R"(
+			function <functionName>(value) -> aligned {
+				aligned := or(and(value, not(<lowerMask>)), shl(<shiftBits>, value))
+			}
+			)")
+			("functionName", functionName)
+			("lowerMask", formatNumber((u512(1) << (VMWordBits - 256)) - 1))
+			("shiftBits", std::to_string(VMWordBits - 256))
+			.render();
+	});
+}
+
 
 std::string YulUtilFunctions::typedShiftLeftFunction(Type const& _type, Type const& _amountType)
 {
@@ -617,8 +634,8 @@ std::string YulUtilFunctions::overflowCheckedIntAddFunction(IntegerType const& _
 			)")
 			("functionName", functionName)
 			("signed", _type.isSigned())
-			("maxValue", toCompactHexWithPrefix(u512(bigint(_type.maxValue()) & ((bigint(1) << 512) - 1))))
-			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << 512) - 1))))
+			("maxValue", toCompactHexWithPrefix(u512(bigint(_type.maxValue()) & ((bigint(1) << VMWordBits) - 1))))
+			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 			("cleanupFunction", cleanupFunction(_type))
 			("panic", panicFunction(PanicCode::UnderOverflow))
 			("256bit", _type.numBits() == VMWordBits)
@@ -689,7 +706,7 @@ std::string YulUtilFunctions::overflowCheckedIntMulFunction(IntegerType const& _
 			("signed", _type.isSigned())
 			("cleanupFunction", cleanupFunction(_type))
 			("panic", panicFunction(PanicCode::UnderOverflow))
-			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << 512) - 1))))
+			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 			("256bit", _type.numBits() == VMWordBits)
 			("gt128bit", _type.numBits() > 128)
 			.render();
@@ -734,7 +751,7 @@ std::string YulUtilFunctions::overflowCheckedIntDivFunction(IntegerType const& _
 			)")
 			("functionName", functionName)
 			("signed", _type.isSigned())
-			("minVal", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << 512) - 1))))
+			("minVal", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 			("cleanupFunction", cleanupFunction(_type))
 			("panicDivZero", panicFunction(PanicCode::DivisionByZero))
 			("panicOverflow", panicFunction(PanicCode::UnderOverflow))
@@ -819,8 +836,8 @@ std::string YulUtilFunctions::overflowCheckedIntSubFunction(IntegerType const& _
 			)")
 			("functionName", functionName)
 			("signed", _type.isSigned())
-			("maxValue", toCompactHexWithPrefix(u512(bigint(_type.maxValue()) & ((bigint(1) << 512) - 1))))
-			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << 512) - 1))))
+			("maxValue", toCompactHexWithPrefix(u512(bigint(_type.maxValue()) & ((bigint(1) << VMWordBits) - 1))))
+			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 			("cleanupFunction", cleanupFunction(_type))
 			("panic", panicFunction(PanicCode::UnderOverflow))
 			("256bit", _type.numBits() == VMWordBits)
@@ -869,8 +886,8 @@ std::string YulUtilFunctions::overflowCheckedIntExpFunction(
 			("functionName", functionName)
 			("signed", _type.isSigned())
 			("exp", _type.isSigned() ? overflowCheckedSignedExpFunction() : overflowCheckedUnsignedExpFunction())
-			("maxValue", toCompactHexWithPrefix(u512(bigint(_type.maxValue()) & ((bigint(1) << 512) - 1))))
-			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << 512) - 1))))
+			("maxValue", toCompactHexWithPrefix(u512(bigint(_type.maxValue()) & ((bigint(1) << VMWordBits) - 1))))
+			("minValue", toCompactHexWithPrefix(u512(bigint(_type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 			("baseCleanupFunction", cleanupFunction(_type))
 			("exponentCleanupFunction", cleanupFunction(_exponentType))
 			.render();
@@ -891,13 +908,12 @@ std::string YulUtilFunctions::overflowCheckedIntLiteralExpFunction(
 
 	return m_functionCollector.createFunction(functionName, [&]()
 	{
-		// Converts a bigint number into u256 (negative numbers represented in two's complement form.)
-		// We assume that `_v` fits in 256 bits.
-		auto bigint2u = [&](bigint const& _v) -> u256
+		// Converts a bigint number into a VM word (negative numbers represented in two's complement form.)
+		auto bigint2u = [&](bigint const& _v) -> u512
 		{
 			if (_v < 0)
-				return s2u(s256(_v));
-			return u256(_v);
+				return s2u(s512(_v));
+			return u512(_v);
 		};
 
 		// Calculates the upperbound for exponentiation, that is, calculate `b`, such that
@@ -909,7 +925,7 @@ std::string YulUtilFunctions::overflowCheckedIntLiteralExpFunction(
 				return 0;
 
 			unsigned first = 0;
-			unsigned last = 255;
+			unsigned last = static_cast<unsigned>(boost::multiprecision::msb(_maxValue));
 			unsigned middle;
 
 			while (first < last)
@@ -1020,7 +1036,12 @@ std::string YulUtilFunctions::overflowCheckedUnsignedExpFunction()
 				case 1 { power := 1 leave }
 				case 2
 				{
-					if gt(exponent, 255) { <panic>() }
+					// For base 2, exp(2, exponent) wraps modulo the VM word, so an
+					// exponent >= VMWordBits would silently produce a truncated value
+					// that the `gt(power, max)` check below could not detect. Reject
+					// those up front; results for exponents within the word width are
+					// still bounded by the type's `max`.
+					if gt(exponent, <maxBase2Exponent>) { <panic>() }
 					power := exp(2, exponent)
 					if gt(power, max) { <panic>() }
 					leave
@@ -1043,6 +1064,7 @@ std::string YulUtilFunctions::overflowCheckedUnsignedExpFunction()
 			)")
 			("functionName", functionName)
 			("panic", panicFunction(PanicCode::UnderOverflow))
+			("maxBase2Exponent", std::to_string(VMWordBits - 1))
 			("expLoop", overflowCheckedExpLoopFunction())
 			.render();
 	});
@@ -2462,13 +2484,21 @@ std::string YulUtilFunctions::accessCalldataTailFunction(Type const& _type)
 		return Whiskers(R"(
 			function <functionName>(base_ref, ptr_to_tail) -> addr<?dynamicallySized>, length</dynamicallySized> {
 				let rel_offset_of_tail := calldataload(ptr_to_tail)
-				if iszero(slt(rel_offset_of_tail, sub(sub(calldatasize(), base_ref), sub(<neededLength>, 1)))) { <invalidCalldataTailOffset>() }
+				if gt(rel_offset_of_tail, 0xffffffffffffffff) { <invalidCalldataTailOffset>() }
 				addr := add(base_ref, rel_offset_of_tail)
+				if or(
+					lt(addr, base_ref),
+					or(
+						gt(<neededLength>, calldatasize()),
+						gt(addr, sub(calldatasize(), <neededLength>))
+					)
+				) { <invalidCalldataTailOffset>() }
 				<?dynamicallySized>
 					length := calldataload(addr)
 					if gt(length, 0xffffffffffffffff) { <invalidCalldataTailLength>() }
 					addr := add(addr, <wordSize>)
-					if sgt(addr, sub(calldatasize(), mul(length, <calldataStride>))) { <shortCalldataTail>() }
+					let dataEnd := add(addr, mul(length, <calldataStride>))
+					if or(lt(dataEnd, addr), gt(dataEnd, calldatasize())) { <shortCalldataTail>() }
 				</dynamicallySized>
 			}
 		)")
@@ -2603,14 +2633,14 @@ std::string YulUtilFunctions::bytesOrStringConcatFunction(
 		else if (_functionTypeKind == FunctionType::Kind::BytesConcat)
 			hypAssert(
 				argumentType->isImplicitlyConvertibleTo(*TypeProvider::bytesMemory()) ||
-				argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(AddressBytes))
+				argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(VMWordBytes))
 			);
 
 		if (argumentType->category() == Type::Category::FixedBytes)
 			targetTypes.emplace_back(argumentType);
 		else if (
 			auto const* literalType = dynamic_cast<StringLiteralType const*>(argumentType);
-			literalType && !literalType->value().empty() && literalType->value().size() <= AddressBytes
+			literalType && !literalType->value().empty() && literalType->value().size() <= VMWordBytes
 		)
 			targetTypes.emplace_back(TypeProvider::fixedBytes(static_cast<unsigned>(literalType->value().size())));
 		else
@@ -2658,15 +2688,20 @@ std::string YulUtilFunctions::mappingIndexAccessFunction(MappingType const& _map
 		if (_mappingType.keyType()->isDynamicallySized())
 			return Whiskers(R"(
 				function <functionName>(slot <?+key>,</+key> <key>) -> dataSlot {
-					dataSlot := <hash>(<key> <?+key>,</+key> slot)
+					let pos := <allocateUnbounded>()
+					let end := <encodeKey>(pos <?+key>,</+key> <key>)
+					mstore(end, slot)
+					dataSlot := keccak256(pos, add(sub(end, pos), <wordSizeHex>))
 				}
 			)")
 			("functionName", functionName)
 			("key", suffixedVariableNameList("key_", 0, _keyType.sizeOnStack()))
-			("hash", packedHashFunction(
-				{&_keyType, TypeProvider::uint256()},
-				{_mappingType.keyType(), TypeProvider::uint256()}
+			("allocateUnbounded", allocateUnboundedFunction())
+			("encodeKey", ABIFunctions(m_qrvmVersion, m_revertStrings, m_functionCollector).tupleEncoderPacked(
+				{&_keyType},
+				{_mappingType.keyType()}
 			))
+			("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
 			.render();
 		else
 		{
@@ -3313,25 +3348,27 @@ std::string YulUtilFunctions::allocateAndInitializeMemoryStructFunction(StructTy
 			memPtr := <allocStruct>()
 			let offset := memPtr
 			<#member>
-				mstore(offset, <zeroValue>())
-				offset := add(offset, <wordSize>)
+				{
+					let <memberValues> := <zeroValue>()
+					<writeToMemory>(offset, <memberValues>)
+					offset := add(offset, <memberSize>)
+				}
 			</member>
 		}
 		)");
 		templ("functionName", functionName);
 		templ("allocStruct", allocateMemoryStructFunction(_type));
-		templ("wordSize", std::to_string(VMWordBytes));
 
 		TypePointers const& members = _type.memoryMemberTypes();
 
 		std::vector<std::map<std::string, std::string>> memberParams(members.size());
 		for (size_t i = 0; i < members.size(); ++i)
 		{
-			hypAssert(members[i]->memoryHeadSize() == VMWordBytes, "");
-			memberParams[i]["zeroValue"] = zeroValueFunction(
-				*TypeProvider::withLocationIfReference(DataLocation::Memory, members[i]),
-				false
-			);
+			Type const& memberType = *members[i];
+			memberParams[i]["memberValues"] = suffixedVariableNameList("memberValue_", 0, memberType.stackItems().size());
+			memberParams[i]["zeroValue"] = zeroValueFunction(memberType, true);
+			memberParams[i]["writeToMemory"] = writeToMemoryFunction(memberType);
+			memberParams[i]["memberSize"] = std::to_string(memberType.memoryHeadSize());
 		}
 		templ("member", memberParams);
 		return templ.render();
@@ -3716,7 +3753,6 @@ std::string YulUtilFunctions::copyStructToStorageFunction(StructType const& _fro
 		for (size_t i = 0; i < structMembers.size(); ++i)
 		{
 			Type const& memberType = *structMembers[i].type;
-			hypAssert(memberType.memoryHeadSize() == VMWordBytes, "");
 			auto const&[slotDiff, offset] = _to.storageOffsetsOfMember(structMembers[i].name);
 
 			Whiskers t(R"(
@@ -3724,15 +3760,21 @@ std::string YulUtilFunctions::copyStructToStorageFunction(StructType const& _fro
 				let memberSrcPtr := add(value, <memberOffset>)
 
 				<?fromCalldata>
-					let <memberValues> :=
-						<?dynamicallyEncodedMember>
-							<accessCalldataTail>(value, memberSrcPtr)
-						<!dynamicallyEncodedMember>
-							memberSrcPtr
-						</dynamicallyEncodedMember>
-
 					<?isValueType>
-						<memberValues> := <read>(<memberValues>)
+						let memberDataPtr :=
+							<?dynamicallyEncodedMember>
+								<accessCalldataTail>(value, memberSrcPtr)
+							<!dynamicallyEncodedMember>
+								memberSrcPtr
+							</dynamicallyEncodedMember>
+						let <memberValues> := <read>(memberDataPtr)
+					<!isValueType>
+						let <memberValues> :=
+							<?dynamicallyEncodedMember>
+								<accessCalldataTail>(value, memberSrcPtr)
+							<!dynamicallyEncodedMember>
+								memberSrcPtr
+							</dynamicallyEncodedMember>
 					</isValueType>
 				</fromCalldata>
 
@@ -4102,7 +4144,7 @@ std::string YulUtilFunctions::decrementCheckedFunction(Type const& _type)
 		)")
 		("functionName", functionName)
 		("panic", panicFunction(PanicCode::UnderOverflow))
-		("minval", toCompactHexWithPrefix(u512(bigint(type.minValue()) & ((bigint(1) << 512) - 1))))
+		("minval", toCompactHexWithPrefix(u512(bigint(type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 		("cleanupFunction", cleanupFunction(_type))
 		.render();
 	});
@@ -4143,7 +4185,7 @@ std::string YulUtilFunctions::incrementCheckedFunction(Type const& _type)
 			}
 		)")
 		("functionName", functionName)
-		("maxval", toCompactHexWithPrefix(u512(bigint(type.maxValue()) & ((bigint(1) << 512) - 1))))
+		("maxval", toCompactHexWithPrefix(u512(bigint(type.maxValue()) & ((bigint(1) << VMWordBits) - 1))))
 		("panic", panicFunction(PanicCode::UnderOverflow))
 		("cleanupFunction", cleanupFunction(_type))
 		.render();
@@ -4185,7 +4227,7 @@ std::string YulUtilFunctions::negateNumberCheckedFunction(Type const& _type)
 			}
 		)")
 		("functionName", functionName)
-		("minval", toCompactHexWithPrefix(u512(bigint(type.minValue()) & ((bigint(1) << 512) - 1))))
+		("minval", toCompactHexWithPrefix(u512(bigint(type.minValue()) & ((bigint(1) << VMWordBits) - 1))))
 		("cleanupFunction", cleanupFunction(_type))
 		("panic", panicFunction(PanicCode::UnderOverflow))
 		.render();
@@ -4394,7 +4436,11 @@ std::string YulUtilFunctions::conversionFunctionSpecial(Type const& _from, Type 
 			templ("functionName", functionName);
 			{
 				// Left-align the literal data in a 512-bit word
-				u512 val = u512(h256::Arith(h256(data, h256::AlignLeft))) << 256;
+				u512 val = 0;
+				for (char c: data)
+					val = (val << 8) | static_cast<uint8_t>(c);
+				if (data.size() < VMWordBytes)
+					val <<= (VMWordBytes - data.size()) * 8;
 				u512 mask = ~(u512(-1) >> (8 * numBytes));
 				templ("data", formatNumber(val & mask));
 			}
@@ -4547,19 +4593,20 @@ std::string YulUtilFunctions::panicFunction(util::PanicCode _code)
 {
 	std::string functionName = "panic_error_" + toCompactHexWithPrefix(uint64_t(_code));
 	return m_functionCollector.createFunction(functionName, [&]() {
-		// Panic(uint256) ABI: selector (4 bytes) + code (64 bytes) = 68 bytes (0x44).
+		// Panic(uint256) ABI: selector (4 bytes) + one VM word for the code.
 		// selectorFromSignatureU256 returns sel << 224 (top of u256). Shift further to top of VM word.
 		return Whiskers(R"(
 			function <functionName>() {
 				mstore(0, <shlExtra>(<selector>))
 				mstore(4, <code>)
-				revert(0, 0x44)
+				revert(0, <panicReturndataSize>)
 			}
 		)")
 		("functionName", functionName)
 		("shlExtra", shiftLeftFunction(VMWordBits - 256))
 		("selector", util::selectorFromSignatureU256("Panic(uint256)").str())
 		("code", toCompactHexWithPrefix(static_cast<unsigned>(_code)))
+		("panicReturndataSize", toCompactHexWithPrefix(u256(4 + VMWordBytes)))
 		.render();
 	});
 }
@@ -4573,12 +4620,12 @@ std::string YulUtilFunctions::returnDataSelectorFunction()
 			function <functionName>() -> sig {
 				if gt(returndatasize(), 3) {
 					returndatacopy(0, 0, 4)
-					sig := <shr224>(mload(0))
+					sig := <selectorShiftRight>(mload(0))
 				}
 			}
 		)")
 		("functionName", functionName)
-		("shr224", shiftRightFunction(VMWordBits - 32))
+		("selectorShiftRight", shiftRightFunction(VMWordBits - 32))
 		.render();
 	});
 }
@@ -4590,7 +4637,9 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return util::Whiskers(R"(
 			function <functionName>() -> ret {
-				if lt(returndatasize(), 0x44) { leave }
+				// A minimal Error(string) is a 4-byte selector plus an offset
+				// word and a length word, i.e. 4 + 2 * VMWordBytes bytes.
+				if lt(returndatasize(), <minReturndataSize>) { leave }
 
 				let data := <allocateUnbounded>()
 				returndatacopy(data, 4, sub(returndatasize(), 4))
@@ -4598,7 +4647,7 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 				let offset := mload(data)
 				if or(
 					gt(offset, 0xffffffffffffffff),
-					gt(add(offset, 0x24), returndatasize())
+					gt(add(offset, <lengthWordEnd>), returndatasize())
 				) {
 					leave
 				}
@@ -4618,6 +4667,8 @@ std::string YulUtilFunctions::tryDecodeErrorMessageFunction()
 		("allocateUnbounded", allocateUnboundedFunction())
 		("finalizeAllocation", finalizeAllocationFunction())
 		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
+		("minReturndataSize", toCompactHexWithPrefix(u256(4 + 2 * VMWordBytes)))
+		("lengthWordEnd", toCompactHexWithPrefix(u256(4 + VMWordBytes)))
 		.render();
 	});
 }
@@ -4629,7 +4680,12 @@ std::string YulUtilFunctions::tryDecodePanicDataFunction()
 	return m_functionCollector.createFunction(functionName, [&]() {
 		return util::Whiskers(R"(
 			function <functionName>() -> success, data {
-				if gt(returndatasize(), 0x23) {
+				// Panic data is a 4-byte selector followed by one VM word, so it
+				// occupies 4 + VMWordBytes bytes. The guard must require that many
+				// bytes; otherwise returndatacopy below would read past
+				// returndatasize() and revert instead of letting the caller fall
+				// through to the generic catch.
+				if gt(returndatasize(), <minReturndataSize>) {
 					returndatacopy(0, 4, <wordSizeHex>)
 					success := 1
 					data := mload(0)
@@ -4638,6 +4694,7 @@ std::string YulUtilFunctions::tryDecodePanicDataFunction()
 		)")
 		("functionName", functionName)
 		("wordSizeHex", toCompactHexWithPrefix(u256(VMWordBytes)))
+		("minReturndataSize", toCompactHexWithPrefix(u256(4 + VMWordBytes - 1)))
 		.render();
 	});
 }

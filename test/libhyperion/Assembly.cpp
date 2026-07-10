@@ -91,7 +91,7 @@ qrvmasm::AssemblyItems compileContract(std::shared_ptr<CharStream> _sourceCode)
 			);
 			compiler.compileContract(*contract, std::map<ContractDefinition const*, std::shared_ptr<Compiler const>>{}, bytes());
 
-			return compiler.runtimeAssembly().items();
+			return static_cast<qrvmasm::Assembly const&>(compiler.runtimeAssembly()).items();
 		}
 	BOOST_FAIL("No contract found in source.");
 	return AssemblyItems();
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(location_test)
 	else
 		locations =
 			std::vector<SourceLocation>(31, SourceLocation{23, 103, sourceName}) +
-			std::vector<SourceLocation>(24, SourceLocation{41, 100, sourceName}) +
+			std::vector<SourceLocation>(26, SourceLocation{41, 100, sourceName}) +
 			std::vector<SourceLocation>(1, SourceLocation{70, 79, sourceName}) +
 			std::vector<SourceLocation>(1, SourceLocation{93, 95, sourceName}) +
 			std::vector<SourceLocation>(2, SourceLocation{86, 95, sourceName}) +

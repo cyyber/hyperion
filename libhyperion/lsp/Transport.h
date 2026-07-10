@@ -112,6 +112,7 @@ public:
 
 private:
 	TraceValue m_logTrace = TraceValue::Off;
+	bool m_protocolClosed = false;
 
 protected:
 	/// Reads from the transport and parses the headers until the beginning
@@ -122,8 +123,11 @@ protected:
 	/// the message body from the transport line.
 	virtual std::string readBytes(size_t _byteCount) = 0;
 
-	// Mimics std::getline() on this Transport API.
-	virtual std::string getline() = 0;
+	/// Reads one line, failing if the line exceeds @p _maxLength bytes.
+	virtual std::optional<std::string> readLine(size_t _maxLength) = 0;
+
+	void closeProtocol() noexcept { m_protocolClosed = true; }
+	bool protocolClosed() const noexcept { return m_protocolClosed; }
 
 	/// Writes the given payload @p _data to transport.
 	/// This call may or may not buffer.
@@ -154,7 +158,7 @@ public:
 
 protected:
 	std::string readBytes(size_t _byteCount) override;
-	std::string getline() override;
+	std::optional<std::string> readLine(size_t _maxLength) override;
 	void writeBytes(std::string_view _data) override;
 	void flushOutput() override;
 
@@ -175,7 +179,7 @@ public:
 
 protected:
 	std::string readBytes(size_t _byteCount) override;
-	std::string getline() override;
+	std::optional<std::string> readLine(size_t _maxLength) override;
 	void writeBytes(std::string_view _data) override;
 	void flushOutput() override;
 };

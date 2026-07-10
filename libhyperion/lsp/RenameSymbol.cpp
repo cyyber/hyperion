@@ -45,6 +45,11 @@ CallableDeclaration const* extractCallableDeclaration(FunctionCall const& _funct
 	return nullptr;
 }
 
+bool isRenameableSourceDeclaration(Declaration const& _declaration)
+{
+	return _declaration.nameLocation().sourceName && _declaration.scope();
+}
+
 }
 
 void RenameSymbol::operator()(MessageID _id, Json::Value const& _args)
@@ -57,17 +62,25 @@ void RenameSymbol::operator()(MessageID _id, Json::Value const& _args)
 
 	m_symbolName = {};
 	m_declarationToRename = nullptr;
-	m_sourceUnits = { &m_server.compilerStack().ast(sourceUnitName) };
+	m_sourceUnits.clear();
 	m_locations.clear();
+	lspRequire(sourceNode, ErrorCode::InvalidParams, "No symbol at requested position.");
 
 	std::optional<int> cursorBytePosition = charStreamProvider()
 		.charStream(sourceUnitName)
 		.translateLineColumnToPosition(lineColumn);
-	hypAssert(cursorBytePosition.has_value(), "Expected source pos");
+	lspRequire(cursorBytePosition.has_value(), ErrorCode::InvalidParams, "Invalid position parameter.");
 
 	extractNameAndDeclaration(*sourceNode, *cursorBytePosition);
+	lspRequire(m_declarationToRename, ErrorCode::InvalidParams, "No renameable symbol at requested position.");
+	lspRequire(
+		isRenameableSourceDeclaration(*m_declarationToRename),
+		ErrorCode::InvalidParams,
+		"No renameable symbol at requested position."
+	);
 
 	// Find all source units using this symbol
+	m_sourceUnits = { &m_server.compilerStack().ast(sourceUnitName) };
 	for (auto const& [name, content]: fileRepository().sourceUnits())
 	{
 		auto const& sourceUnit = m_server.compilerStack().ast(name);
@@ -99,12 +112,7 @@ void RenameSymbol::operator()(MessageID _id, Json::Value const& _args)
 	{
 		hypAssert(i->isValid());
 
-		// Replace in our file repository
 		std::string const uri = fileRepository().sourceUnitNameToUri(*i->sourceName);
-		std::string buffer = fileRepository().sourceUnits().at(*i->sourceName);
-		buffer.replace((size_t)i->start, (size_t)(i->end - i->start), newName);
-		fileRepository().setSourceByUri(uri, std::move(buffer));
-
 		Json::Value edit = Json::objectValue;
 		edit["range"] = toRange(*i);
 		edit["newText"] = newName;
@@ -153,10 +161,9 @@ void RenameSymbol::extractNameAndDeclaration(ASTNode const& _node, int _cursorBy
 		extractNameAndDeclaration(*functionCall, _cursorBytePosition);
 	else if (auto const* inlineAssembly = dynamic_cast<InlineAssembly const*>(&_node))
 		extractNameAndDeclaration(*inlineAssembly, _cursorBytePosition);
-	else
-		hypAssert(false, "Unexpected ASTNODE id: " + std::to_string(_node.id()));
 
-	lspDebug(fmt::format("Goal: rename '{}', loc: {}-{}", m_symbolName, m_declarationToRename->nameLocation().start, m_declarationToRename->nameLocation().end));
+	if (m_declarationToRename)
+		lspDebug(fmt::format("Goal: rename '{}', loc: {}-{}", m_symbolName, m_declarationToRename->nameLocation().start, m_declarationToRename->nameLocation().end));
 }
 
 void RenameSymbol::extractNameAndDeclaration(ImportDirective const& _importDirective, int _cursorBytePosition)
@@ -226,6 +233,7 @@ void RenameSymbol::Visitor::endVisit(FunctionCall const& _node)
 void RenameSymbol::Visitor::endVisit(MemberAccess const& _node)
 {
 	if (
+		_node.annotation().referencedDeclaration &&
 		m_outer.m_symbolName == _node.memberName() &&
 		*m_outer.m_declarationToRename == *_node.annotation().referencedDeclaration
 	)
@@ -235,6 +243,7 @@ void RenameSymbol::Visitor::endVisit(MemberAccess const& _node)
 void RenameSymbol::Visitor::endVisit(Identifier const& _node)
 {
 	if (
+		_node.annotation().referencedDeclaration &&
 		m_outer.m_symbolName == _node.name() &&
 		*m_outer.m_declarationToRename == *_node.annotation().referencedDeclaration
 	)
@@ -278,7 +287,8 @@ void RenameSymbol::extractNameAndDeclaration(InlineAssembly const& _inlineAssemb
 	for (auto&& [identifier, externalReference]: _inlineAssembly.annotation().externalReferences)
 	{
 		SourceLocation location = yul::nativeLocationOf(*identifier);
-		location.end -= static_cast<int>(externalReference.suffix.size() + 1);
+		if (!externalReference.suffix.empty())
+			location.end -= static_cast<int>(externalReference.suffix.size() + 1);
 
 		if (location.containsOffset(_cursorBytePosition))
 		{
@@ -306,7 +316,8 @@ void RenameSymbol::Visitor::endVisit(InlineAssembly const& _node)
 		)
 		{
 			SourceLocation location = yul::nativeLocationOf(*identifier);
-			location.end -= static_cast<int>(externalReference.suffix.size() + 1);
+			if (!externalReference.suffix.empty())
+				location.end -= static_cast<int>(externalReference.suffix.size() + 1);
 
 			m_outer.m_locations.emplace_back(location);
 		}

@@ -7,7 +7,7 @@ General Resources
 
 * `TheQRL.org Developer Portal <https://theqrl.org/en/developers/>`_
 * `The QRL StackExchange <https://theqrl.stackexchange.com/>`_
-* `Hyperion Portal <https://soliditylang.org/>`_
+* :doc:`Hyperion Documentation <index>`
 * `Hyperion Changelog <https://github.com/theQRL/hyperion/blob/develop/Changelog.md>`_
 * `Hyperion Source Code on GitHub <https://github.com/theQRL/hyperion/>`_
 * `Hyperion Language Users Chat <https://matrix.to/#/#theqrl_hyperion:gitter.im>`_

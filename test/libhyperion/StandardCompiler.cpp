@@ -190,6 +190,38 @@ BOOST_AUTO_TEST_CASE(invalid_language)
 	BOOST_CHECK(containsError(result, "JSONError", "Only \"Hyperion\", \"Yul\" or \"HyperionAST\" is supported as a language."));
 }
 
+BOOST_AUTO_TEST_CASE(malformed_standard_json_scalars_report_json_errors)
+{
+	Json::Value result = compile(R"(
+	{
+		"language": {},
+		"sources": { "name": { "content": "abc" } }
+	}
+	)");
+	BOOST_CHECK(containsError(result, "JSONError", "\"language\" must be a string."));
+	BOOST_CHECK(!containsError(result, "InternalCompilerError", "JSON logic exception: Type is not convertible to string"));
+
+	result = compile(R"(
+	{
+		"language": "Hyperion",
+		"sources": { "name": { "content": "contract C {}" } },
+		"settings": { "metadata": { "bytecodeHash": {} } }
+	}
+	)");
+	BOOST_CHECK(containsError(result, "JSONError", "\"settings.metadata.bytecodeHash\" must be a string"));
+	BOOST_CHECK(!containsError(result, "InternalCompilerError", "JSON logic exception: Type is not convertible to string"));
+
+	result = compile(R"(
+	{
+		"language": "Hyperion",
+		"sources": { "name": { "content": "contract C {}" } },
+		"settings": { "debug": { "debugInfo": [{}] } }
+	}
+	)");
+	BOOST_CHECK(containsError(result, "JSONError", "settings.debug.debugInfo must be an array of strings."));
+	BOOST_CHECK(!containsError(result, "InternalCompilerError", "JSON logic exception: Type is not convertible to string"));
+}
+
 BOOST_AUTO_TEST_CASE(valid_language)
 {
 	char const* input = R"(
@@ -398,7 +430,7 @@ BOOST_AUTO_TEST_CASE(basic_compilation)
 		"dataOffset(sub_0)\n  0x00\n  codecopy\n  0x00\n  return\nstop\n\nsub_0: assembly {\n        "
 		"/* \"fileA\":0:14  contract A { } */\n      mstore(0x80, 0x0100)\n      "
 		"0x00\n      "
-		"dup1\n      revert\n\n    auxdata: 0xa26469706673582212"
+		"dup1\n      revert\n    stop\n\n    auxdata: 0xa26469706673582212"
 	) == 0);
 	BOOST_CHECK(contract["qrvm"]["gasEstimates"].isObject());
 	BOOST_CHECK_EQUAL(contract["qrvm"]["gasEstimates"].size(), 1);
@@ -1165,6 +1197,35 @@ BOOST_AUTO_TEST_CASE(optimizer_settings_details_exactly_as_default_disabled)
 	BOOST_CHECK(optimizer["enabled"].asBool() == false);
 	BOOST_CHECK(!optimizer.isMember("details"));
 	BOOST_CHECK(optimizer["runs"].asUInt() == 200);
+}
+
+BOOST_AUTO_TEST_CASE(optimizer_settings_empty_yul_steps_without_yul)
+{
+	for (char const* optimizerSteps: {"", "   "})
+	{
+		Json::Value input(Json::objectValue);
+		input["language"] = "Hyperion";
+		input["sources"]["fileA"]["content"] = "contract A { }";
+		input["settings"]["outputSelection"]["fileA"]["A"].append("metadata");
+		input["settings"]["optimizer"]["details"]["yul"] = false;
+		input["settings"]["optimizer"]["details"]["yulDetails"]["optimizerSteps"] = optimizerSteps;
+
+		frontend::StandardCompiler compiler;
+		Json::Value result = compiler.compile(input);
+		BOOST_CHECK(containsAtMostWarnings(result));
+		Json::Value contract = getContractResult(result, "fileA", "A");
+		BOOST_REQUIRE(contract.isObject());
+		BOOST_REQUIRE(contract["metadata"].isString());
+
+		Json::Value metadata;
+		BOOST_REQUIRE(util::jsonParseStrict(contract["metadata"].asString(), metadata));
+
+		Json::Value const& details = metadata["settings"]["optimizer"]["details"];
+		BOOST_REQUIRE(details.isObject());
+		BOOST_CHECK(details["yul"].asBool() == false);
+		BOOST_REQUIRE(details["yulDetails"].isObject());
+		BOOST_CHECK(details["yulDetails"]["optimizerSteps"].asString() == ":");
+	}
 }
 
 BOOST_AUTO_TEST_CASE(optimizer_settings_details_different)

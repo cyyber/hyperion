@@ -77,6 +77,18 @@ std::optional<std::string> compileAndCheckLicenseMetadata(std::string const& _co
 
 BOOST_AUTO_TEST_SUITE(Metadata)
 
+BOOST_AUTO_TEST_CASE(cbor_parser_accepts_two_byte_string_lengths)
+{
+	bytes metadata{0xa1, 0x64, 'l', 'o', 'n', 'g', 0x79, 0x01, 0x00};
+	std::string const longString(256, 'a');
+	metadata += longString;
+
+	std::optional<std::map<std::string, std::string>> parsed = hyperion::test::parseCBORMetadata(metadata);
+	BOOST_REQUIRE(parsed);
+	BOOST_REQUIRE(parsed->count("long"));
+	BOOST_CHECK_EQUAL(parsed->at("long"), longString);
+}
+
 BOOST_AUTO_TEST_CASE(metadata_stamp)
 {
 	// Check that the metadata stamp is at the end of the runtime bytecode.

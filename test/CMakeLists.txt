@@ -80,6 +80,7 @@ set(libhyperion_sources
     libhyperion/Imports.cpp
     libhyperion/InlineAssembly.cpp
     libhyperion/LibHypc.cpp
+    libhyperion/LSPTransport.cpp
     libhyperion/Metadata.cpp
     libhyperion/MemoryGuardTest.cpp
     libhyperion/MemoryGuardTest.h

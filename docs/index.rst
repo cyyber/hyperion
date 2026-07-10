@@ -82,28 +82,15 @@ or our `Gitter channel <https://gitter.im/theQRL/hyperion>`_.
 Translations
 ------------
 
-Community contributors help translate this documentation into several languages.
-Note that they have varying degrees of completeness and up-to-dateness.
-The English version stands as a reference.
-
-You can switch between languages by clicking on the flyout menu in the bottom-left corner
-and selecting the preferred language.
-
-* `Chinese <https://docs.soliditylang.org/zh/latest/>`_
-* `French <https://docs.soliditylang.org/fr/latest/>`_
-* `Indonesian <https://github.com/solidity-docs/id-indonesian>`_
-* `Japanese <https://github.com/solidity-docs/ja-japanese>`_
-* `Korean <https://github.com/solidity-docs/ko-korean>`_
-* `Persian <https://github.com/solidity-docs/fa-persian>`_
-* `Russian <https://github.com/solidity-docs/ru-russian>`_
-* `Spanish <https://github.com/solidity-docs/es-spanish>`_
-* `Turkish <https://docs.soliditylang.org/tr/latest/>`_
+Community contributors can translate this documentation into additional
+languages. The English version stands as a reference, and translation work is
+tracked by the `Hyperion documentation community <https://github.com/hyperion-docs>`_.
 
 .. note::
 
    We set up a GitHub organization and translation workflow to help streamline the community efforts.
-   Please refer to the translation guide in the `solidity-docs org <https://github.com/solidity-docs>`_
-   for information on how to start a new language or contribute to the community translations.
+   Please refer to the Hyperion documentation community for information on how to start a new language
+   or contribute to the community translations.
 
 Contents
 ========

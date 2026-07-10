@@ -128,6 +128,11 @@ extern char const* hyperion_version() noexcept
 
 extern char* hyperion_compile(char const* _input, CStyleReadFileCallback _readCallback, void* _readContext) noexcept
 {
+	if (!_input)
+		return hyperionAllocations.emplace_back(
+			R"({"errors":[{"component":"general","type":"JSONError","severity":"error","message":"Invalid input: null pointer."}]})"
+		).data();
+
 	return hyperionAllocations.emplace_back(compile(_input, _readCallback, _readContext)).data();
 }
 

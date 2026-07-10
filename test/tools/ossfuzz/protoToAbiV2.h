@@ -149,6 +149,7 @@ public:
 		m_varCounter(0),
 		m_returnValue(1),
 		m_isLastDynParamRightPadded(false),
+		m_isabelleCompatible(true),
 		m_structCounter(0),
 		m_numStructsAdded(0)
 	{
@@ -434,6 +435,8 @@ private:
 	/// passed to a function call is of a type that is going to be
 	/// right padded by the ABI encoder.
 	bool m_isLastDynParamRightPadded;
+	/// False when a generated type is outside the Ethereum ABI subset modeled by the external Isabelle coder.
+	bool m_isabelleCompatible;
 	/// Struct counter
 	unsigned m_structCounter;
 	unsigned m_numStructsAdded;
@@ -959,6 +962,55 @@ public:
 	}
 
 	unsigned m_arrayDimensions;
+	using AbiV2ProtoVisitor<bool>::visit;
+};
+
+/// Returns true for the subset understood by the external Isabelle Ethereum ABI coder.
+class IsabelleCompatibilityVisitor: AbiV2ProtoVisitor<bool>
+{
+public:
+	bool visit(BoolType const&) override
+	{
+		return true;
+	}
+
+	bool visit(IntegerType const& _type) override
+	{
+		return getIntWidth(_type) <= 256;
+	}
+
+	bool visit(FixedByteType const& _type) override
+	{
+		return getFixedByteWidth(_type) <= 32;
+	}
+
+	bool visit(AddressType const&) override
+	{
+		return AddressBytes == 20;
+	}
+
+	bool visit(DynamicByteArrayType const&) override
+	{
+		return true;
+	}
+
+	bool visit(ArrayType const& _type) override
+	{
+		if (!ValidityVisitor().visit(_type))
+			return false;
+		return visit(_type.t());
+	}
+
+	bool visit(StructType const& _type) override
+	{
+		if (!ValidityVisitor().visit(_type))
+			return false;
+		for (auto const& t: _type.t())
+			if (ValidityVisitor().visit(t) && !visit(t))
+				return false;
+		return true;
+	}
+
 	using AbiV2ProtoVisitor<bool>::visit;
 };
 

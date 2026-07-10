@@ -589,7 +589,7 @@ IntegerType::IntegerType(unsigned _bits, IntegerType::Modifier _modifier):
 	m_bits(_bits), m_modifier(_modifier)
 {
 	hypAssert(
-		m_bits > 0 && m_bits <= AddressBits && m_bits % 8 == 0,
+		m_bits > 0 && m_bits <= VMWordBits && m_bits % 8 == 0,
 		"Invalid bit number for integer type: " + util::toString(m_bits)
 	);
 }
@@ -755,7 +755,7 @@ FixedPointType::FixedPointType(unsigned _totalBits, unsigned _fractionalDigits, 
 	m_totalBits(_totalBits), m_fractionalDigits(_fractionalDigits), m_modifier(_modifier)
 {
 	hypAssert(
-		8 <= m_totalBits && m_totalBits <= 256 && m_totalBits % 8 == 0 && m_fractionalDigits <= 80,
+		8 <= m_totalBits && m_totalBits <= VMWordBits && m_totalBits % 8 == 0 && m_fractionalDigits <= 80,
 		"Invalid bit number(s) for fixed type: " +
 		util::toString(_totalBits) + "x" + util::toString(_fractionalDigits)
 	);
@@ -1074,16 +1074,25 @@ TypeResult RationalNumberType::binaryOperatorResult(Token _operator, Type const*
 	{
 		if (isFractional())
 			return TypeResult::err("Fractional literals not supported.");
-		else if (!integerType())
+
+		IntegerType const* literalIntegerType = integerType();
+		if (!literalIntegerType)
 			return TypeResult::err("Literal too large.");
 
 		// Shift and exp are not symmetric, so it does not make sense to swap
-		// the types as below. As an exception, we always use uint here.
+		// the types as below. Use at least the default integer width, but keep
+		// wider literals wide enough to hold their value.
+		auto shiftOrExpType = [&]() {
+			return TypeProvider::integer(
+				std::max(256u, literalIntegerType->numBits()),
+				literalIntegerType->isSigned() ? IntegerType::Modifier::Signed : IntegerType::Modifier::Unsigned
+			);
+		};
 		if (TokenTraits::isShiftOp(_operator))
 		{
 			if (!isValidShiftAndAmountType(_operator, *_other))
 				return nullptr;
-			return isNegative() ? TypeProvider::int256() : TypeProvider::uint256();
+			return shiftOrExpType();
 		}
 		else if (Token::Exp == _operator)
 		{
@@ -1095,7 +1104,7 @@ TypeResult RationalNumberType::binaryOperatorResult(Token _operator, Type const*
 			else if (dynamic_cast<FixedPointType const*>(_other))
 				return TypeResult::err("Exponent is fractional.");
 
-			return isNegative() ? TypeProvider::int256() : TypeProvider::uint256();
+			return shiftOrExpType();
 		}
 		else
 		{
@@ -1193,15 +1202,14 @@ u512 RationalNumberType::literalValue(Literal const*) const
 
 	// we ignore the literal and hope that the type was correctly determined
 	hypAssert(shiftedValue <= u512(-1), "Number constant too large.");
-	hypAssert(shiftedValue >= -(bigint(1) << 511), "Number constant too small.");
+	hypAssert(shiftedValue >= -(bigint(1) << (VMWordBits - 1)), "Number constant too small.");
 
 	if (m_value >= rational(0))
 		value = u512(shiftedValue);
 	else
 	{
-		// Sign-extend to full VM word width (512 bits = 64 bytes) using two's complement
-		// 2^512 + shiftedValue = proper u512 two's complement for negative
-		bigint twoPow = bigint(1) << 512;
+		// Sign-extend to full VM word width using two's complement.
+		bigint twoPow = bigint(1) << VMWordBits;
 		value = u512(twoPow + shiftedValue);
 	}
 	return value;
@@ -1222,7 +1230,7 @@ IntegerType const* RationalNumberType::integerType() const
 	bool negative = (value < 0);
 	if (negative) // convert to positive number of same bit requirements
 		value = ((0 - value) - 1) << 1;
-	if (value > u256(-1))
+	if (value > u512(-1))
 		return nullptr;
 	else
 		return TypeProvider::integer(
@@ -1237,8 +1245,8 @@ FixedPointType const* RationalNumberType::fixedPointType() const
 	unsigned fractionalDigits = 0;
 	rational value = abs(m_value); // We care about the sign later.
 	rational maxValue = negative ?
-		rational(bigint(1) << 255, 1):
-		rational((bigint(1) << 256) - 1, 1);
+		rational(bigint(1) << (VMWordBits - 1), 1):
+		rational((bigint(1) << VMWordBits) - 1, 1);
 
 	while (value * 10 <= maxValue && value.denominator() != 1 && fractionalDigits < 80)
 	{
@@ -1257,11 +1265,11 @@ FixedPointType const* RationalNumberType::fixedPointType() const
 		// add one bit for sign and decrement because negative numbers can be larger
 		v = (v - 1) << 1;
 
-	if (v > u256(-1))
+	if (v > (bigint(1) << VMWordBits) - 1)
 		return nullptr;
 
 	unsigned totalBits = std::max(numberEncodingSize(v), 1u) * 8;
-	hypAssert(totalBits <= 256, "");
+	hypAssert(totalBits <= VMWordBits, "");
 
 	return TypeProvider::fixedPoint(
 		totalBits, fractionalDigits,
@@ -1344,7 +1352,7 @@ Type const* StringLiteralType::mobileType() const
 FixedBytesType::FixedBytesType(unsigned _bytes): m_bytes(_bytes)
 {
 	hypAssert(
-		m_bytes > 0 && m_bytes <= AddressBytes,
+		m_bytes > 0 && m_bytes <= VMWordBytes,
 		"Invalid byte number for fixed bytes type: " + util::toString(m_bytes)
 	);
 }
@@ -3312,7 +3320,7 @@ std::vector<std::tuple<std::string, Type const*>> FunctionType::makeStackItems()
 	if (valueSet())
 		slots.emplace_back("value", TypeProvider::uint256());
 	if (saltSet())
-		slots.emplace_back("salt", TypeProvider::fixedBytes(32));
+		slots.emplace_back("salt", TypeProvider::fixedBytes(VMWordBytes));
 	if (hasBoundFirstArgument())
 		slots.emplace_back("self", m_parameterTypes.front());
 	return slots;
@@ -4111,7 +4119,6 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 		return MemberList::MemberMap({
 			{"coinbase", TypeProvider::payableAddress()},
 			{"timestamp", TypeProvider::uint256()},
-			{"blockhash", TypeProvider::function(strings{"uint"}, strings{"bytes32"}, FunctionType::Kind::BlockHash, StateMutability::View)},
 			{"prevrandao", TypeProvider::uint256()},
 			{"number", TypeProvider::uint256()},
 			{"gaslimit", TypeProvider::uint256()},
@@ -4121,7 +4128,6 @@ MemberList::MemberMap MagicType::nativeMembers(ASTNode const*) const
 	case Kind::Message:
 		return MemberList::MemberMap({
 			{"sender", TypeProvider::address()},
-			{"gas", TypeProvider::uint256()},
 			{"value", TypeProvider::uint256()},
 			{"data", TypeProvider::array(DataLocation::CallData)},
 			{"sig", TypeProvider::fixedBytes(4)}

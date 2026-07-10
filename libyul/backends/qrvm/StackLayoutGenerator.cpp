@@ -26,6 +26,7 @@
 #include <libqrvmasm/GasMeter.h>
 
 #include <libhyputil/Algorithms.h>
+#include <libhyputil/VMConstants.h>
 #include <libhyputil/cxx20.h>
 #include <libhyputil/Visitor.h>
 
@@ -753,7 +754,7 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const& _block, CFG::Functi
 		auto dupOrPush = [&](StackSlot const& _slot)
 		{
 			if (canBeFreelyGenerated(_slot))
-				opGas += qrvmasm::GasMeter::runGas(qrvmasm::pushInstruction(32));
+				opGas += qrvmasm::GasMeter::runGas(qrvmasm::pushInstruction(VMWordBytes));
 			else
 			{
 				if (auto depth = util::findOffset(_source | ranges::views::reverse, _slot))

@@ -9,8 +9,7 @@ The Hyperion Brand
 ==================
 
 The Hyperion programming language is an open-source, community project
-governed by a core team. The core team is sponsored by the `Ethereum
-Foundation <https://ethereum.foundation/>`_.
+governed by a core team.
 
 This document aims to provide information about how to best use the
 Hyperion brand name and logo.

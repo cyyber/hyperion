@@ -26,8 +26,35 @@
 
 #include <libhyputil/VMConstants.h>
 
+#include <limits>
+
 using namespace hyperion;
 using namespace hyperion::qrvmasm;
+
+namespace
+{
+
+void applyStackDeposit(std::vector<u512>& _stack, int _deposit)
+{
+	if (_deposit < 0)
+	{
+		size_t const removed = static_cast<size_t>(-static_cast<long long>(_deposit));
+		assertThrow(_stack.size() >= removed, OptimizerException, "Invalid stack effect generated.");
+		_stack.resize(_stack.size() - removed);
+	}
+	else
+	{
+		size_t const added = static_cast<size_t>(_deposit);
+		assertThrow(
+			added <= std::numeric_limits<size_t>::max() - _stack.size(),
+			OptimizerException,
+			"Invalid stack effect generated."
+		);
+		_stack.resize(_stack.size() + added);
+	}
+}
+
+}
 
 unsigned ConstantOptimisationMethod::optimiseConstants(
 	bool _isCreation,
@@ -203,7 +230,7 @@ AssemblyItems ComputeMethod::findRepresentation(u512 const& _value)
 		// Is not always better, try literal and decomposition method.
 		AssemblyItems routine{AssemblyItem(_value)};
 		bigint bestGas = gasNeeded(routine);
-		for (unsigned bits = 511; bits > 8 && m_maxSteps > 0; --bits)
+		for (unsigned bits = VMWordBits - 1; bits > 8 && m_maxSteps > 0; --bits)
 		{
 			unsigned gapDetector = unsigned((_value >> (bits - 8)) & 0x1ff);
 			if (gapDetector != 0xff && gapDetector != 0x100)
@@ -279,17 +306,17 @@ bool ComputeMethod::checkRepresentation(u512 const& _value, AssemblyItems const&
 				sp[0] = sp[0] ^ mask;
 				break;
 			case Instruction::SHL:
-				assertThrow(sp[0] <= u512(511), OptimizerException, "Invalid shift generated.");
+				assertThrow(sp[0] < u512(VMWordBits), OptimizerException, "Invalid shift generated.");
 				sp[-1] = u512((bigint(sp[-1]) << unsigned(sp[0])) & bigint(mask));
 				break;
 			case Instruction::SHR:
-				assertThrow(sp[0] <= u512(511), OptimizerException, "Invalid shift generated.");
+				assertThrow(sp[0] < u512(VMWordBits), OptimizerException, "Invalid shift generated.");
 				sp[-1] = sp[-1] >> unsigned(sp[0]);
 				break;
 			default:
 				return false;
 			}
-			stack.resize(stack.size() + item.deposit());
+			applyStackDeposit(stack, item.deposit());
 			break;
 		}
 		case Push:

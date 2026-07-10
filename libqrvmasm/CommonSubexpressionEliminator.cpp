@@ -272,7 +272,8 @@ void CSECodeGenerator::addDependencies(Id _c)
 					knownToBeIndependent = true;
 				else if (o)
 				{
-					// We could get problems here if both *o and *l are larger than 2**254
+					// We could get problems here if both *o and *l are larger than
+					// 2**(VMWordBits - 2), i.e. 2**510 with the current 512-bit VM word.
 					// but it is probably ok for the optimizer to produce wrong code for such cases
 					// which cannot be executed anyway because of the non-payable price.
 					if (u2s(*o) <= -s512(VMWordBytes))

@@ -20,6 +20,7 @@
 #include <libhyperion/lsp/Transport.h>
 #include <libhyperion/lsp/Utils.h>
 
+#include <libhyperion/interface/FileReader.h>
 #include <libhyputil/StringUtils.h>
 #include <libhyputil/CommonIO.h>
 
@@ -87,7 +88,7 @@ std::string FileRepository::sourceUnitNameToUri(std::string const& _sourceUnitNa
 
 std::string FileRepository::uriToSourceUnitName(std::string const& _path) const
 {
-	lspRequire(boost::algorithm::starts_with(_path, "file://"), ErrorCode::InternalError, "URI must start with file://");
+	lspRequire(boost::algorithm::starts_with(_path, "file://"), ErrorCode::InvalidParams, "URI must start with file://");
 	return stripFileUriSchemePrefix(_path);
 }
 
@@ -96,19 +97,13 @@ void FileRepository::setSourceByUri(std::string const& _uri, std::string _source
 	// This is needed for uris outside the base path. It can lead to collisions,
 	// but we need to mostly rewrite this in a future version anyway.
 	auto sourceUnitName = uriToSourceUnitName(_uri);
-	lspDebug(fmt::format("FileRepository.setSourceByUri({}): {}", _uri, _source));
+	lspDebug(fmt::format("FileRepository.setSourceByUri({}): {} bytes", _uri, _source.size()));
 	m_sourceUnitNamesToUri.emplace(sourceUnitName, _uri);
 	m_sourceCodes[sourceUnitName] = std::move(_source);
 }
 
 Result<boost::filesystem::path> FileRepository::tryResolvePath(std::string const& _strippedSourceUnitName) const
 {
-	if (
-		boost::filesystem::path(_strippedSourceUnitName).has_root_path() &&
-		boost::filesystem::exists(_strippedSourceUnitName)
-	)
-		return boost::filesystem::path(_strippedSourceUnitName);
-
 	std::vector<boost::filesystem::path> candidates;
 	std::vector<std::reference_wrapper<boost::filesystem::path const>> prefixes = {m_basePath};
 	prefixes += (m_includePaths | ranges::to<std::vector<std::reference_wrapper<boost::filesystem::path const>>>);
@@ -117,14 +112,25 @@ Result<boost::filesystem::path> FileRepository::tryResolvePath(std::string const
 		prefixes.emplace_back(defaultInclude);
 
 	auto const pathToQuotedString = [](boost::filesystem::path const& _path) { return "\"" + _path.string() + "\""; };
+	auto const normalizePath = [](boost::filesystem::path const& _path) {
+		return frontend::FileReader::normalizeCLIPathForVFS(_path, frontend::FileReader::SymlinkResolution::Enabled);
+	};
+	boost::filesystem::path const sourcePath(_strippedSourceUnitName);
 
-	for (auto const& prefix: prefixes)
+	if (sourcePath.has_root_path())
 	{
-		boost::filesystem::path canonicalPath = boost::filesystem::path(prefix) / boost::filesystem::path(_strippedSourceUnitName);
-
-		if (boost::filesystem::exists(canonicalPath))
-			candidates.push_back(std::move(canonicalPath));
+		boost::filesystem::path candidatePath = normalizePath(sourcePath);
+		if (boost::filesystem::exists(candidatePath))
+			candidates.push_back(std::move(candidatePath));
 	}
+	else
+		for (auto const& prefix: prefixes)
+		{
+			boost::filesystem::path candidatePath = normalizePath(boost::filesystem::path(prefix) / sourcePath);
+
+			if (boost::filesystem::exists(candidatePath))
+				candidates.push_back(std::move(candidatePath));
+		}
 
 	if (candidates.empty())
 		return Result<boost::filesystem::path>::err(
@@ -138,6 +144,23 @@ Result<boost::filesystem::path> FileRepository::tryResolvePath(std::string const
 			"Ambiguous import. "
 			"Multiple matching files found inside base path and/or include paths: " +
 			joinHumanReadable(candidates | ranges::views::transform(pathToQuotedString), ", ") +
+			"."
+		);
+
+	std::vector<boost::filesystem::path> allowedPaths = {m_basePath};
+	allowedPaths += m_includePaths;
+	bool isAllowed = false;
+	for (boost::filesystem::path const& allowedPath: allowedPaths)
+		if (frontend::FileReader::isPathPrefix(normalizePath(allowedPath), candidates[0]))
+		{
+			isAllowed = true;
+			break;
+		}
+
+	if (!isAllowed)
+		return Result<boost::filesystem::path>::err(
+			"File outside of allowed directories. The following are allowed: " +
+			joinHumanReadable(allowedPaths | ranges::views::transform(pathToQuotedString), ", ") +
 			"."
 		);
 
@@ -179,4 +202,3 @@ frontend::ReadCallback::Result FileRepository::readFile(std::string const& _kind
 		return ReadCallback::Result{false, "Unknown exception in read callback: " + boost::current_exception_diagnostic_information()};
 	}
 }
-

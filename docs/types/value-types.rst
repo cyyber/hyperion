@@ -404,8 +404,8 @@ Members:
 
 .. note::
     The type ``bytes1[]`` is an array of bytes, but due to padding rules, it wastes
-    31 bytes of space for each element (except in storage). It is better to use the ``bytes``
-    type instead.
+    one VM word minus one byte of space for each element (except in storage). It is
+    better to use the ``bytes`` type instead.
 
 .. note::
     Prior to version 0.8.0, ``byte`` used to be an alias for ``bytes1``.

@@ -1,0 +1,17 @@
+contract C {
+    function f() public returns (bool ok) {
+        assembly {
+            mstore(0, not(0))
+        }
+
+        bytes32 hash = sha256("");
+
+        assembly {
+            ok := iszero(and(hash, sub(shl(256, 1), 1)))
+        }
+    }
+}
+// ====
+// compileViaYul: true
+// ----
+// f() -> true

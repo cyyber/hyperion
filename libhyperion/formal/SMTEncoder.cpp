@@ -1287,7 +1287,7 @@ void SMTEncoder::bytesToFixedBytesAssertions(
 )
 {
 	auto const& fixed = dynamic_cast<FixedBytesType const&>(*_fixedBytes.annotation().type);
-	auto intType = TypeProvider::uint256();
+	auto intType = TypeProvider::uint(fixed.numBytes() * 8);
 	std::string suffix = std::to_string(_fixedBytes.id()) + "_" + std::to_string(m_context.newUniqueId());
 	smt::SymbolicIntVariable k(intType, intType, "k_" + suffix, m_context);
 	m_context.addAssertion(k.currentValue() == 0);
@@ -1295,7 +1295,12 @@ void SMTEncoder::bytesToFixedBytesAssertions(
 	for (size_t i = 0; i < n; i++)
 	{
 		auto kPrev = k.currentValue();
-		m_context.addAssertion((smtutil::Expression::select(_symArray.elements(), i) * (u256(1) << ((n - i - 1) * 8))) + kPrev == k.increaseIndex());
+		m_context.addAssertion(
+			(
+				smtutil::Expression::select(_symArray.elements(), i) *
+				smtutil::Expression(bigint(1) << ((n - i - 1) * 8))
+			) + kPrev == k.increaseIndex()
+		);
 	}
 	m_context.addAssertion(expr(_fixedBytes) == k.currentValue());
 }
@@ -1832,7 +1837,7 @@ std::pair<smtutil::Expression, smtutil::Expression> SMTEncoder::arithmeticOperat
 		// - RHS is -1
 		// the result is then -(type.min), which wraps back to type.min
 		smtutil::Expression maxLeft = _left == smt::minValue(*intType);
-		smtutil::Expression minusOneRight = _right == std::numeric_limits<size_t >::max();
+		smtutil::Expression minusOneRight = _right == smtutil::Expression(bigint(-1));
 		smtutil::Expression wrap = smtutil::Expression::ite(maxLeft && minusOneRight, smt::minValue(*intType), valueUnbounded);
 		return {wrap, valueUnbounded};
 	}

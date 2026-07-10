@@ -148,7 +148,8 @@ bytes compileFirstExpression(
 			context.resetVisitedNodes(contract);
 			context.setMostDerivedContract(*contract);
 			context.setArithmetic(Arithmetic::Wrapping);
-			size_t parametersSize = _localVariables.size(); // assume they are all one slot on the stack
+			size_t const initialStackHeight = _localVariables.size(); // assume they are all one slot on the stack
+			size_t parametersSize = initialStackHeight;
 			context.adjustStackOffset(static_cast<int>(parametersSize));
 			for (std::vector<std::string> const& variable: _localVariables)
 				context.addVariable(
@@ -172,7 +173,7 @@ bytes compileFirstExpression(
 			BOOST_REQUIRE(context.appendYulUtilityFunctionsRan());
 
 			BOOST_REQUIRE(context.assemblyPtr());
-			LinkerObject const& object = context.assemblyPtr()->assemble();
+			LinkerObject const& object = context.assemblyPtr()->assembleWithInitialStackHeight(initialStackHeight);
 			BOOST_REQUIRE(object.immutableReferences.empty());
 			bytes instructions = object.bytecode;
 			// debug
@@ -699,7 +700,9 @@ BOOST_AUTO_TEST_CASE(blockhash)
 	bytes code = compileFirstExpression(sourceCode, {}, {});
 
 	bytes expectation({uint8_t(Instruction::PUSH1), 0x03,
-					   uint8_t(Instruction::BLOCKHASH)});
+					   uint8_t(Instruction::BLOCKHASH),
+					   uint8_t(Instruction::PUSH2), 0x01, 0x00,
+					   uint8_t(Instruction::SHL)});
 	BOOST_CHECK_EQUAL_COLLECTIONS(code.begin(), code.end(), expectation.begin(), expectation.end());
 }
 

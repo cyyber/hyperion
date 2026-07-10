@@ -1,5 +1,5 @@
 # This will re-generate the headers if any file within src was modified.
-set_directory_properties(PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/stdlib/src/)
+set_directory_properties(PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/libstdlib/src/)
 
 set(STDLIB stub)
 set(GENERATED_STDLIB_HEADERS)

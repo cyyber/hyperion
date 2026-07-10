@@ -187,6 +187,7 @@ size_t ContractCompiler::packIntoContractCreator(ContractDefinition const& _cont
 	m_context << deployRoutine;
 
 	hypAssert(m_context.runtimeSub() != std::numeric_limits<size_t>::max(), "Runtime sub not registered");
+	m_context.assemblyPtr()->markImmutableValidationSubAssembly(m_context.runtimeSub());
 
 	ContractType contractType(_contract);
 	auto const& immutables = contractType.immutableVariables();
@@ -231,6 +232,7 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 	CompilerContext::LocationSetter locationSetter(m_context, _contract);
 
 	hypAssert(m_context.runtimeSub() != std::numeric_limits<size_t>::max(), "Runtime sub not registered");
+	m_context.assemblyPtr()->markDeployTimeAddressSubAssembly(m_context.runtimeSub());
 	m_context.pushSubroutineSize(m_context.runtimeSub());
 	m_context.pushSubroutineOffset(m_context.runtimeSub());
 	// This code replaces the address added by appendDeployTimeAddress().
@@ -258,7 +260,7 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 			if iszero(eq(<pushOpcode>, byte(0, mload(codepos)))) {
 				mstore(0, <panicSelector>)
 				mstore(4, <panicCode>)
-				revert(0, 0x44)
+				revert(0, <panicReturndataSize>)
 			}
 			mstore(<addressMstoreOffset>, address())
 			mstore8(codepos, <pushOpcode>)
@@ -271,9 +273,10 @@ size_t ContractCompiler::deployLibrary(ContractDefinition const& _contract)
 		("addressMstoreOffset", std::to_string(addressMstoreOffset))
 		("panicSelector", (u512(util::selectorFromSignatureU256("Panic(uint256)")) << (VMWordBits - 256)).str())
 		("panicCode", "0")
+		("panicReturndataSize", toCompactHexWithPrefix(u256(4 + VMWordBytes)))
 		.render(),
 		{"subSize", "subOffset"}
-	);
+		);
 
 	return m_context.runtimeSub();
 }
@@ -332,7 +335,7 @@ void ContractCompiler::appendConstructor(FunctionDefinition const& _constructor)
 void ContractCompiler::appendDelegatecallCheck()
 {
 	// Special constant that will be replaced by the address at deploy time.
-	// At compilation time, this is just "PUSH20 00...000".
+	// At compilation time, this is a PUSH<AddressBytes> instruction with an AddressBytes-wide zero placeholder.
 	m_context.appendDeployTimeAddress();
 	m_context << Instruction::ADDRESS << Instruction::EQ;
 	// The result on the stack is

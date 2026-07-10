@@ -241,7 +241,7 @@ When creating a contract, the address of the contract is computed from
 the address of the creating contract and a counter that is increased with
 each contract creation.
 
-If you specify the option ``salt`` (a bytes32 value), then contract creation will
+If you specify the option ``salt`` (a bytes64 value), then contract creation will
 use a different mechanism to come up with the address of the new contract:
 
 It will compute the address from the address of the creating contract,
@@ -269,7 +269,7 @@ which only need to be created if there is a dispute.
     }
 
     contract C {
-        function createDSalted(bytes32 salt, uint arg) public {
+        function createDSalted(bytes64 salt, uint arg) public {
             // This complicated expression just tells you how the address
             // can be pre-computed. It is just there for illustration.
             // You actually only need ``new D{salt: salt}(arg)``.

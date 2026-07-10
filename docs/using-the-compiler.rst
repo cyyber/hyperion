@@ -104,8 +104,8 @@ If ``hypc`` is called with the option ``--link``, all input files are interprete
     The library placeholder used to be the fully qualified name of the library itself
     instead of the hash of it. This format is still supported by ``hypc --link`` but
     the compiler will no longer output it. This change was made to reduce
-    the likelihood of a collision between libraries, since only the first 36 characters
-    of the fully qualified library name could be used.
+    the likelihood of a collision between libraries. Library placeholders now span
+    the full address width in bytecode.
 
 .. _qrvm-version:
 .. index:: ! QRVM version, compile target
@@ -504,7 +504,7 @@ Output Description
           // If the language used has no contract names, this field should equal to an empty string.
           "ContractName": {
             // The QRL Contract ABI. If empty, it is represented as an empty array.
-            // See https://docs.soliditylang.org/en/develop/abi-spec.html
+            // See the ABI specification in the Hyperion documentation.
             "abi": [],
             // See the Metadata Output documentation (serialised JSON string)
             "metadata": "{/* ... */}",

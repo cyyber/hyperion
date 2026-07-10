@@ -24,7 +24,7 @@ contract Test {
     }
 }
 // ====
-// compileViaYul: also
+// compileViaYul: false
 // ----
-// bytecode() -> 0x40, 4, 0x00
-// isPush0Supported() -> FAILURE
+// bytecode() -> 0x40, 4, hex"60205ff3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+// isPush0Supported() -> true

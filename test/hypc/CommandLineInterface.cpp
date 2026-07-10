@@ -176,6 +176,30 @@ BOOST_AUTO_TEST_CASE(multiple_input_modes)
 				);
 }
 
+BOOST_AUTO_TEST_CASE(import_ast_rejects_non_object_sources)
+{
+	OptionsReaderAndMessages result = runCLI(
+		{"hypc", "--import-ast", "--no-color", "-"},
+		R"({"sources":[]})"
+	);
+
+	BOOST_TEST(!result.success);
+	BOOST_TEST(boost::starts_with(result.stderrContent, "Error: Failed to import AST: "));
+	BOOST_TEST(result.stderrContent.find("'sources' must be an object") != string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(import_ast_rejects_non_string_node_type)
+{
+	OptionsReaderAndMessages result = runCLI(
+		{"hypc", "--import-ast", "--no-color", "-"},
+		R"({"sources":{"A.hyp":{"ast":{"nodeType":[]}}}})"
+	);
+
+	BOOST_TEST(!result.success);
+	BOOST_TEST(boost::starts_with(result.stderrContent, "Error: Failed to import AST: "));
+	BOOST_TEST(result.stderrContent.find("'nodeType' should be a string") != string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(no_import_callback_allowed_paths)
 {
 	array<string, 2> options = {
@@ -1081,6 +1105,38 @@ BOOST_AUTO_TEST_CASE(cli_no_output)
 	else
 		BOOST_TEST(result.stdoutContent == expectedStdoutContent);
 	BOOST_REQUIRE(result.success);
+}
+
+BOOST_AUTO_TEST_CASE(optimize_without_yul_optimizer_emits_metadata)
+{
+	string const contractSource = R"(
+		// SPDX-License-Identifier: GPL-3.0
+		pragma hyperion >=0.0;
+		contract C {})";
+
+	OptionsReaderAndMessages result = runCLI({"hypc", "--metadata", "--optimize", "--no-optimize-yul", "--no-color", "-"}, contractSource);
+
+	BOOST_TEST(result.success);
+	BOOST_TEST(result.stderrContent == "");
+	BOOST_TEST(result.stdoutContent.find("\"yul\":false") != string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(empty_yul_optimizations_without_yul_optimizer_emits_metadata)
+{
+	string const contractSource = R"(
+		// SPDX-License-Identifier: GPL-3.0
+		pragma hyperion >=0.0;
+		contract C {})";
+
+	vector<string> const sequences{"", "   "};
+	for (string const& sequence: sequences)
+	{
+		OptionsReaderAndMessages result = runCLI({"hypc", "--metadata", "--yul-optimizations", sequence, "--no-color", "-"}, contractSource);
+
+		BOOST_TEST(result.success);
+		BOOST_TEST(result.stderrContent == "");
+		BOOST_TEST(result.stdoutContent.find("\"optimizerSteps\":\":\"") != string::npos);
+	}
 }
 
 BOOST_AUTO_TEST_CASE(standard_json_include_paths)

@@ -673,17 +673,18 @@ void CompilerUtils::zeroInitialiseMemoryArray(ArrayType const& _type)
 	m_context << Instruction::SWAP1 << Instruction::POP;
 }
 
-void CompilerUtils::memoryCopy32()
+void CompilerUtils::memoryCopyWord()
 {
 	// Stack here: size target source
 
-	m_context.appendInlineAssembly(R"(
+	m_context.appendInlineAssembly(Whiskers(R"(
 		{
-			for { let i := 0 } lt(i, len) { i := add(i, 64) } {
+			for { let i := 0 } lt(i, len) { i := add(i, <wordSize>) } {
 				mstore(add(dst, i), mload(add(src, i)))
 			}
 		}
-	)",
+	)")
+		("wordSize", toCompactHexWithPrefix(u256(VMWordBytes))).render(),
 		{ "len", "dst", "src" }
 	);
 	m_context << Instruction::POP << Instruction::POP << Instruction::POP;
@@ -693,26 +694,28 @@ void CompilerUtils::memoryCopy()
 {
 	// Stack here: size target source
 
-	m_context.appendInlineAssembly(R"(
+	m_context.appendInlineAssembly(Whiskers(R"(
 		{
-			// copy 64 bytes at once
+			// copy one VM word at once
 			for
 				{}
-				iszero(lt(len, 64))
+				iszero(lt(len, <wordSize>))
 				{
-					dst := add(dst, 64)
-					src := add(src, 64)
-					len := sub(len, 64)
+					dst := add(dst, <wordSize>)
+					src := add(src, <wordSize>)
+					len := sub(len, <wordSize>)
 				}
 				{ mstore(dst, mload(src)) }
 
-			// copy the remainder (0 < len < 64), preserving bytes beyond len in dst
-			let mask := sub(shl(mul(8, sub(64, len)), 1), 1)
+			// copy the remainder (0 < len < VMWordBytes), preserving bytes beyond len in dst
+			let mask := sub(shl(mul(8, sub(<wordSize>, len)), 1), 1)
 			let srcpart := and(mload(src), not(mask))
 			let dstpart := and(mload(dst), mask)
 			mstore(dst, or(srcpart, dstpart))
 		}
-	)",
+	)")
+		("wordSize", std::to_string(VMWordBytes))
+		.render(),
 		{ "len", "dst", "src" }
 	);
 	m_context << Instruction::POP << Instruction::POP << Instruction::POP;
@@ -727,9 +730,13 @@ void CompilerUtils::pushCombinedFunctionEntryLabel(Declaration const& _function,
 	{
 		leftShiftNumberOnStack(32);
 		if (_runtimeOnly)
+		{
+			m_context.pushSubroutineOffset(m_context.runtimeSub());
 			m_context <<
 				rtc->functionEntryLabel(_function).toSubAssemblyTag(m_context.runtimeSub()) <<
+				Instruction::SUB <<
 				Instruction::OR;
+		}
 	}
 }
 
@@ -1295,7 +1302,7 @@ void CompilerUtils::convertType(
 
 		if (_cleanupNeeded && _targetType.canBeStored() && _targetType.storageBytes() < VMWordBytes)
 			m_context
-				<< u256((bigint(1) << (8 * _targetType.storageBytes())) - 1)
+				<< u512((bigint(1) << (8 * _targetType.storageBytes())) - 1)
 				<< Instruction::AND;
 		break;
 	}
@@ -1316,10 +1323,11 @@ void CompilerUtils::pushZeroValue(Type const& _type)
 			if (CompilerContext* runCon = m_context.runtimeContext())
 			{
 				leftShiftNumberOnStack(32);
+				m_context.pushSubroutineOffset(m_context.runtimeSub());
 				m_context << runCon->lowLevelFunctionTag("$invalidFunction", 0, 0, [](CompilerContext& _context) {
 					_context.appendPanic(util::PanicCode::InvalidInternalFunction);
 				}).toSubAssemblyTag(m_context.runtimeSub());
-				m_context << Instruction::OR;
+				m_context << Instruction::SUB << Instruction::OR;
 			}
 			return;
 		}
@@ -1504,7 +1512,7 @@ void CompilerUtils::copyContractCodeToMemory(ContractDefinition const& contract,
 				_context.compiledContract(contract) :
 				_context.compiledContractRuntime(contract);
 			// pushes size
-			auto subroutine = _context.addSubroutine(assembly);
+			auto subroutine = _context.addSubroutine(assembly->clone());
 			_context << Instruction::DUP1 << subroutine;
 			_context << Instruction::DUP4 << Instruction::CODECOPY;
 			_context << Instruction::ADD;
@@ -1519,7 +1527,7 @@ void CompilerUtils::storeStringData(bytesConstRef _data)
 	if (_data.size() <= VMWordBytes)
 	{
 		// stack: mempos
-		// Convert data to u512, left-aligned in the 64-byte word.
+		// Convert data to u512, left-aligned in the VM word.
 		u512 value = 0;
 		for (uint8_t b: _data)
 			value = (value << 8) | b;

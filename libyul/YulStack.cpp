@@ -233,7 +233,7 @@ YulStack::assembleWithDeployed(std::optional<std::string_view> _deployName) cons
 	creationObject.assembly = creationAssembly->assemblyString(m_debugInfoSelection);
 	creationObject.sourceMappings = std::make_unique<std::string>(
 		qrvmasm::AssemblyItem::computeSourceMapping(
-			creationAssembly->items(),
+			static_cast<qrvmasm::Assembly const&>(*creationAssembly).items(),
 			{{m_charStream->name(), 0}}
 		)
 	);
@@ -245,7 +245,7 @@ YulStack::assembleWithDeployed(std::optional<std::string_view> _deployName) cons
 		deployedObject.assembly = deployedAssembly->assemblyString(m_debugInfoSelection);
 		deployedObject.sourceMappings = std::make_unique<std::string>(
 			qrvmasm::AssemblyItem::computeSourceMapping(
-				deployedAssembly->items(),
+				static_cast<qrvmasm::Assembly const&>(*deployedAssembly).items(),
 				{{m_charStream->name(), 0}}
 			)
 		);
@@ -281,8 +281,9 @@ YulStack::assembleQRVMWithDeployed(std::optional<std::string_view> _deployName) 
 	// Pick matching assembly if name was given
 	if (_deployName.has_value())
 	{
+		qrvmasm::Assembly const& constAssembly = assembly;
 		for (size_t i = 0; i < assembly.numSubs(); i++)
-			if (assembly.sub(i).name() == _deployName)
+			if (constAssembly.sub(i).name() == _deployName)
 			{
 				subIndex = i;
 				break;
@@ -296,7 +297,7 @@ YulStack::assembleQRVMWithDeployed(std::optional<std::string_view> _deployName) 
 
 	if (subIndex.has_value())
 	{
-		qrvmasm::Assembly& runtimeAssembly = assembly.sub(*subIndex);
+		qrvmasm::Assembly const& runtimeAssembly = static_cast<qrvmasm::Assembly const&>(assembly).sub(*subIndex);
 		return {std::make_shared<qrvmasm::Assembly>(assembly), std::make_shared<qrvmasm::Assembly>(runtimeAssembly)};
 	}
 

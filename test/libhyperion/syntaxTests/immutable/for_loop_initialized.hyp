@@ -1,0 +1,38 @@
+contract Init {
+    uint immutable x;
+
+    constructor() {
+        for (x = 1; false;) {}
+    }
+}
+
+contract Condition {
+    uint immutable x;
+
+    constructor() {
+        for (; (x = 1) == 1;) {}
+    }
+}
+
+contract Post {
+    uint immutable x;
+
+    constructor() {
+        for (; false; x = 1) {}
+    }
+}
+
+contract Body {
+    uint immutable x;
+
+    constructor() {
+        for (; false;) {
+            x = 1;
+        }
+    }
+}
+// ----
+// TypeError 6672: (72-73): Cannot write to immutable here: Immutable variables cannot be initialized inside a loop.
+// TypeError 6672: (179-180): Cannot write to immutable here: Immutable variables cannot be initialized inside a loop.
+// TypeError 6672: (286-287): Cannot write to immutable here: Immutable variables cannot be initialized inside a loop.
+// TypeError 6672: (401-402): Cannot write to immutable here: Immutable variables cannot be initialized inside a loop.

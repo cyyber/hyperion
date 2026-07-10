@@ -24,8 +24,7 @@ Also, keep in mind that even if your smart contract code is bug-free,
 the compiler or the platform itself might have a bug.
 A list of some publicly known security-relevant bugs of the compiler can be found
 in the :ref:`list of known bugs<known_bugs>`, which is also machine-readable.
-Note that there is a `Bug Bounty Program <https://ethereum.org/en/bug-bounty/>`_
-that covers the code generator of the Hyperion compiler.
+Hyperion vulnerabilities should be reported through the repository security policy.
 
 As always, with open-source documentation,
 please help us extend this section (especially, some examples would not hurt)!

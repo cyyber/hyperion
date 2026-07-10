@@ -1,0 +1,17 @@
+contract AndBranch {
+    uint immutable x;
+    constructor(bool condition) {
+        condition && ((x = 1) == 1);
+    }
+}
+
+contract OrBranch {
+    uint immutable x;
+    constructor(bool condition) {
+        condition || ((x = 1) == 1);
+    }
+}
+
+// ----
+// TypeError 4599: (100-101): Cannot write to immutable here: Immutable variables cannot be initialized inside an if statement.
+// TypeError 4599: (222-223): Cannot write to immutable here: Immutable variables cannot be initialized inside an if statement.

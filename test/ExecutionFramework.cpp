@@ -133,9 +133,7 @@ u256 ExecutionFramework::gasPrice() const
 
 h256 ExecutionFramework::blockHash(u256 const& _number) const
 {
-	return QRVMHost::convertFromQRVMC(
-		m_qrvmcHost->get_block_hash(static_cast<int64_t>(_number & numeric_limits<uint64_t>::max()))
-	);
+	return h256(u256("0x3737373737373737373737373737373737373737373737373737373737373737") + _number);
 }
 
 u256 ExecutionFramework::blockNumber() const

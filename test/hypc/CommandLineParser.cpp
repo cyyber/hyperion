@@ -463,6 +463,7 @@ BOOST_AUTO_TEST_CASE(optimizer_flags)
 
 	OptimiserSettings qrvmasmOnly = OptimiserSettings::standard();
 	qrvmasmOnly.runYulOptimiser = false;
+	qrvmasmOnly.optimizeStackAllocation = false;
 
 	map<vector<string>, OptimiserSettings> settingsMap = {
 		{{}, OptimiserSettings::minimal()},
@@ -575,6 +576,8 @@ BOOST_AUTO_TEST_CASE(invalid_optimiser_sequences)
 BOOST_AUTO_TEST_CASE(valid_empty_optimizer_sequences_without_optimize)
 {
 	vector<string> const validSequenceInputs {
+		"",
+		"   ",
 		"   :",
 		": ",
 		"\n : \n",
@@ -582,6 +585,8 @@ BOOST_AUTO_TEST_CASE(valid_empty_optimizer_sequences_without_optimize)
 	};
 
 	vector<tuple<string, string>> const expectedParsedSequences {
+		{"", ""},
+		{"   ", ""},
 		{"   ", ""},
 		{"", " "},
 		{"\n ", " \n"},
@@ -592,7 +597,7 @@ BOOST_AUTO_TEST_CASE(valid_empty_optimizer_sequences_without_optimize)
 
 	for (size_t i = 0; i < validSequenceInputs.size(); ++i)
 	{
-		CommandLineOptions const& commandLineOptions = parseCommandLine({"hypc", "contract.hyp", "--yul-optimizations=" + validSequenceInputs[i]});
+		CommandLineOptions const& commandLineOptions = parseCommandLine({"hypc", "contract.hyp", "--yul-optimizations", validSequenceInputs[i]});
 		auto const& [expectedYulOptimiserSteps, expectedYulCleanupSteps] = expectedParsedSequences[i];
 		BOOST_CHECK_EQUAL(commandLineOptions.optimiserSettings().yulOptimiserSteps, expectedYulOptimiserSteps);
 		BOOST_CHECK_EQUAL(commandLineOptions.optimiserSettings().yulOptimiserCleanupSteps, expectedYulCleanupSteps);

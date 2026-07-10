@@ -1880,9 +1880,9 @@ void TypeChecker::endVisit(BinaryOperation const& _operation)
 		{
 			// These rules are enforced by the binary operator, but assert them here too.
 			if (auto type = dynamic_cast<IntegerType const*>(commonType))
-				hypAssert(type->numBits() == 256, "");
+				hypAssert(type->numBits() >= 256 && type->numBits() <= VMWordBits, "");
 			if (auto type = dynamic_cast<FixedPointType const*>(commonType))
-				hypAssert(type->numBits() == 256, "");
+				hypAssert(type->numBits() >= 256 && type->numBits() <= VMWordBits, "");
 		}
 		if (
 			commonType->category() == Type::Category::Integer &&
@@ -2436,7 +2436,7 @@ void TypeChecker::typeCheckBytesConcatFunction(
 	{
 		Type const* argumentType = type(*argument);
 		bool notConvertibleToBytes =
-			!argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(AddressBytes)) &&
+			!argumentType->isImplicitlyConvertibleTo(*TypeProvider::fixedBytes(VMWordBytes)) &&
 			!argumentType->isImplicitlyConvertibleTo(*TypeProvider::bytesMemory());
 		bool numberLiteral = (dynamic_cast<RationalNumberType const*>(argumentType) != nullptr);
 
@@ -2972,7 +2972,7 @@ bool TypeChecker::visit(FunctionCallOptions const& _functionCallOptions)
 			if (kind == FunctionType::Kind::Creation)
 			{
 				setCheckOption(setSalt, "salt");
-				expectType(*_functionCallOptions.options()[i], *TypeProvider::fixedBytes(32));
+				expectType(*_functionCallOptions.options()[i], *TypeProvider::fixedBytes(VMWordBytes));
 			}
 			else
 				m_errorReporter.typeError(

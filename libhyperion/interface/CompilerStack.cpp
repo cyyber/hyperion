@@ -43,6 +43,7 @@
 #include <libhyperion/analysis/TypeChecker.h>
 #include <libhyperion/analysis/ViewPureChecker.h>
 #include <libhyperion/analysis/ImmutableValidator.h>
+#include <boost/exception/diagnostic_information.hpp>
 
 #include <libhyperion/ast/AST.h>
 #include <libhyperion/ast/TypeProvider.h>
@@ -76,6 +77,7 @@
 #include <liblangutil/SourceReferenceFormatter.h>
 
 
+#include <libhyputil/CommonData.h>
 #include <libhyputil/SwarmHash.h>
 #include <libhyputil/IpfsHash.h>
 #include <libhyputil/JSON.h>
@@ -801,7 +803,7 @@ qrvmasm::AssemblyItems const* CompilerStack::assemblyItems(std::string const& _c
 		hypThrow(CompilerError, "Compilation was not successful.");
 
 	Contract const& currentContract = contract(_contractName);
-	return currentContract.qrvmAssembly ? &currentContract.qrvmAssembly->items() : nullptr;
+	return currentContract.qrvmAssembly ? &static_cast<qrvmasm::Assembly const&>(*currentContract.qrvmAssembly).items() : nullptr;
 }
 
 qrvmasm::AssemblyItems const* CompilerStack::runtimeAssemblyItems(std::string const& _contractName) const
@@ -810,7 +812,7 @@ qrvmasm::AssemblyItems const* CompilerStack::runtimeAssemblyItems(std::string co
 		hypThrow(CompilerError, "Compilation was not successful.");
 
 	Contract const& currentContract = contract(_contractName);
-	return currentContract.qrvmRuntimeAssembly ? &currentContract.qrvmRuntimeAssembly->items() : nullptr;
+	return currentContract.qrvmRuntimeAssembly ? &static_cast<qrvmasm::Assembly const&>(*currentContract.qrvmRuntimeAssembly).items() : nullptr;
 }
 
 Json::Value CompilerStack::generatedSources(std::string const& _contractName, bool _runtime) const
@@ -1369,7 +1371,7 @@ void CompilerStack::assembleYul(
 	try
 	{
 		// Assemble runtime object.
-		compiledContract.runtimeObject = compiledContract.qrvmRuntimeAssembly->assemble();
+		compiledContract.runtimeObject = compiledContract.qrvmRuntimeAssembly->assembleDeployTimeAddressTemplate();
 	}
 	catch (qrvmasm::AssemblyException const&)
 	{
@@ -1441,9 +1443,9 @@ void CompilerStack::compileContract(
 		// Run optimiser and compile the contract.
 		compiler->compileContract(_contract, _otherCompilers, cborEncodedMetadata);
 	}
-	catch(qrvmasm::OptimizerException const&)
+	catch(qrvmasm::OptimizerException const& _exception)
 	{
-		hypAssert(false, "Optimizer exception during compilation");
+		hypAssert(false, "Optimizer exception during compilation: " + boost::diagnostic_information(_exception));
 	}
 
 	_otherCompilers[compiledContract.contract] = compiler;
@@ -1705,7 +1707,7 @@ std::string CompilerStack::createMetadata(Contract const& _contract, bool _forIR
 
 	meta["settings"]["libraries"] = Json::objectValue;
 	for (auto const& library: m_libraries)
-		meta["settings"]["libraries"][library.first] = "0x" + util::toHex(library.second.asBytes());
+		meta["settings"]["libraries"][library.first] = util::getChecksummedAddress("Q" + util::toHex(library.second.asBytes()));
 
 	meta["output"]["abi"] = contractABI(_contract);
 	meta["output"]["userdoc"] = natspecUser(_contract);
@@ -1742,7 +1744,7 @@ public:
 	{
 		size_t size = m_data.size() + 1;
 		hypAssert(size <= 0xffff, "Metadata too large.");
-		hypAssert(m_entryCount <= 0x1f, "Too many map entries.");
+		hypAssert(m_entryCount <= 23, "Too many map entries.");
 
 		// CBOR fixed-length map
 		bytes ret{static_cast<unsigned char>(0xa0 + m_entryCount)};
@@ -1754,37 +1756,28 @@ public:
 	}
 
 private:
+	void pushStringHeader(unsigned char shortFormBase, unsigned char oneByteLengthForm, unsigned char twoByteLengthForm, size_t length)
+	{
+		if (length < 24)
+			m_data += bytes{static_cast<unsigned char>(shortFormBase + length)};
+		else if (length <= 0xff)
+			m_data += bytes{oneByteLengthForm, static_cast<unsigned char>(length)};
+		else if (length <= 0xffff)
+			m_data += bytes{twoByteLengthForm} + toCompactBigEndian(length, 2);
+		else
+			hypAssert(false, "CBOR string too large.");
+	}
+
 	void pushTextString(std::string const& key)
 	{
-		size_t length = key.size();
-		if (length < 24)
-		{
-			m_data += bytes{static_cast<unsigned char>(0x60 + length)};
-			m_data += key;
-		}
-		else if (length <= 256)
-		{
-			m_data += bytes{0x78, static_cast<unsigned char>(length)};
-			m_data += key;
-		}
-		else
-			hypAssert(false, "Text std::string too large.");
+		pushStringHeader(0x60, 0x78, 0x79, key.size());
+		m_data += key;
 	}
+
 	void pushByteString(bytes const& key)
 	{
-		size_t length = key.size();
-		if (length < 24)
-		{
-			m_data += bytes{static_cast<unsigned char>(0x40 + length)};
-			m_data += key;
-		}
-		else if (length <= 256)
-		{
-			m_data += bytes{0x58, static_cast<unsigned char>(length)};
-			m_data += key;
-		}
-		else
-			hypAssert(false, "Byte std::string too large.");
+		pushStringHeader(0x40, 0x58, 0x59, key.size());
+		m_data += key;
 	}
 	void pushBool(bool value)
 	{

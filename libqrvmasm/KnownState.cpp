@@ -397,7 +397,9 @@ KnownState::Id KnownState::applyKeccak256(
 	// Special logic if length is a short constant, otherwise we cannot tell.
 	u512 const* l = m_expressionClasses->knownConstant(_length);
 	// unknown or too large length
-	if (!l || *l > 128)
+	static constexpr unsigned maxKeccakFoldWords = 4;
+	static constexpr unsigned maxKeccakFoldBytes = maxKeccakFoldWords * VMWordBytes;
+	if (!l || *l > u512(maxKeccakFoldBytes))
 		return m_expressionClasses->find(keccak256Item, {_start, _length}, true, m_sequenceNumber);
 	unsigned length = unsigned(*l);
 	std::vector<Id> arguments;

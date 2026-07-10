@@ -33,6 +33,19 @@ using namespace hyperion::smtutil;
 namespace hyperion::frontend::smt
 {
 
+namespace
+{
+
+bigint bytesValue(std::vector<unsigned char> const& _bytes)
+{
+	bigint value = 0;
+	for (unsigned char byte: _bytes)
+		value = (value << 8) + byte;
+	return value;
+}
+
+}
+
 SortPointer smtSort(frontend::Type const& _type)
 {
 	if (auto userType = dynamic_cast<UserDefinedValueType const*>(&_type))
@@ -612,7 +625,7 @@ std::optional<smtutil::Expression> symbolicTypeConversion(frontend::Type const* 
 					return smtutil::Expression(size_t(0));
 				auto bytesVec = util::asBytes(strType->value());
 				bytesVec.resize(fixedBytesType->numBytes(), 0);
-				return smtutil::Expression(u256(util::toHex(bytesVec, util::HexPrefix::Add)));
+				return smtutil::Expression(bytesValue(bytesVec));
 			}
 
 	return std::nullopt;

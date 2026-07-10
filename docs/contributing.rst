@@ -16,7 +16,7 @@ In particular, we appreciate support in the following areas:
 * Responding to questions from other users on `StackExchange
   <https://theqrl.stackexchange.com>`_ and the `Hyperion Gitter Chat
   <https://gitter.im/theQRL/hyperion>`_.
-* Getting involved in the language design process by proposing language changes or new features in the `Hyperion forum <https://forum.soliditylang.org/>`_ and providing feedback.
+* Getting involved in the language design process by proposing language changes or new features in the `Hyperion issue tracker <https://github.com/theQRL/hyperion/issues>`_ and providing feedback.
 
 To get started, you can try :ref:`building-from-source` in order to familiarize
 yourself with the components of Hyperion and the build process. Also, it may be
@@ -30,9 +30,7 @@ Team Calls
 If you have issues or pull requests to discuss, or are interested in hearing what
 the team and contributors are working on, you can join our public team call:
 
-- Wednesdays at 3PM CET/CEST.
-
-The call takes place on `Jitsi <https://meet.soliditylang.org/>`_.
+- Wednesdays at 3PM CET/CEST. Meeting details are announced through the project channels.
 
 How to Report Issues
 ====================
@@ -51,7 +49,7 @@ Reducing the source code that caused the issue to a bare minimum is always
 very helpful, and sometimes even clarifies a misunderstanding.
 
 For technical discussions about language design, a post in the
-`Hyperion forum <https://forum.soliditylang.org/>`_ is the correct place (see :ref:`hyperion_language_design`).
+`Hyperion issue tracker <https://github.com/theQRL/hyperion/issues>`_ is the correct place (see :ref:`hyperion_language_design`).
 
 Workflow for Pull Requests
 ==========================
@@ -463,8 +461,8 @@ Below are some references to help:
 .. note::
 
     While the official Hyperion documentation is written in English, there are community contributed :ref:`translations`
-    in other languages available. Please refer to the `translation guide <https://github.com/solidity-docs#solidity-documentation-translation-guide>`_
-    for information on how to contribute to the community translations.
+    in other languages available. Please refer to the Hyperion documentation community for information on how to
+    contribute to the community translations.
 
 Title Case for Headings
 -----------------------
@@ -538,9 +536,9 @@ Hyperion Language Design
 ========================
 
 To actively get involved in the language design process and to share your ideas concerning the future of Hyperion,
-please join the `Hyperion forum <https://forum.soliditylang.org/>`_.
+please join the `Hyperion issue tracker <https://github.com/theQRL/hyperion/issues>`_.
 
-The Hyperion forum serves as the place to propose and discuss new language features and their implementation in
+The issue tracker serves as the place to propose and discuss new language features and their implementation in
 the early stages of ideation or modifications of existing features.
 
 As soon as proposals get more tangible, their
