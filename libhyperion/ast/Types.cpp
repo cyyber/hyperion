@@ -2857,7 +2857,7 @@ FunctionType::FunctionType(VariableDeclaration const& _varDecl):
 				break;
 			returnType = arrayType->baseType();
 			m_parameterNames.emplace_back("");
-			m_parameterTypes.push_back(TypeProvider::uint256());
+			m_parameterTypes.push_back(TypeProvider::uint(VMWordBits));
 		}
 		else
 			break;
