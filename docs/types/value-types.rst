@@ -30,7 +30,7 @@ The operators ``||`` and ``&&`` apply the common short-circuiting rules. This me
 Integers
 --------
 
-``int`` / ``uint``: Signed and unsigned integers of various sizes. Keywords ``uint8`` to ``uint256`` in steps of ``8`` (unsigned of 8 up to 256 bits) and ``int8`` to ``int256``. ``uint`` and ``int`` are aliases for ``uint256`` and ``int256``, respectively.
+``int`` / ``uint``: Signed and unsigned integers of various sizes. Keywords ``uint8`` to ``uint512`` in steps of ``8`` (unsigned of 8 up to 512 bits) and ``int8`` to ``int512``. ``uint`` and ``int`` are aliases for ``uint512`` and ``int512``, respectively, i.e. they denote the full QRVM word.
 
 Operators:
 
