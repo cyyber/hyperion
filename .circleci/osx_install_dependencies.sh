@@ -75,11 +75,15 @@ then
   rm -r "$z3_dir"
 
   # qrvmone
-  qrvmone_version="0.10.0"
-  qrvmone_package="qrvmone-${qrvmone_version}-darwin-x86_64.tar.gz"
-  wget "https://github.com/theQRL/qrvmone/releases/download/v${qrvmone_version}/${qrvmone_package}"
-  validate_checksum "$qrvmone_package" 1b7773779287d7908baca6b8d556a98800cbd7d6e5c910b55fa507642bc0a15c
-  tar xzpf "$qrvmone_package" -C /usr/local
-  rm "$qrvmone_package"
+  qrvmone_commit="46b74c67bba54266d12e7c341bb7f8413e9bce56"
+  git clone https://github.com/theQRL/qrvmone.git
+  cd qrvmone
+  git checkout "$qrvmone_commit"
+  git submodule update --init --recursive
+  cmake -S . -B build -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local
+  cmake --build build --parallel
+  cmake --install build
+  cd ..
+  rm -rf qrvmone
 
 fi

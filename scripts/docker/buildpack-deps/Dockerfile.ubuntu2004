@@ -47,11 +47,17 @@ FROM base AS libraries
 
 # QRVMONE
 RUN set -ex; \
-	wget -O /usr/src/qrvmone.tar.gz https://github.com/theQRL/qrvmone/releases/download/v0.10.0/qrvmone-0.10.0-linux-x86_64.tar.gz; \
-	test "$(sha256sum /usr/src/qrvmone.tar.gz)" = "6052b6a4eba6e81bb1bccfa9fec2caf220a25f5ff5c32c544984883ed95e6552  /usr/src/qrvmone.tar.gz"; \
-	cd /usr; \
-	tar -xf /usr/src/qrvmone.tar.gz; \
-	rm -rf /usr/src/qrvmone.tar.gz
+	cd /usr/src; \
+	git clone https://github.com/theQRL/qrvmone.git; \
+	cd qrvmone; \
+	git checkout 46b74c67bba54266d12e7c341bb7f8413e9bce56; \
+	git submodule update --init --recursive; \
+	mkdir build; \
+	cd build; \
+	cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX="/usr" ..; \
+	make -j$(nproc); \
+	make install; \
+	rm -rf /usr/src/qrvmone
 
 FROM base
 COPY --from=libraries /usr/lib /usr/lib
