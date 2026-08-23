@@ -251,6 +251,10 @@ private:
 				smt::smtSort(*TypeProvider::bytesStorage()),
 				smtSort(*TypeProvider::fixedBytes(32))
 			)},
+			{"shake256", std::make_shared<smtutil::ArraySort>(
+				smt::smtSort(*TypeProvider::bytesStorage()),
+				smtSort(*TypeProvider::fixedBytes(64))
+			)},
 			{"depositroot", std::make_shared<smtutil::ArraySort>(
 				std::make_shared<smtutil::TupleSort>(
 					"depositroot_input_type",
@@ -263,6 +267,19 @@ private:
 					}
 				),
 				smtSort(*TypeProvider::fixedBytes(32))
+			)},
+			{"mldsa87verify", std::make_shared<smtutil::ArraySort>(
+				std::make_shared<smtutil::TupleSort>(
+					"mldsa87verify_input_type",
+					std::vector<std::string>{"digest", "signature", "public_key", "context"},
+					std::vector<smtutil::SortPointer>{
+						smt::smtSort(*TypeProvider::fixedBytes(64)),
+						smt::smtSort(*TypeProvider::bytesStorage()),
+						smt::smtSort(*TypeProvider::bytesStorage()),
+						smt::smtSort(*TypeProvider::bytesStorage())
+					}
+				),
+				smtutil::SortProvider::boolSort
 			)}
 		},
 		m_context

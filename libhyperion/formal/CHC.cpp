@@ -609,6 +609,8 @@ void CHC::endVisit(FunctionCall const& _funCall)
 	case FunctionType::Kind::KECCAK256:
 	case FunctionType::Kind::DepositRoot:
 	case FunctionType::Kind::SHA256:
+	case FunctionType::Kind::SHAKE256:
+	case FunctionType::Kind::MLDSA87Verify:
 	case FunctionType::Kind::BlockHash:
 	case FunctionType::Kind::AddMod:
 	case FunctionType::Kind::MulMod:

@@ -1075,11 +1075,15 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 		}
 		case FunctionType::Kind::DepositRoot:
 		case FunctionType::Kind::SHA256:
+		case FunctionType::Kind::SHAKE256:
+		case FunctionType::Kind::MLDSA87Verify:
 		{
 			_functionCall.expression().accept(*this);
 			static std::map<FunctionType::Kind, u256> const contractAddresses{
 				{FunctionType::Kind::DepositRoot, 1},
-				{FunctionType::Kind::SHA256, 2}
+				{FunctionType::Kind::SHA256, 2},
+				{FunctionType::Kind::SHAKE256, 3},
+				{FunctionType::Kind::MLDSA87Verify, 6}
 			};
 			m_context << contractAddresses.at(function.kind());
 			for (unsigned i = function.sizeOnStack(); i > 0; --i)
@@ -1650,6 +1654,8 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 					case FunctionType::Kind::Transfer:
 					case FunctionType::Kind::DepositRoot:
 					case FunctionType::Kind::SHA256:
+					case FunctionType::Kind::SHAKE256:
+					case FunctionType::Kind::MLDSA87Verify:
 					default:
 						hypAssert(false, "unsupported member function");
 					}

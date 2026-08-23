@@ -85,13 +85,15 @@ Validations and Assertions
 - ``revert()``: abort execution and revert state changes
 - ``revert(string memory message)``: abort execution and revert state changes providing an explanatory string
 
-.. index:: cryptography, keccak256, sha256, depositroot, addmod, mulmod
+.. index:: cryptography, keccak256, sha256, shake256, mldsa87verify, depositroot, addmod, mulmod
 
 Mathematical and Cryptographic Functions
 ========================================
 
 - ``keccak256(bytes memory) returns (bytes32)``: compute the Keccak-256 hash of the input
 - ``sha256(bytes memory) returns (bytes32)``: compute the SHA-256 hash of the input
+- ``shake256(bytes memory) returns (bytes64)``: compute a fixed 512-bit SHAKE256 digest of the input
+- ``mldsa87verify(bytes64 digest, bytes memory signature, bytes memory publicKey, bytes memory context) returns (bool)``: verify a FIPS 204 ML-DSA-87 signature
 - ``depositroot(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory amount, bytes memory sig) returns (bytes32)``: compute the deposit root
 - ``addmod(uint x, uint y, uint k) returns (uint)``: compute ``(x + y) % k`` where the addition is performed with
   arbitrary precision and does not wrap around at ``2**256``. Assert that ``k != 0`` starting from version 0.5.0.
@@ -153,4 +155,3 @@ Modifiers
   behavior to be changed in derived contracts.
 - ``override``: States that this function, modifier or public state variable changes
   the behavior of a function or modifier in a base contract.
-
