@@ -2533,7 +2533,8 @@ void TypeChecker::typeCheckFunctionGeneralChecks(
 			}
 			else if (
 				_functionType->kind() == FunctionType::Kind::KECCAK256 ||
-				_functionType->kind() == FunctionType::Kind::SHA256
+				_functionType->kind() == FunctionType::Kind::SHA256 ||
+				_functionType->kind() == FunctionType::Kind::SHAKE256
 			)
 			{
 				hypAssert(!isVariadic, "");
@@ -2649,7 +2650,8 @@ void TypeChecker::typeCheckFunctionGeneralChecks(
 					};
 				else if (
 					_functionType->kind() == FunctionType::Kind::KECCAK256 ||
-					_functionType->kind() == FunctionType::Kind::SHA256
+					_functionType->kind() == FunctionType::Kind::SHA256 ||
+					_functionType->kind() == FunctionType::Kind::SHAKE256
 				)
 					return {
 						7556_error,

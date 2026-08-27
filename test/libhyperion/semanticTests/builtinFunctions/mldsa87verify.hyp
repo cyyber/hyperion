@@ -1,0 +1,71 @@
+contract C {
+    function valid() public returns (bool) {
+        bytes64 digest = bytes64(bytes1(0x42));
+        bytes memory signature = new bytes(4627);
+        signature[0] = 0x43;
+        bytes memory publicKey = new bytes(2592);
+        publicKey[0] = 0x44;
+        return mldsa87verify(digest, signature, publicKey, bytes("QNS-SIGN-v1"));
+    }
+
+    function invalid() public returns (bool) {
+        return mldsa87verify(bytes64(0), new bytes(0), new bytes(0), new bytes(0));
+    }
+
+    function invalidSignature() public returns (bool) {
+        bytes64 digest = bytes64(bytes1(0x47));
+        bytes memory signature = new bytes(4627);
+        signature[0] = 0x43;
+        bytes memory publicKey = new bytes(2592);
+        publicKey[0] = 0x44;
+        return mldsa87verify(digest, signature, publicKey, bytes("QNS-SIGN-v1"));
+    }
+
+    function oversizedContext() public returns (bool) {
+        bytes memory signature = new bytes(4627);
+        bytes memory publicKey = new bytes(2592);
+        return mldsa87verify(bytes64(0), signature, publicKey, new bytes(256));
+    }
+
+    function noncanonical() public returns (bool) {
+        bytes64 digest = bytes64(bytes1(0x45));
+        bytes memory signature = new bytes(4627);
+        signature[0] = 0x43;
+        bytes memory publicKey = new bytes(2592);
+        publicKey[0] = 0x44;
+        return mldsa87verify(digest, signature, publicKey, bytes("QNS-SIGN-v1"));
+    }
+
+    function canonicalFalse() public returns (bool) {
+        bytes64 digest = bytes64(bytes1(0x46));
+        bytes memory signature = new bytes(4627);
+        signature[0] = 0x43;
+        bytes memory publicKey = new bytes(2592);
+        publicKey[0] = 0x44;
+        return mldsa87verify(digest, signature, publicKey, bytes("QNS-SIGN-v1"));
+    }
+
+    function shortTrue() public returns (bool) {
+        bytes64 digest = bytes64(bytes1(0x48));
+        bytes memory signature = new bytes(4627);
+        signature[0] = 0x43;
+        bytes memory publicKey = new bytes(2592);
+        publicKey[0] = 0x44;
+        return mldsa87verify(digest, signature, publicKey, bytes("QNS-SIGN-v1"));
+    }
+}
+// ----
+// valid() -> true
+// gas legacy: 157454
+// invalid() -> false
+// gas legacy: 147104
+// invalidSignature() -> false
+// gas legacy: 157476
+// oversizedContext() -> false
+// gas legacy: 148049
+// noncanonical() -> false
+// gas legacy: 157433
+// canonicalFalse() -> false
+// gas legacy: 157477
+// shortTrue() -> false
+// gas legacy: 157498

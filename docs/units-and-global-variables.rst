@@ -170,7 +170,7 @@ more details on error handling and when to use which function.
 ``revert(string memory reason)``
     abort execution and revert state changes, providing an explanatory string
 
-.. index:: keccak256, sha256, depositroot, addmod, mulmod, cryptography,
+.. index:: keccak256, sha256, shake256, mldsa87verify, depositroot, addmod, mulmod, cryptography,
 
 .. _mathematical-and-cryptographic-functions:
 
@@ -189,12 +189,18 @@ Mathematical and Cryptographic Functions
 ``sha256(bytes memory) returns (bytes32)``
     compute the SHA-256 hash of the input
 
+``shake256(bytes memory) returns (bytes64)``
+    compute a fixed 512-bit SHAKE256 digest of the input through precompile address ``0x06``
+
+``mldsa87verify(bytes64 digest, bytes memory signature, bytes memory publicKey, bytes memory context) returns (bool)``
+    verify a FIPS 204 ML-DSA-87 signature through precompile address ``0x03``. The compiler packs ``digest || publicKey || signature || uint8(context.length) || context``. The signature must be 4627 bytes, the public key must be 2592 bytes, and the context may contain at most 255 bytes. The exact 64-byte success word maps to ``true``. Empty return data and a canonical 64-byte zero word map to ``false``, covering both return conventions under protocol review.
+
 ``depositroot(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory amount, bytes memory sig) returns (bytes32)``
     compute the deposit root
 
 .. note::
 
-    When running ``sha256`` or ``depositroot`` on a *private blockchain*, you might encounter Out-of-Gas. This is because these functions are implemented as "precompiled contracts" and only really exist after they receive the first message (although their contract code is hardcoded). Messages to non-existing contracts are more expensive and thus the execution might run into an Out-of-Gas error. A workaround for this problem is to first send Planck (1 for example) to each of the contracts before you use them in your actual contracts. This is not an issue on the main or test net.
+    When running ``sha256``, ``shake256``, ``mldsa87verify`` or ``depositroot`` on a *private blockchain*, you might encounter Out-of-Gas. These functions are implemented as precompiled contracts and only exist after they receive their first message, although their behavior is hardcoded. Messages to non-existing contracts cost more gas. Send one Planck to each precompile address before using it from a contract. This does not affect networks whose genesis state funds the precompile addresses.
 
 .. index:: balance, codehash, send, transfer, call, delegatecall, staticcall
 

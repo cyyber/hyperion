@@ -666,6 +666,8 @@ void SMTEncoder::endVisit(FunctionCall const& _funCall)
 	case FunctionType::Kind::KECCAK256:
 	case FunctionType::Kind::DepositRoot:
 	case FunctionType::Kind::SHA256:
+	case FunctionType::Kind::SHAKE256:
+	case FunctionType::Kind::MLDSA87Verify:
 		visitCryptoFunction(_funCall);
 		break;
 	case FunctionType::Kind::BlockHash:
@@ -837,6 +839,8 @@ void SMTEncoder::visitCryptoFunction(FunctionCall const& _funCall)
 		result = smtutil::Expression::select(state().cryptoFunction("keccak256"), arg0);
 	else if (kind == FunctionType::Kind::SHA256)
 		result = smtutil::Expression::select(state().cryptoFunction("sha256"), arg0);
+	else if (kind == FunctionType::Kind::SHAKE256)
+		result = smtutil::Expression::select(state().cryptoFunction("shake256"), arg0);
 	else if (kind == FunctionType::Kind::DepositRoot)
 	{
 		auto e = state().cryptoFunction("depositroot");
@@ -850,6 +854,19 @@ void SMTEncoder::visitCryptoFunction(FunctionCall const& _funCall)
 			{arg0, arg1, arg2, arg3}
 		);
 		result = smtutil::Expression::select(e, depositrootInput);
+	}
+	else if (kind == FunctionType::Kind::MLDSA87Verify)
+	{
+		auto e = state().cryptoFunction("mldsa87verify");
+		auto arg1 = expr(*_funCall.arguments().at(1));
+		auto arg2 = expr(*_funCall.arguments().at(2));
+		auto arg3 = expr(*_funCall.arguments().at(3));
+		auto inputSort = dynamic_cast<smtutil::ArraySort&>(*e.sort).domain;
+		auto verifyInput = smtutil::Expression::tuple_constructor(
+			smtutil::Expression(std::make_shared<smtutil::SortSort>(inputSort), ""),
+			{arg0, arg1, arg2, arg3}
+		);
+		result = smtutil::Expression::select(e, verifyInput);
 	}
 	else
 		hypAssert(false, "");
