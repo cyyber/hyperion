@@ -190,10 +190,10 @@ Mathematical and Cryptographic Functions
     compute the SHA-256 hash of the input
 
 ``shake256(bytes memory) returns (bytes64)``
-    compute a fixed 512-bit SHAKE256 digest of the input
+    compute a fixed 512-bit SHAKE256 digest of the input through precompile address ``0x06``
 
 ``mldsa87verify(bytes64 digest, bytes memory signature, bytes memory publicKey, bytes memory context) returns (bool)``
-    verify a FIPS 204 ML-DSA-87 signature. The signature must be 4627 bytes, the public key must be 2592 bytes, and the context may contain at most 255 bytes. Malformed or invalid inputs return ``false``.
+    verify a FIPS 204 ML-DSA-87 signature through precompile address ``0x03``. The compiler packs ``digest || publicKey || signature || uint8(context.length) || context``. The signature must be 4627 bytes, the public key must be 2592 bytes, and the context may contain at most 255 bytes. The exact 64-byte success word maps to ``true``. Empty return data and a canonical 64-byte zero word map to ``false``, covering both return conventions under protocol review.
 
 ``depositroot(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory amount, bytes memory sig) returns (bytes32)``
     compute the deposit root

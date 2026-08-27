@@ -1073,17 +1073,25 @@ bool ExpressionCompiler::visit(FunctionCall const& _functionCall)
 				m_context << Instruction::MULMOD;
 			break;
 		}
+		case FunctionType::Kind::MLDSA87Verify:
+		{
+			hypAssert(arguments.size() == function.parameterTypes().size(), "");
+			for (size_t i = arguments.size(); i > 0; --i)
+				acceptAndConvert(*arguments[i - 1], *function.parameterTypes()[i - 1]);
+			utils().fetchFreeMemoryPointer();
+			utils().moveIntoStack(static_cast<unsigned>(arguments.size()));
+			m_context.callYulFunction(m_context.utilFunctions().mldsa87VerifyFunction(), 5, 1);
+			break;
+		}
 		case FunctionType::Kind::DepositRoot:
 		case FunctionType::Kind::SHA256:
 		case FunctionType::Kind::SHAKE256:
-		case FunctionType::Kind::MLDSA87Verify:
 		{
 			_functionCall.expression().accept(*this);
 			static std::map<FunctionType::Kind, u256> const contractAddresses{
 				{FunctionType::Kind::DepositRoot, 1},
 				{FunctionType::Kind::SHA256, 2},
-				{FunctionType::Kind::SHAKE256, 3},
-				{FunctionType::Kind::MLDSA87Verify, 6}
+				{FunctionType::Kind::SHAKE256, 6}
 			};
 			m_context << contractAddresses.at(function.kind());
 			for (unsigned i = function.sizeOnStack(); i > 0; --i)
@@ -2654,6 +2662,19 @@ void ExpressionCompiler::appendExternalFunctionCall(
 		utils().moveToStackTop(gasValueSize, _functionType.selfType()->sizeOnStack());
 
 	auto funKind = _functionType.kind();
+	unsigned expectedPrecompileReturnSize = 0;
+	switch (funKind)
+	{
+	case FunctionType::Kind::DepositRoot:
+	case FunctionType::Kind::SHA256:
+		expectedPrecompileReturnSize = 32;
+		break;
+	case FunctionType::Kind::SHAKE256:
+		expectedPrecompileReturnSize = 64;
+		break;
+	default:
+		break;
+	}
 
 	bool returnSuccessConditionAndReturndata = funKind == FunctionType::Kind::BareCall || funKind == FunctionType::Kind::BareDelegateCall || funKind == FunctionType::Kind::BareStaticCall;
 	bool isDelegateCall = funKind == FunctionType::Kind::BareDelegateCall || funKind == FunctionType::Kind::DelegateCall;
@@ -2785,6 +2806,12 @@ void ExpressionCompiler::appendExternalFunctionCall(
 	utils().popStackSlots(remainsSize);
 
 	// Only success flag is remaining on stack.
+	if (expectedPrecompileReturnSize != 0)
+	{
+		hypAssert(!_tryCall, "Built-in precompile call cannot be a try call.");
+		m_context << Instruction::RETURNDATASIZE << u256(expectedPrecompileReturnSize) << Instruction::EQ << Instruction::ISZERO;
+		m_context.appendConditionalRevert();
+	}
 
 	if (_tryCall)
 	{

@@ -179,13 +179,13 @@ qrvmc::Result QRVMHost::call(qrvmc_message const& _message) noexcept
 	else if (_message.recipient == "Q00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002"_address)
 		return precompileSha256(_message);
 	else if (_message.recipient == "Q00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003"_address)
-		return precompileShake256(_message);
+		return precompileMLDSA87Verify(_message);
 	else if (_message.recipient == "Q00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004"_address)
 		return precompileIdentity(_message);
 	else if (_message.recipient == "Q00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005"_address)
 		return precompileModExp(_message);
 	else if (_message.recipient == "Q00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006"_address)
-		return precompileMLDSA87Verify(_message);
+		return precompileShake256(_message);
 
 	auto const stateBackup = accounts;
 
@@ -395,9 +395,7 @@ qrvmc::Result QRVMHost::precompileSha256(qrvmc_message const& _message) noexcept
 		_message.input_data,
 		_message.input_data + _message.input_size
 	));
-	// Pad to 64 bytes (VMWordBytes), bytes32 left-aligned in upper 32 bytes.
 	hash = rawHash;
-	hash.resize(64, 0);
 
 	// Base 60 gas + 12 gas / 64-byte VM word.
 	int64_t gas_cost = 60 + 12 * ((static_cast<int64_t>(_message.input_size) + 63) / 64);
@@ -407,6 +405,14 @@ qrvmc::Result QRVMHost::precompileSha256(qrvmc_message const& _message) noexcept
 
 qrvmc::Result QRVMHost::precompileShake256(qrvmc_message const& _message) noexcept
 {
+	bytes static const shortOutputMarker = asBytes("QRL-SHAKE256-SHORT-OUTPUT");
+	bytes static const shortOutput(63, 0);
+	if (
+		_message.input_size == shortOutputMarker.size() &&
+		std::equal(shortOutputMarker.begin(), shortOutputMarker.end(), _message.input_data)
+	)
+		return resultWithGas(_message.gas, 288, shortOutput);
+
 	bytes static hash;
 	hash = shake256(bytesConstRef(_message.input_data, _message.input_size), 64);
 
@@ -437,23 +443,45 @@ qrvmc::Result QRVMHost::precompileMLDSA87Verify(qrvmc_message const& _message) n
 {
 	// Compiler packing fixture. Cryptographic correctness is tested in go-qrl.
 	static constexpr size_t digestSize = 64;
-	static constexpr size_t signatureSize = 4627;
 	static constexpr size_t publicKeySize = 2592;
-	static constexpr size_t fixedInputSize = digestSize + signatureSize + publicKeySize;
+	static constexpr size_t signatureSize = 4627;
+	static constexpr size_t contextLengthSize = 1;
+	static constexpr size_t publicKeyOffset = digestSize;
+	static constexpr size_t signatureOffset = publicKeyOffset + publicKeySize;
+	static constexpr size_t contextLengthOffset = signatureOffset + signatureSize;
+	static constexpr size_t contextOffset = contextLengthOffset + contextLengthSize;
 	bytes static const context{'Q', 'N', 'S', '-', 'S', 'I', 'G', 'N', '-', 'v', '1'};
-	bytes static result(64, 0);
-	std::fill(result.begin(), result.end(), 0);
+	bytes static const failedResult;
+	bytes static const shortTrueResult{1};
+	bytes static canonicalFalseResult(64, 0);
+	bytes static successResult(64, 0);
+	bytes static noncanonicalResult(64, 0);
+	std::fill(canonicalFalseResult.begin(), canonicalFalseResult.end(), 0);
+	std::fill(successResult.begin(), successResult.end(), 0);
+	std::fill(noncanonicalResult.begin(), noncanonicalResult.end(), 0);
 
-	bool const valid =
-		_message.input_size == fixedInputSize + context.size() &&
-		_message.input_data[0] == 0x42 &&
-		_message.input_data[digestSize] == 0x43 &&
-		_message.input_data[digestSize + signatureSize] == 0x44 &&
-		std::equal(context.begin(), context.end(), _message.input_data + fixedInputSize);
-	if (valid)
-		result.back() = 1;
+	bool const validFrame =
+		_message.input_size == contextOffset + context.size() &&
+		_message.input_data[publicKeyOffset] == 0x44 &&
+		_message.input_data[signatureOffset] == 0x43 &&
+		_message.input_data[contextLengthOffset] == context.size() &&
+		std::equal(context.begin(), context.end(), _message.input_data + contextOffset);
+	if (validFrame && _message.input_data[0] == 0x42)
+	{
+		successResult.back() = 1;
+		return resultWithGas(_message.gas, 125000, successResult);
+	}
+	if (validFrame && _message.input_data[0] == 0x45)
+	{
+		noncanonicalResult.back() = 2;
+		return resultWithGas(_message.gas, 125000, noncanonicalResult);
+	}
+	if (validFrame && _message.input_data[0] == 0x46)
+		return resultWithGas(_message.gas, 125000, canonicalFalseResult);
+	if (validFrame && _message.input_data[0] == 0x48)
+		return resultWithGas(_message.gas, 125000, shortTrueResult);
 
-	return resultWithGas(_message.gas, 250000, result);
+	return resultWithGas(_message.gas, 125000, failedResult);
 }
 
 qrvmc::Result QRVMHost::precompileGeneric(

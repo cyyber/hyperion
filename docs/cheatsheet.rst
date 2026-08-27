@@ -92,8 +92,8 @@ Mathematical and Cryptographic Functions
 
 - ``keccak256(bytes memory) returns (bytes32)``: compute the Keccak-256 hash of the input
 - ``sha256(bytes memory) returns (bytes32)``: compute the SHA-256 hash of the input
-- ``shake256(bytes memory) returns (bytes64)``: compute a fixed 512-bit SHAKE256 digest of the input
-- ``mldsa87verify(bytes64 digest, bytes memory signature, bytes memory publicKey, bytes memory context) returns (bool)``: verify a FIPS 204 ML-DSA-87 signature
+- ``shake256(bytes memory) returns (bytes64)``: compute a fixed 512-bit SHAKE256 digest through precompile address ``0x06``
+- ``mldsa87verify(bytes64 digest, bytes memory signature, bytes memory publicKey, bytes memory context) returns (bool)``: verify a FIPS 204 ML-DSA-87 signature through precompile address ``0x03``; empty data and a canonical zero word map to ``false``
 - ``depositroot(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory amount, bytes memory sig) returns (bytes32)``: compute the deposit root
 - ``addmod(uint x, uint y, uint k) returns (uint)``: compute ``(x + y) % k`` where the addition is performed with
   arbitrary precision and does not wrap around at ``2**256``. Assert that ``k != 0`` starting from version 0.5.0.
