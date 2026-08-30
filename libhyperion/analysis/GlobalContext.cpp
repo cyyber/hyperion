@@ -70,7 +70,7 @@ inline std::vector<std::shared_ptr<MagicVariableDeclaration const>> constructMag
 		magicVarDecl("assert", TypeProvider::function(strings{"bool"}, strings{}, FunctionType::Kind::Assert, StateMutability::Pure)),
 		magicVarDecl("block", TypeProvider::magic(MagicType::Kind::Block)),
 		magicVarDecl("blockhash", TypeProvider::function(strings{"uint256"}, strings{"bytes32"}, FunctionType::Kind::BlockHash, StateMutability::View)),
-		magicVarDecl("depositroot", TypeProvider::function(strings{"bytes memory", "bytes memory", "bytes memory", "bytes memory"}, strings{"bytes32"}, FunctionType::Kind::DepositRoot, StateMutability::Pure)),
+		magicVarDecl("depositroot", TypeProvider::function(strings{"bytes memory", "bytes memory", "bytes memory", "bytes memory", "bytes memory"}, strings{"bytes32"}, FunctionType::Kind::DepositRoot, StateMutability::Pure)),
 		magicVarDecl("gasleft", TypeProvider::function(strings(), strings{"uint256"}, FunctionType::Kind::GasLeft, StateMutability::View)),
 		magicVarDecl("keccak256", TypeProvider::function(strings{"bytes memory"}, strings{"bytes32"}, FunctionType::Kind::KECCAK256, StateMutability::Pure)),
 		magicVarDecl("msg", TypeProvider::magic(MagicType::Kind::Message)),

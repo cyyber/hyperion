@@ -189,8 +189,8 @@ Mathematical and Cryptographic Functions
 ``sha256(bytes memory) returns (bytes32)``
     compute the SHA-256 hash of the input
 
-``depositroot(bytes memory pubkey, bytes memory withdrawal_credentials, bytes memory amount, bytes memory sig) returns (bytes32)``
-    compute the deposit root
+``depositroot(bytes memory pubkey, bytes memory withdrawal_recipient, bytes memory amount, bytes memory randao_commitment, bytes memory sig) returns (bytes32)``
+    compute the SSZ hash tree root of the beacon chain ``DepositData`` container (2592-byte ML-DSA-87 public key, 64-byte withdrawal recipient, 8-byte little-endian amount, 32-byte RANDAO commitment, 4627-byte signature); implemented by the precompiled contract at address ``1``
 
 .. note::
 

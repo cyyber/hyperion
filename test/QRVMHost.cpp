@@ -31,6 +31,9 @@
 #include <libhyputil/Keccak256.h>
 #include <libhyputil/picosha2.h>
 
+#include <algorithm>
+#include <vector>
+
 using namespace std;
 using namespace hyperion;
 using namespace hyperion::util;
@@ -377,10 +380,95 @@ qrvmc::bytes64 QRVMHost::convertUintToQRVMC(u256 const& _value)
 	return d;
 }
 
-qrvmc::Result QRVMHost::precompileDepositRoot(qrvmc_message const& /*_message*/) noexcept
+namespace
 {
-	// TODO implement
-	return resultWithFailure();
+
+/// SSZ merkleization helpers for the depositroot precompile (mirrors the
+/// beacon chain's DepositData hash tree root, see go-qrl core/vm/contracts.go).
+bytes sszHashPair(bytes const& _left, bytes const& _right)
+{
+	bytes joined = _left;
+	joined += _right;
+	return picosha2::hash256(joined);
+}
+
+/// Splits @a _data into 32-byte chunks (zero-padding the last one), pads the
+/// chunk list with zero chunks up to @a _limit leaves and merkleizes it.
+bytes sszMerkleize(bytes const& _data, size_t _limit)
+{
+	std::vector<bytes> nodes;
+	for (size_t i = 0; i < _data.size(); i += 32)
+	{
+		bytes chunk(_data.begin() + static_cast<ptrdiff_t>(i), _data.begin() + static_cast<ptrdiff_t>(std::min(i + 32, _data.size())));
+		chunk.resize(32, 0);
+		nodes.emplace_back(std::move(chunk));
+	}
+	size_t leaves = 1;
+	while (leaves < _limit)
+		leaves *= 2;
+	while (nodes.size() < leaves)
+		nodes.emplace_back(bytes(32, 0));
+	while (nodes.size() > 1)
+	{
+		std::vector<bytes> next;
+		for (size_t i = 0; i < nodes.size(); i += 2)
+			next.emplace_back(sszHashPair(nodes[i], nodes[i + 1]));
+		nodes = std::move(next);
+	}
+	return nodes.front();
+}
+
+}
+
+qrvmc::Result QRVMHost::precompileDepositRoot(qrvmc_message const& _message) noexcept
+{
+	// Input: DepositData fields concatenated without padding, in SSZ order:
+	//   pubkey(2592) || withdrawal_recipient(64) || amount(8, little-endian) ||
+	//   randao_commitment(32) || signature(4627)
+	// Output: the SSZ hash tree root of the DepositData container, left-aligned
+	// in a 64-byte word (like sha256). Gas: flat 18000 (go-qrl DepositrootGas).
+	size_t constexpr pubkeyLength = 2592;
+	size_t constexpr withdrawalRecipientLength = 64;
+	size_t constexpr amountLength = 8;
+	size_t constexpr randaoCommitmentLength = 32;
+	size_t constexpr signatureLength = 4627;
+	size_t constexpr inputLength = pubkeyLength + withdrawalRecipientLength + amountLength + randaoCommitmentLength + signatureLength;
+
+	if (_message.input_size != inputLength)
+		return resultWithFailure();
+
+	bytes const input(_message.input_data, _message.input_data + _message.input_size);
+	auto field = [&](size_t _offset, size_t _length) {
+		return bytes(input.begin() + static_cast<ptrdiff_t>(_offset), input.begin() + static_cast<ptrdiff_t>(_offset + _length));
+	};
+	size_t offset = 0;
+	bytes const pubkey = field(offset, pubkeyLength);
+	offset += pubkeyLength;
+	bytes const withdrawalRecipient = field(offset, withdrawalRecipientLength);
+	offset += withdrawalRecipientLength;
+	bytes const amount = field(offset, amountLength);
+	offset += amountLength;
+	bytes const randaoCommitment = field(offset, randaoCommitmentLength);
+	offset += randaoCommitmentLength;
+	bytes const signature = field(offset, signatureLength);
+
+	// Field roots: fixed-size byte vectors are merkleized over ceil(len / 32)
+	// chunks; uint64 and bytes32 are single chunks.
+	bytes fieldRoots;
+	fieldRoots += sszMerkleize(pubkey, (pubkeyLength + 31) / 32);
+	fieldRoots += sszMerkleize(withdrawalRecipient, (withdrawalRecipientLength + 31) / 32);
+	fieldRoots += sszMerkleize(amount, 1);
+	fieldRoots += sszMerkleize(randaoCommitment, 1);
+	fieldRoots += sszMerkleize(signature, (signatureLength + 31) / 32);
+
+	// static data so that we do not need a release routine...
+	bytes static root;
+	root = sszMerkleize(fieldRoots, 5);
+	// Pad to 64 bytes (VMWordBytes), bytes32 left-aligned in upper 32 bytes.
+	root.resize(64, 0);
+
+	int64_t constexpr gas_cost = 18000;
+	return resultWithGas(_message.gas, gas_cost, root);
 }
 
 qrvmc::Result QRVMHost::precompileSha256(qrvmc_message const& _message) noexcept

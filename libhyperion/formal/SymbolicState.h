@@ -254,8 +254,9 @@ private:
 			{"depositroot", std::make_shared<smtutil::ArraySort>(
 				std::make_shared<smtutil::TupleSort>(
 					"depositroot_input_type",
-					std::vector<std::string>{"pubkey", "withdrawal_credentials", "amount", "signature"},
+					std::vector<std::string>{"pubkey", "withdrawal_recipient", "amount", "randao_commitment", "signature"},
 					std::vector<smtutil::SortPointer>{
+						smt::smtSort(*TypeProvider::bytesStorage()),
 						smt::smtSort(*TypeProvider::bytesStorage()),
 						smt::smtSort(*TypeProvider::bytesStorage()),
 						smt::smtSort(*TypeProvider::bytesStorage()),
