@@ -1261,6 +1261,8 @@ public:
 		Revert, ///< REVERT
 		DepositRoot, ///< CALL to special contract for depositroot
 		SHA256, ///< CALL to special contract for sha256
+		SHAKE256, ///< CALL to special contract for SHAKE256-512
+		MLDSA87Verify, ///< CALL to special contract for ML-DSA-87 verification
 		Event, ///< syntactic sugar for LOG*
 		Error, ///< creating an error instance in revert or require
 		Wrap, ///< customType.wrap(...) for user defined value types
@@ -1487,6 +1489,7 @@ public:
 		{
 		case FunctionType::Kind::KECCAK256:
 		case FunctionType::Kind::SHA256:
+		case FunctionType::Kind::SHAKE256:
 		case FunctionType::Kind::BareCall:
 		case FunctionType::Kind::BareDelegateCall:
 		case FunctionType::Kind::BareStaticCall:

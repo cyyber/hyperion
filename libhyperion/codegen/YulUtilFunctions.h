@@ -449,6 +449,11 @@ public:
 
 	std::string packedHashFunction(std::vector<Type const*> const& _givenTypes, std::vector<Type const*> const& _targetTypes);
 
+	/// @returns the name of a function that packs and calls the ML-DSA-87
+	/// verification precompile, mapping empty or canonical zero return data to false.
+	/// signature: (digest, signature, publicKey, context, memPtr) -> result
+	std::string mldsa87VerifyFunction();
+
 	/// @returns the name of a function that reverts and uses returndata (if available)
 	/// as reason string.
 	std::string forwardingRevertFunction();

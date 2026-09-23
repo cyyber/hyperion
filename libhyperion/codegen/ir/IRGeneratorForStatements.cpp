@@ -1615,19 +1615,32 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 
 		break;
 	}
+	case FunctionType::Kind::MLDSA87Verify:
+	{
+		hypAssert(arguments.size() == parameterTypes.size());
+		std::string args;
+		for (size_t i = 0; i < arguments.size(); ++i)
+			args += (args.empty() ? "" : ", ") + expressionAsType(*arguments[i], *parameterTypes[i]);
+		define(_functionCall) <<
+			m_utils.mldsa87VerifyFunction() << "(" <<
+			args << ", " << m_utils.allocateUnboundedFunction() << "())\n";
+		break;
+	}
 	case FunctionType::Kind::DepositRoot:
 	case FunctionType::Kind::SHA256:
+	case FunctionType::Kind::SHAKE256:
 	{
 		hypAssert(!_functionCall.annotation().tryCall);
 		hypAssert(!functionType->valueSet());
 		hypAssert(!functionType->gasSet());
 		hypAssert(!functionType->hasBoundFirstArgument());
 
-		static std::map<FunctionType::Kind, std::tuple<unsigned, size_t>> precompiles = {
-			{FunctionType::Kind::DepositRoot, std::make_tuple(1, 0)},
-			{FunctionType::Kind::SHA256, std::make_tuple(2, 0)},
+		static std::map<FunctionType::Kind, std::tuple<unsigned, size_t, size_t>> precompiles = {
+			{FunctionType::Kind::DepositRoot, std::make_tuple(1, 0, 32)},
+			{FunctionType::Kind::SHA256, std::make_tuple(2, 0, 32)},
+			{FunctionType::Kind::SHAKE256, std::make_tuple(6, 0, 64)},
 		};
-		auto [ address, offset ] = precompiles[functionType->kind()];
+		auto [ address, offset, outputSize ] = precompiles[functionType->kind()];
 		TypePointers argumentTypes;
 		std::vector<std::string> argumentStrings;
 		for (auto const& arg: arguments)
@@ -1639,8 +1652,9 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 			let <pos> := <allocateUnbounded>()
 			let <end> := <encodeArgs>(<pos> <argumentString>)
 			mstore(0, 0)
-			let <success> := <call>(<gas>, <address>, <pos>, sub(<end>, <pos>), 0, 32)
+			let <success> := <call>(<gas>, <address>, <pos>, sub(<end>, <pos>), 0, <outputSize>)
 			if iszero(<success>) { <forwardingRevert>() }
+			if iszero(eq(returndatasize(), <outputSize>)) { revert(0, 0) }
 			let <retVars> := <shl>(mload(0))
 		)");
 		templ("call", "staticcall");
@@ -1651,6 +1665,7 @@ void IRGeneratorForStatements::endVisit(FunctionCall const& _functionCall)
 		templ("encodeArgs", m_context.abiFunctions().tupleEncoderPacked(argumentTypes, parameterTypes));
 		templ("argumentString", joinHumanReadablePrefixed(argumentStrings));
 		templ("address", toString(address));
+		templ("outputSize", toString(outputSize));
 		templ("success", m_context.newYulVariable());
 		templ("retVars", IRVariable(_functionCall).commaSeparatedList());
 		templ("forwardingRevert", m_utils.forwardingRevertFunction());
@@ -2143,6 +2158,8 @@ void IRGeneratorForStatements::endVisit(MemberAccess const& _memberAccess)
 				case FunctionType::Kind::Transfer:
 				case FunctionType::Kind::DepositRoot:
 				case FunctionType::Kind::SHA256:
+				case FunctionType::Kind::SHAKE256:
+				case FunctionType::Kind::MLDSA87Verify:
 				default:
 					hypAssert(false, "unsupported member function");
 				}
