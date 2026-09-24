@@ -97,7 +97,7 @@ contract SQRCTF1 {
 // constructor()
 // ~ emit Transfer(address,address,uint256): #Q00, #Q00, 0x14
 // gas irOptimized: 353276
-// gas legacy: 1353538
+// gas legacy: 908825
 // gas legacyOptimized: 408718
 // totalSupply() -> 20
 // gas irOptimized: 23415
