@@ -619,7 +619,7 @@ object \"C_54\" {
             let newFreePtr := add(_1, and(add(argSize, 63), not(63)))
             if or(gt(newFreePtr, sub(shl(64, 1), 1)), lt(newFreePtr, _1))
             {
-                mstore(/** @src -1:-1:-1 */ 0, /** @src 0:79:435  \"contract C...\" */ shl(480, 0x4e487b71))
+                mstore(/** @src -1:-1:-1 */ 0, /** @src 0:79:435  \"contract C...\" */ shl(480, 0xdf75fb3b))
                 mstore(4, 0x41)
                 revert(/** @src -1:-1:-1 */ 0, /** @src 0:79:435  \"contract C...\" */ 0x44)
             }
@@ -667,7 +667,7 @@ object \"C_54\" {
                         /// @src 0:79:435  \"contract C...\"
                         if or(sgt(sum, sub(shl(255, 1), 1)), slt(sum, not(sub(shl(255, 1), 1))))
                         {
-                            mstore(0, shl(480, 0x4e487b71))
+                            mstore(0, shl(480, 0xdf75fb3b))
                             mstore(4, 0x11)
                             revert(0, 0x44)
                         }
@@ -689,7 +689,7 @@ object \"C_54\" {
                         let value_1 := signextend(31, _3)
                         if eq(value_1, sub(shl(255, 1), 1))
                         {
-                            mstore(0, shl(480, 0x4e487b71))
+                            mstore(0, shl(480, 0xdf75fb3b))
                             mstore(4, 0x11)
                             revert(0, 0x44)
                         }
@@ -719,7 +719,7 @@ object \"C_54\" {
                             let newFreePtr := add(_4, and(add(_6, 63), not(63)))
                             if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, _4))
                             {
-                                mstore(0, shl(480, 0x4e487b71))
+                                mstore(0, shl(480, 0xdf75fb3b))
                                 mstore(4, 0x41)
                                 revert(0, 0x44)
                             }
@@ -757,7 +757,7 @@ object \"C_54\" {
                 sum := add(signextend(31, x), signextend(31, y))
                 if or(sgt(sum, sub(shl(255, 1), 1)), slt(sum, not(sub(shl(255, 1), 1))))
                 {
-                    mstore(0, shl(480, 0x4e487b71))
+                    mstore(0, shl(480, 0xdf75fb3b))
                     mstore(4, 0x11)
                     revert(0, 0x44)
                 }
@@ -1453,7 +1453,7 @@ object \"D_72\" {
             let newFreePtr := add(_1, and(add(argSize, 63), not(63)))
             if or(gt(newFreePtr, sub(shl(64, 1), 1)), lt(newFreePtr, _1))
             {
-                mstore(/** @src -1:-1:-1 */ 0, /** @src 1:91:166  \"contract D is C(3)...\" */ shl(480, 0x4e487b71))
+                mstore(/** @src -1:-1:-1 */ 0, /** @src 1:91:166  \"contract D is C(3)...\" */ shl(480, 0xdf75fb3b))
                 mstore(4, 0x41)
                 revert(/** @src -1:-1:-1 */ 0, /** @src 1:91:166  \"contract D is C(3)...\" */ 0x44)
             }
@@ -1478,7 +1478,7 @@ object \"D_72\" {
             let sum := add(signextend(31, or(value_1, /** @src 1:107:108  \"3\" */ 0x03)), /** @src 1:91:166  \"contract D is C(3)...\" */ _2)
             if or(sgt(sum, sub(shl(255, 1), 1)), slt(sum, not(sub(shl(255, 1), 1))))
             {
-                mstore(/** @src -1:-1:-1 */ 0, /** @src 1:91:166  \"contract D is C(3)...\" */ shl(480, 0x4e487b71))
+                mstore(/** @src -1:-1:-1 */ 0, /** @src 1:91:166  \"contract D is C(3)...\" */ shl(480, 0xdf75fb3b))
                 mstore(4, 0x11)
                 revert(/** @src -1:-1:-1 */ 0, /** @src 1:91:166  \"contract D is C(3)...\" */ 0x44)
             }
@@ -1509,7 +1509,7 @@ object \"D_72\" {
                         /// @src 1:91:166  \"contract D is C(3)...\"
                         if or(sgt(sum, sub(shl(255, 1), 1)), slt(sum, not(sub(shl(255, 1), 1))))
                         {
-                            mstore(0, shl(480, 0x4e487b71))
+                            mstore(0, shl(480, 0xdf75fb3b))
                             mstore(4, 0x11)
                             revert(0, 0x44)
                         }
@@ -1531,7 +1531,7 @@ object \"D_72\" {
                         let value_1 := signextend(31, _3)
                         if eq(value_1, sub(shl(255, 1), 1))
                         {
-                            mstore(0, shl(480, 0x4e487b71))
+                            mstore(0, shl(480, 0xdf75fb3b))
                             mstore(4, 0x11)
                             revert(0, 0x44)
                         }
@@ -1561,7 +1561,7 @@ object \"D_72\" {
                             let newFreePtr := add(_4, and(add(_6, 63), not(63)))
                             if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, _4))
                             {
-                                mstore(0, shl(480, 0x4e487b71))
+                                mstore(0, shl(480, 0xdf75fb3b))
                                 mstore(4, 0x41)
                                 revert(0, 0x44)
                             }
@@ -1599,7 +1599,7 @@ object \"D_72\" {
                 sum := add(signextend(31, x), signextend(31, y))
                 if or(sgt(sum, sub(shl(255, 1), 1)), slt(sum, not(sub(shl(255, 1), 1))))
                 {
-                    mstore(0, shl(480, 0x4e487b71))
+                    mstore(0, shl(480, 0xdf75fb3b))
                     mstore(4, 0x11)
                     revert(0, 0x44)
                 }
