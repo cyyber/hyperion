@@ -1261,6 +1261,7 @@ public:
 		Revert, ///< REVERT
 		DepositRoot, ///< CALL to special contract for depositroot
 		SHA256, ///< CALL to special contract for sha256
+		MLDSA87Verify, ///< CALL to special contract for ML-DSA-87 verification
 		Event, ///< syntactic sugar for LOG*
 		Error, ///< creating an error instance in revert or require
 		Wrap, ///< customType.wrap(...) for user defined value types

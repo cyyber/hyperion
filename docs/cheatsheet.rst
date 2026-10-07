@@ -85,13 +85,14 @@ Validations and Assertions
 - ``revert()``: abort execution and revert state changes
 - ``revert(string memory message)``: abort execution and revert state changes providing an explanatory string
 
-.. index:: cryptography, keccak256, sha256, depositroot, addmod, mulmod
+.. index:: cryptography, keccak256, sha256, mldsa87verify, depositroot, addmod, mulmod
 
 Mathematical and Cryptographic Functions
 ========================================
 
 - ``keccak256(bytes memory) returns (bytes32)``: compute the Keccak-256 hash of the input
 - ``sha256(bytes memory) returns (bytes32)``: compute the SHA-256 hash of the input
+- ``mldsa87verify(bytes64 digest, bytes memory signature, bytes memory publicKey, bytes memory context) returns (bool)``: verify a FIPS 204 ML-DSA-87 signature (4627 bytes) by a public key (2592 bytes) over a 64-byte message representative, with a context of at most 255 bytes; implemented by the precompiled contract at address ``3``
 - ``depositroot(bytes memory pubkey, bytes memory withdrawal_recipient, bytes memory amount, bytes memory randao_commitment, bytes memory sig) returns (bytes32)``: compute the SSZ hash tree root of the beacon chain ``DepositData`` container (2592-byte ML-DSA-87 public key, 64-byte withdrawal recipient, 8-byte little-endian amount, 32-byte RANDAO commitment, 4627-byte signature); implemented by the precompiled contract at address ``1``
 - ``addmod(uint x, uint y, uint k) returns (uint)``: compute ``(x + y) % k`` where the addition is performed with
   arbitrary precision and does not wrap around at ``2**256``. Assert that ``k != 0`` starting from version 0.5.0.
