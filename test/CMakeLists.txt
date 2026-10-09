@@ -44,6 +44,7 @@ set(libhyputil_sources
     libhyputil/TemporaryDirectoryTest.cpp
     libhyputil/UTF8.cpp
     libhyputil/Whiskers.cpp
+    libhyputil/XmssVerify.cpp
 )
 detect_stray_source_files("${libhyputil_sources}" "libhyputil/")
 

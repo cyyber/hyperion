@@ -3062,6 +3062,7 @@ std::string FunctionType::richIdentifier() const
 	case Kind::Revert: id += "revert"; break;
 	case Kind::DepositRoot: id += "depositroot"; break;
 	case Kind::SHA256: id += "sha256"; break;
+	case Kind::XMSSVerify: id += "xmssverify"; break;
 	case Kind::GasLeft: id += "gasleft"; break;
 	case Kind::Event: id += "event"; break;
 	case Kind::Error: id += "error"; break;
@@ -3601,6 +3602,7 @@ bool FunctionType::isBareCall() const
 	case Kind::BareStaticCall:
 	case Kind::DepositRoot:
 	case Kind::SHA256:
+	case Kind::XMSSVerify:
 		return true;
 	default:
 		return false;
@@ -3663,6 +3665,7 @@ bool FunctionType::isPure() const
 		m_kind == Kind::KECCAK256 ||
 		m_kind == Kind::DepositRoot ||
 		m_kind == Kind::SHA256 ||
+		m_kind == Kind::XMSSVerify ||
 		m_kind == Kind::AddMod ||
 		m_kind == Kind::MulMod ||
 		m_kind == Kind::ObjectCreation ||
@@ -3792,6 +3795,7 @@ bool FunctionType::padArguments() const
 	case Kind::SHA256:
 	case Kind::KECCAK256:
 	case Kind::DepositRoot:
+	case Kind::XMSSVerify:
 	case Kind::ABIEncodePacked:
 		return false;
 	default:
