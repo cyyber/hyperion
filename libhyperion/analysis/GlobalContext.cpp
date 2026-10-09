@@ -54,6 +54,7 @@ int magicVariableToID(std::string const& _name)
 	else if (_name == "tx") return -26;
 	else if (_name == "type") return -27;
 	else if (_name == "this") return -28;
+	else if (_name == "xmssverify") return -29;
 	else
 		hypAssert(false, "Unknown magic variable: \"" + _name + "\".");
 }
@@ -90,6 +91,7 @@ inline std::vector<std::shared_ptr<MagicVariableDeclaration const>> constructMag
 			StateMutability::Pure,
 			FunctionType::Options::withArbitraryParameters()
 		)),
+		magicVarDecl("xmssverify", TypeProvider::function(strings{"bytes memory", "bytes memory", "bytes memory"}, strings{"bool"}, FunctionType::Kind::XMSSVerify, StateMutability::Pure)),
 	};
 }
 

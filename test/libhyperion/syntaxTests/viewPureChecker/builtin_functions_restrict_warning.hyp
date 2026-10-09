@@ -3,19 +3,21 @@ contract C {
         bytes32 x = keccak256("abc");
         bytes32 y = sha256("abc");
         bytes32 z = depositroot("abc", "abc", "abc", "abc", "abc");
+        bool w = xmssverify("abc", "abc", "abc");
         require(true);
         assert(true);
-        x; y; z;
+        x; y; z; w;
     }
     function g() public {
         bytes32 x = keccak256("abc");
         bytes32 y = sha256("abc");
         bytes32 z = depositroot("abc", "abc", "abc", "abc", "abc");
+        bool w = xmssverify("abc", "abc", "abc");
         require(true);
         assert(true);
-        x; y; z;
+        x; y; z; w;
     }
 }
 // ----
-// Warning 2018: (17-252): Function state mutability can be restricted to pure
-// Warning 2018: (257-487): Function state mutability can be restricted to pure
+// Warning 2018: (17-305): Function state mutability can be restricted to pure
+// Warning 2018: (310-593): Function state mutability can be restricted to pure

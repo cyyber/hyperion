@@ -264,6 +264,18 @@ private:
 					}
 				),
 				smtSort(*TypeProvider::fixedBytes(32))
+			)},
+			{"xmssverify", std::make_shared<smtutil::ArraySort>(
+				std::make_shared<smtutil::TupleSort>(
+					"xmssverify_input_type",
+					std::vector<std::string>{"message", "signature", "extended_pk"},
+					std::vector<smtutil::SortPointer>{
+						smt::smtSort(*TypeProvider::bytesStorage()),
+						smt::smtSort(*TypeProvider::bytesStorage()),
+						smt::smtSort(*TypeProvider::bytesStorage())
+					}
+				),
+				smtSort(*TypeProvider::boolean())
 			)}
 		},
 		m_context
